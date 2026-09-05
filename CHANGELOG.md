@@ -32,3 +32,10 @@ here than in a library:
   and `SimpleSplines` are both unregistered and are reached through a `[sources]` table, which
   Julia 1.10 ignores rather than honours, so a 1.10 environment fails to resolve rather than
   resolving to something older.
+
+  Both sources are **paths to the local siblings**, not `{rev = "main", url = …}`. That follows
+  the rule `PoissonBrackets/scripts/Project.toml` already states — the url form resolves against
+  a cached clone and pins the environment to whatever was last fetched — and it is also the only
+  form that resolves here at all: Julia 1.13.0-rc3's `Pkg` segfaults (signal 11) in
+  `Updating git-repo` for a git-url source, offline as well as online and with the cached clone
+  already at the current commit.

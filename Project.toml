@@ -16,16 +16,19 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 # Neither PoissonBrackets nor SimpleSplines is registered, so both need an explicit source, and
 # both need it *here*: a `[sources]` table is honoured only for the active project, never
 # inherited from a dependency, so PoissonBrackets' own entry for SimpleSplines does not carry
-# over. PoissonBrackets is a local sibling and is therefore a path — the url form would resolve
-# against a cached clone and pin this environment to whatever was last fetched rather than to
-# the working tree this repository is developed against.
+# over.
+#
+# Both are local siblings and are therefore paths rather than `{rev, url}`. The url form
+# resolves against a cached clone, which pins the environment to whatever was last fetched
+# rather than to the working tree this repository is developed against — the trap already
+# documented in `PoissonBrackets/scripts/Project.toml`.
 #
 # `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored and resolution fails outright with
 # "expected package PoissonBrackets to be registered". That is why the `julia` floor below is
 # 1.11 and not the tree's usual 1.10 — the `min` row of the CI matrix has to resolve.
 [sources]
 PoissonBrackets = {path = "../../Packages/PoissonBrackets"}
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
+SimpleSplines = {path = "../../Packages/SimpleSplines"}
 
 [compat]
 CairoMakie = "0.15"
