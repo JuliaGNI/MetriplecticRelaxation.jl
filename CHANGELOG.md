@@ -361,6 +361,39 @@ cells of degree 3, 100 000 steps.
   monotone throughout, `0.19578 → 0.04322` (spectral) and `→ 0.04265` (spline); vorticity mass
   at **5.7e-16**.
 
+### Results — A3, reduced Euler under the projector bracket (§4.2, Figs. 4–6)
+
+`Δt = 1e-3` (the manuscript's), `T = 20`, spectral `256²` (the manuscript's), spline `64²`
+cells of degree 3, 20 000 steps. Uses the coefficient `2H/‖φ‖²`, not the `H/‖φ‖²` printed below
+`eq:projector-brackets` — see the finding below.
+
+| claim | spline | spectral |
+|:--|--:|--:|
+| `H` conserved, max \|ΔH\|/\|H₀\| | 9.08e-14 | **4.57e-15** |
+| `S → S_η`, as `(S_T−S_η)/(S₀−S_η)` | 2.48e-10 | **2.35e-10** |
+| `S − S_η` decay rate (**exact: 1**) | 0.99994 | **1.00047** |
+| `‖ω(t)−ω(T)‖` decay rate (**exact: ½**) | 0.50679 | 0.50679 |
+| `rS/rω` (**exact: 2**) | 1.973 | 1.974 |
+| `ω(T)` on `𝔠_η`, `‖ω(T)−fit‖/‖ω(T)‖` | 3.33e-05 | 3.33e-05 |
+
+Both rate fits have `r² = 0.9999970` or better. **The two discretisations agree on the final
+state to 1.42e-07** and on `H₀`, `S(0)` and `S(T)` to `5.3e-08` — five orders of magnitude
+closer than A1, because nothing here develops a separatrix layer.
+
+The complete relaxation of §4.2 is confirmed against A2's incomplete relaxation under the same
+initial condition, grid and time step: the only difference between the two runs is the bracket.
+All three inequalities of `eq:theoretical-limits` hold along the whole trajectory, with worst
+residuals of `−2.8e-10` to `−5.8e-10`, i.e. inside the cone throughout.
+
+**Deviation from the manuscript — the vertex is reached at `t = 3.10`, not `t ≈ 5`.** Fig. 6
+says "the system … reaches the vertex of the cone already at `t ≈ 5`". The number depends on
+what "reaches" means, which the manuscript does not state; the criterion here is a **recorded
+choice**: the first time the excess entropy falls below 1 % of its initial value, which is
+where the trajectory becomes indistinguishable from the vertex at plot resolution. Both
+discretisations give 3.10 independently, so it is not a discretisation artefact. A stricter
+threshold would move it later, so this is consistent with the figure rather than in conflict
+with it, but the number is not the manuscript's and is recorded as such.
+
 ### Results — the deliberate deviation converges to the paper's method
 
 `scripts/converge.jl`, against a `192²` Fourier reference after 200 steps. Cubic B-splines are
