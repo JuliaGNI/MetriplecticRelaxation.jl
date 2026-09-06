@@ -107,8 +107,17 @@ for name in names
     else
         nothing
     end
-    println(figure_scatter(out("scatter.png"),
-        p.scatter.spectral_initial, p.scatter.spectral_final;
+    # A1's payload carries no `scatter` field: its abscissa is the prescribed `h`, which is a
+    # function of position and needs no run to produce, so the pair is assembled here from the
+    # same `contours` grid the field maps use. The reduced Euler runs store theirs, because
+    # there the abscissa is the state-dependent stream function.
+    (sc_initial, sc_final) = if name == "a1"
+        ((vec(contours), vec(reshape(trg.initial, N, N) .+ uΩ)),
+            (vec(contours), vec(reshape(trg.final, N, N) .+ uΩ)))
+    else
+        (p.scatter.spectral_initial, p.scatter.spectral_final)
+    end
+    println(figure_scatter(out("scatter.png"), sc_initial, sc_final;
         reference = reference, xlabel = name == "a1" ? "h" : "φ",
         ylabel = name == "a1" ? "u" : "ω"))
 
