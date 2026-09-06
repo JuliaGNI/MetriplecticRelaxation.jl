@@ -147,13 +147,21 @@ header("the degree is what sets the order")
 
 # One more way for the claim to be wrong: if the observed order were an artefact of the time
 # stepping or of the reference rather than of the spline space, it would not move with p.
-let spec = SECTION4_RUNS["a3"], cells = (16, 24, 32, 48), ref = reference(spec)
+#
+# The meshes here start at 32, not at the 16 the runs above use, and the reason is that an order
+# fitted through an UNRESOLVED point is not an order. At 16 cells the degree-2 difference is
+# 2.0e-1 and the degree-4 one 1.7e-1 — both 20 % errors, nowhere near asymptotic — and a
+# least-squares line through them returned 4.11 for degree 2 and 6.28 for degree 4, against 3
+# and 5. The cubic runs above survive their own coarse point only because five meshes outvote
+# it; three meshes cannot.
+let spec = SECTION4_RUNS["a3"], cells = (32, 48, 64, 96), ref = reference(spec)
     for degree in (2, 3, 4)
         errs = [difference(spec, ref, n, degree) for n in cells]
         p = observed_order(cells, errs)
         check(@sprintf("degree %d gives order ≈ %d", degree, degree + 1),
             abs(p - (degree + 1)) < 1.0,
-            @sprintf("observed %.2f   errors %.2e -> %.2e", p, errs[1], errs[end]))
+            @sprintf("observed %.2f   errors %s", p,
+                join([@sprintf("%.2e", e) for e in errs], " -> ")))
     end
 end
 

@@ -225,6 +225,87 @@ here than in a library:
   excess. `settled_floor` scales it to the series' own terminal value instead, discarding only
   the last stretch of a well-resolved run and the whole plateau of a floor-limited one.
 
+### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
+
+`Δt = 1e-4` (the manuscript's), `T = 10`, spectral `256²` (the manuscript's), spline `128²`
+cells of degree 3, 100 000 steps.
+
+- **`τ_h = (ℓ_h/2π)²` is confirmed to three or four digits, by measurement rather than by
+  restatement.** The manuscript computes `τ_h` from the formula and plots it; this fits the
+  decay rate of the along-contour deviation of the run and compares it with `1/τ_h` from the
+  closed form. On the upper central island:
+
+  | h | ℓ_h | τ_h | measured rate | 1/τ_h | rel | r² |
+  |--:|--:|--:|--:|--:|--:|--:|
+  | 0.50 | 5.2441 | 0.6966 | **1.43563** | 1.43554 | 6e-5 | 1.000000 |
+  | 0.40 | 6.1651 | 0.9628 | **1.03871** | 1.03868 | 3e-5 | 1.000000 |
+  | 0.30 | 7.5782 | 1.4547 | **0.68762** | 0.68744 | 3e-4 | 1.000000 |
+  | 0.20 | 10.0945 | 2.5811 | **0.38798** | 0.38742 | 1e-3 | 1.000000 |
+
+  `τ_h` varies by a factor 3.7 across these contours, so the agreement is not a constant being
+  matched by a constant.
+
+- **`u` relaxes to the contour average `u_∞(h)`.** The average is conserved to
+  **9.2e-8 … 4.7e-6** of the initial peak on both central islands, and the along-contour
+  deviation collapses by factors of **120 to 298 000**, tracking `e^{−T/τ_h}` contour by
+  contour.
+
+- **The relaxation is incomplete, as §4.1 says.** The relaxed state is **5.95×** its own norm
+  away from the fully relaxed `u_η` of `eq:u-eta_analytic` — it "retains some information of
+  the initial condition", which is what motivates §4.2.
+
+- Energy conserved at **9.79e-16** (spectral) and **2.12e-13** (spline) relative; entropy
+  monotone throughout, `0.19578 → 0.04322` (spectral) and `→ 0.04265` (spline); vorticity mass
+  at **5.7e-16**.
+
+### Results — the deliberate deviation converges to the paper's method
+
+`scripts/converge.jl`, against a `192²` Fourier reference after 200 steps. Cubic B-splines are
+4th-order accurate in `L²`, and that is what is observed:
+
+| run | 16 | 24 | 32 | 48 | 64 cells | order |
+|:--|--:|--:|--:|--:|--:|--:|
+| a1 | 1.04e-1 | 1.73e-2 | 1.00e-2 | 1.31e-3 | 3.07e-4 | **4.12** |
+| a2 | 3.35e-2 | 1.53e-2 | 5.26e-3 | 5.64e-4 | 1.45e-4 | **4.08** |
+| a3 | 3.79e-2 | 1.27e-2 | 5.31e-3 | 6.07e-4 | 1.53e-4 | **4.05** |
+| **a4, as printed** | 1.02e-2 | 4.56e-3 | 3.15e-3 | 2.39e-3 | 2.12e-3 | **1.10** |
+| a4, periodised | 9.47e-3 | 3.20e-3 | 1.34e-3 | 1.53e-4 | 3.84e-5 | **4.05** |
+
+So the spline runs converge *to* the manuscript's own discretisation, and the agreement between
+them is a refinement statement rather than a coincidence at one resolution. **A4 as printed is
+the sole exception, at order 1.10**, and periodising its Gaussian — the only change — restores
+**4.05**. That is the discontinuity finding confirmed a third independent way, after the
+initial-state comparison and the run itself.
+
+### Results — where A1's two discretisations differ, and why
+
+A1's spline and spectral final states differ by **7.99e-2** in `L²` where their initial states
+differ by **2.21e-5** — a factor **3616**. `scripts/analyse_separatrix.jl` locates it:
+
+| h | share of the squared difference | share of the nodes |
+|:--|--:|--:|
+| [0, 0.001) | **87.1 %** | 7.6 % |
+| [0.001, 0.01) | 5.8 % | 11.6 % |
+| [0.01, 1] | 7.1 % | 80.8 % |
+
+**92.9 % of it lies within `h < 0.01`**, on 19.2 % of the nodes — the separatrix. The mechanism
+is measured rather than asserted: `max|∇u|` near the separatrix relative to the island interiors
+grows from **1.66** at `t = 0` to **90.74** at `t = T`, a 55× steepening.
+
+This is a property of the equation, not of either method, and the manuscript states it in words:
+`eq:parallel-diffusion` equalises `u` along the contours of `h` and moves nothing across them,
+and at `h = 0` the contours are infinitely long, so `ℓ_h` and `τ_h` both diverge — "the dynamics
+at the boundary of the islands is very slow ... the solution remains constant on those boundary
+contours". Neither discretisation resolves an unboundedly steepening layer, and they fail to
+resolve it differently. Every claim A1 makes — the contour averages, `τ_h`, the incomplete
+relaxation — is confirmed independently by both runs.
+
+`run_a1.jl` therefore asserts the comparison **away** from that layer and reports the total
+beside it, both normalised by the global field norm. Normalising a masked region by the field
+*inside* it is ill-posed here — A1's Gaussian sits on the separatrix, so `u ≈ 0` in the island
+interiors, and the first version of the check reported `6.4e-2` for a region carrying 7 % of the
+error.
+
 ### Found
 
 - **A4's initial condition as printed is discontinuous on the torus, by 8.5 % of its peak.**
