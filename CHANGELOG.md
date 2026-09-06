@@ -168,7 +168,8 @@ here than in a library:
   How much that matters depends on how far the centre sits from the wrap, and A4 is the one run
   where it is not negligible: its Gaussian is centred at `x₂ = 3π/2`, only `π/2` from the
   boundary, with `w₂ = 1` and amplitude 1.8, so it still has the value
-  `1.8·exp(−(π/2)²) = 0.153` there. A1 is at `1e-69` and A2/A3 at `5.2e-5`.
+  `1.8·exp(−(π/2)²) = 0.153` there — **8.5 %** of its own peak. A1 reaches only `1.2e-25` at
+  the wrap and A2/A3 `5.2e-5`.
 
   This was found by the spline/spectral cross-check failing for A4 alone, at **6.9e-2** against
   the **2.5e-4** of A2, whose Gaussian is otherwise identical. The control settles the cause:
