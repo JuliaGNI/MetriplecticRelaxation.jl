@@ -363,10 +363,16 @@ here than in a library:
   bound the flag *name* as a path and `mkpath` then created a directory called `--results-dir`;
   one had accumulated in the repository root. A missing or option-shaped value now raises.
 
-- **Three stale or inert lines.** `run_a1.jl`'s contour-average summary had the literal condition
-  `true` without the `[REPORTED]` marker the file's seven other such lines carry; `converge.jl`
-  multiplied a log-ratio by `log2(2)`, which is 1; and `check.jl` referred readers to a
-  `torustools.jl` that does not exist in this repository.
+- **Two inert lines, and one misleading pointer.** `run_a1.jl`'s contour-average summary had the
+  literal condition `true` without the `[REPORTED]` marker the file's seven other such lines
+  carry, and `converge.jl` multiplied a log-ratio by `log2(2)`, which is 1.
+
+  `check.jl` pointed at a `torustools.jl` with no hint that it is in a *different* repository.
+  It is real — `PoissonBrackets/scripts/torustools.jl` — and `check.jl` is a harness ported
+  between three repositories here, so the reference was right and only the location was
+  missing. It now says where the file is and that this repository has none. Worth recording
+  because the first reading of it was that the file did not exist at all: a grep confined to
+  this repository says exactly that, and would have justified deleting a correct comment.
 
 - **Two of this file's own records had gone stale.** The "recorded choice" for the final time
   still read `T = 10` for every run, superseded further down by `T = 20` for A2–A4; and the
