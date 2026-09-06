@@ -1,5 +1,6 @@
 module MetriplecticRelaxation
 
+using FFTW
 using LinearAlgebra
 using Printf
 
@@ -11,5 +12,10 @@ export euler_minimiser, euler_entropy_minimum
 export RunSpec, SECTION4_RUNS
 
 include("torus.jl")
+
+export SpectralTorus, torus_field, poisson_periodic, canonical_bracket, hamiltonian_field,
+       double_bracket_field, projector_bracket_field, spectral_state, spectral_step!
+
+include("spectral.jl")
 
 end

@@ -65,6 +65,61 @@ here than in a library:
   flow-time average to **8.6e-14**. Two controls that must fail do fail: `agm(1,h)` in place of
   `agm(1,√h)` is off by **16 %**, and after half a period the orbit has moved **1.57**.
 
+- **`src/spectral.jl` — the Fourier solver, which is the manuscript's own discretisation.**
+  `poisson_periodic`, `canonical_bracket`, `hamiltonian_field`, the trapezoidal `integrate`,
+  the two §4 vector fields, and classical RK4. This is the reference half of the pair; the
+  spline Galerkin half shares no code path with it, so their agreement is evidence about the
+  equation rather than about either method.
+
+  **The paper's own `scripts/torus.jl` could not be depended on as a module**, contrary to the
+  plan's expectation. It lives in a manuscript repository with no package boundary and no UUID,
+  so `using` it would mean a hard-coded absolute path in committed code or a copy of the file.
+  (The plan also names it `scripts/src/torus.jl`; the actual path has no `src/`.) The same
+  operators are therefore built here and **checked against PoissonBrackets' `spectral_grid`**,
+  which computes derivatives from a dense differentiation matrix `D = Re(V diag(ik) W)` rather
+  than by FFT — a genuinely independent implementation. They agree to **8.2e-14 … 1.0e-13**.
+
+  **Recorded choice — the state variable is `ω = u − u_Ω`, not `u`.** This is the manuscript's
+  own alternative, stated at `eq:Poisson-eq-periodic` ("equivalently, we could have chosen the
+  phase space to be the subspace of functions satisfying `u_Ω = 0` and `u = ω`"), and it is what
+  makes the projector bracket well posed: its generating field `φ` is mean-free by construction.
+  Both vector fields preserve the zero mean exactly — measured at **1.2e-18 … 1.7e-17**
+  normalised across all four runs — so `u_Ω` is a constant carried alongside and added back only
+  for plotting.
+
+- **`scripts/verify_spectral.jl`** — 27 checks: the operator agreement above, the Poisson solve
+  (`−Δφ = ω` on eigenmodes to **5.6e-16**, `φ` mean-free to **1.5e-18**), the identity
+  `[h,[h,u]] = ∇·(X_h⊗X_h ∇u)` of `eq:parallel-diffusion` to **4.7e-15** with `∇·X_h = 0` at
+  **4.8e-15** and `X_h·∇h = 0` **exactly**, and the semi-discrete conservation laws: energy
+  conserved at **1.7e-17** (double) and **1.3e-16** (projector) normalised, entropy strictly
+  decreasing, and `dS/dt = −∫|X_h·∇ω|²` matching to 11 digits.
+
+### Found
+
+- **A factor of 2 is missing from the §4.2 evolution equation as printed.** The equation just
+  below `eq:projector-brackets` reads `∂_t u = −[u − u_Ω − H(u)‖φ‖⁻²φ]`. The manuscript's own
+  definitions give `2H` there: `eq:L2-projector` sets `c(u,v) = ‖φ‖⁻²(φ,v)`, and with
+  `v = δS/δu = ω` and `eq:Euler_H_periodic`'s `H = ½(φ,u)` this is `c = 2H/‖φ‖²`.
+
+  This is **internal to §4.2** — the two printed equations cannot both be right. Substituting
+  the same `c` into `(S,S) = (ω, Π_H ω)` reproduces `eq:SS-projector`,
+  `(S,S) = 2S − 4H₀²/‖φ‖²`, only with the factor 2.
+
+  `scripts/verify_projector_factor.jl` settles it numerically. With the printed factor the
+  energy is **not** conserved — `dH/dt = −9.51`, i.e. **70 %** of `‖φ‖‖f‖` — while with the
+  derived factor it is **9.4e-17**; and `−dS/dt` matches `eq:SS-projector` to **8.1e-16** with
+  the factor 2 against a **192 %** relative error without it. The analytic test case one page
+  earlier is the mirror image and is unaffected: `eq:analytical_H` has no `½`, so the printed
+  factor is correct there (**7.7e-17**, against **38 %** for the factor 2). That asymmetry is
+  what makes this look like a transcription slip rather than a different convention — a
+  convention would have moved both.
+
+  **Why it would survive review unnoticed:** the factor-1 field is still symmetric and still
+  dissipates entropy (`dS/dt = −16.1` against the correct `−5.50`), so it looks healthy in both
+  plots Fig. 4 shows. What it does is relax to a state of the *wrong energy*, hence to the wrong
+  member of the family `eq:u-eta_Euler_periodic`. This reproduction uses the derived factor, and
+  the discrepancy is a candidate finding for the manuscript rather than a change made silently.
+
 ### Fixed
 
 - **A catastrophic cancellation in the contour quadrature, found by its own refinement check.**
