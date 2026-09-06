@@ -19,7 +19,7 @@
 # written unmodified on T^2, with no summation over periodic images. A4's Gaussian is centred
 # pi/2 from the boundary with w_2 = 1 and amplitude 1.8, so the formula as printed still has the
 # value 1.8 exp(-(pi/2)^2) = 0.153 there -- a discontinuity of 8.5% of its own peak. A1's is
-# 1e-69 and A2/A3's is 5.2e-5, so A4 is the only run affected.
+# 1.2e-25 and A2/A3's is 5.2e-5, so A4 is the only run affected.
 #
 # Both readings are therefore run and both are reported: the literal formula as the primary,
 # being what is printed, and the periodised form alongside. See `Gaussian` and section 8 below.
