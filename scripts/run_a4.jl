@@ -58,9 +58,10 @@ header("8. the entropy rate is slower early and approaches 1 at the vertex")
 for (nm, r) in (("spline", res.spline), ("spectral", res.spectral))
     Sη = euler_entropy_minimum(r.trace.H[1])
     excess = r.trace.S .- Sη
-    (r_early, r²e, ne) = fit_rate(r.trace.t, excess; window = (0.01, 0.10), floor = 1e-11)
+    fl = ProjectorRun.settled_floor(excess)
+    (r_early, r²e, ne) = fit_rate(r.trace.t, excess; window = (0.01, 0.10), floor = fl)
     (r_late, r²l, nl) = fit_rate(r.trace.t, excess; window = ProjectorRun.RATE_WINDOW,
-        floor = 1e-11)
+        floor = fl)
     check(@sprintf("%-8s the late rate approaches 1", nm),
         abs(r_late - 1) < 0.05 && r²l > 0.9999,
         @sprintf("late %.5f   r² = %.6f   n = %d", r_late, r²l, nl))
@@ -94,10 +95,11 @@ for (nm, r, rp) in (("spline", res.spline, res_p.spline),
     ("spectral", res.spectral, res_p.spectral))
     Sη = euler_entropy_minimum(r.trace.H[1])
     Sηp = euler_entropy_minimum(rp.trace.H[1])
-    (rate, _, _) = fit_rate(r.trace.t, r.trace.S .- Sη; window = ProjectorRun.RATE_WINDOW,
-        floor = 1e-11)
-    (ratep, _, _) = fit_rate(rp.trace.t, rp.trace.S .- Sηp;
-        window = ProjectorRun.RATE_WINDOW, floor = 1e-11)
+    ex, exp_ = r.trace.S .- Sη, rp.trace.S .- Sηp
+    (rate, _, _) = fit_rate(r.trace.t, ex; window = ProjectorRun.RATE_WINDOW,
+        floor = ProjectorRun.settled_floor(ex))
+    (ratep, _, _) = fit_rate(rp.trace.t, exp_; window = ProjectorRun.RATE_WINDOW,
+        floor = ProjectorRun.settled_floor(exp_))
     # The claims are what must survive the ambiguity: both readings must give rate ≈ 1.
     check(@sprintf("%-8s BOTH readings give the entropy rate ≈ 1", nm),
         abs(rate - 1) < 0.05 && abs(ratep - 1) < 0.05,

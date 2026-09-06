@@ -64,6 +64,10 @@ function check(label, condition, detail = "")
     ok || push!(_failures, label)
     mark = ok ? "PASS" : "FAIL"
     println("  [$mark] $label" * (isempty(detail) ? "" : "   $detail"))
+    # Julia buffers stdout when it is redirected, so a script whose checks take minutes shows
+    # nothing at all until it exits -- and an interrupted one loses every line it had produced.
+    # `converge.jl` ran for ten minutes into an empty log before this was added.
+    flush(stdout)
     return ok
 end
 

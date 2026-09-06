@@ -24,12 +24,37 @@ using Serialization
 include(joinpath(@__DIR__, "runner.jl"))
 using .Runner
 
-const args = filter(a -> startswith(a, "--"), ARGS)
-const wanted = filter(a -> !startswith(a, "--"), ARGS)
+"""
+    split_args(argv)
 
-# `parse_options` consumes only the flags; the bare run names are this script's own.
-const opts = parse_options(vcat(args,
-    reduce(vcat, [String[] for _ in 1:0]; init = String[])))
+Separate the `--flag value` pairs, which belong to [`parse_options`](@ref), from the bare run
+names, which are this script's own.
+
+Splitting on `startswith(a, "--")` alone does not work: the *value* of a flag is not itself a
+flag, so `--runs-dir /tmp/x` would leave `/tmp/x` looking like a run name. Every option this
+script forwards takes exactly one value except `--quiet`, so the value is consumed with it.
+"""
+function split_args(argv)
+    flags = String[]
+    names = String[]
+    i = 1
+    while i <= length(argv)
+        a = argv[i]
+        if a == "--quiet"
+            push!(flags, a)
+        elseif startswith(a, "--")
+            push!(flags, a)
+            i < length(argv) && (push!(flags, argv[i += 1]))
+        else
+            push!(names, a)
+        end
+        i += 1
+    end
+    return flags, names
+end
+
+const flags, wanted = split_args(ARGS)
+const opts = parse_options(flags)
 const names = isempty(wanted) ? collect(SECTION4_ORDER) : wanted
 
 "The `N`-by-`N` grid a spectral run was sampled on, as two coordinate vectors."

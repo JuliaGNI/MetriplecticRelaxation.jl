@@ -43,28 +43,40 @@ const CELLS = (16, 24, 32, 48, 64)
 const NSTEPS = 200
 
 """
-    difference(spec, cells, degree)
+    reference(spec)
 
-The relative `L²` difference between the spline and spectral solutions of `spec` after
-`NSTEPS` steps, sampled on the spectral grid.
+The spectral solution of `spec` after `NSTEPS` steps on the `NREF`-point grid.
+
+Computed once per `spec` and reused across every mesh, since it does not depend on the spline
+resolution. Recomputing it inside [`difference`](@ref) would repeat a 192² run of 200 steps for
+each of the five meshes, four runs and three degrees — some forty times over, for an answer that
+is the same every time.
 """
-function difference(spec, cells::Int, degree::Int)
+function reference(spec)
     g = SpectralTorus(NREF)
     ωs, _ = spectral_state(g, spec)
     ĥ = spec.h === nothing ? nothing : torus_field(g, spec.h)
     for _ in 1:NSTEPS
         ωs = spectral_step!(g, ωs, spec, ĥ)
     end
+    return ωs
+end
 
+"""
+    difference(spec, ref, cells, degree)
+
+The relative `L²` difference between the spline solution of `spec` on `cells` cells of degree
+`degree` and the spectral reference `ref`, sampled on the spectral grid.
+"""
+function difference(spec, ref, cells::Int, degree::Int)
     t = SplineTorus(cells, degree)
     ω̂, _ = spline_state(t, spec)
     rhs = spline_rhs(t, spec)
     for _ in 1:NSTEPS
         ω̂ = spline_step!(rhs, ω̂, spec.Δt)
     end
-
-    d = spline_grid(t, ω̂, NREF) .- ωs
-    return sqrt(sum(abs2, d) / sum(abs2, ωs))
+    d = spline_grid(t, ω̂, NREF) .- ref
+    return sqrt(sum(abs2, d) / sum(abs2, ref))
 end
 
 "The least-squares order of convergence of `errs` against `cells`."
@@ -84,9 +96,10 @@ const RESULTS = Dict{String, Any}()
 for name in ("a1", "a2", "a3", "a4")
     spec = SECTION4_RUNS[name]
     header("$(name): L² difference from the spectral reference after $(NSTEPS) steps")
+    ref = reference(spec)
     errs = Float64[]
     for n in CELLS
-        e = difference(spec, n, 3)
+        e = difference(spec, ref, n, 3)
         push!(errs, e)
         r = length(errs) > 1 ? errs[end - 1] / errs[end] : NaN
         check(@sprintf("%s  %3d cells", name, n), true,
@@ -118,8 +131,8 @@ header("A4 periodised: the order must come back")
 
 # The control for the control. If periodising A4's Gaussian restores 4th-order convergence, the
 # degradation above is the initial condition's discontinuity and nothing else.
-let spec = periodise(SECTION4_RUNS["a4"])
-    errs = [difference(spec, n, 3) for n in CELLS]
+let spec = periodise(SECTION4_RUNS["a4"]), ref = reference(spec)
+    errs = [difference(spec, ref, n, 3) for n in CELLS]
     p = observed_order(CELLS, errs)
     RESULTS["a4_periodic"] = (; cells = CELLS, errs = errs, order = p)
     for (n, e) in zip(CELLS, errs)
@@ -134,9 +147,9 @@ header("the degree is what sets the order")
 
 # One more way for the claim to be wrong: if the observed order were an artefact of the time
 # stepping or of the reference rather than of the spline space, it would not move with p.
-let spec = SECTION4_RUNS["a3"], cells = (16, 24, 32, 48)
+let spec = SECTION4_RUNS["a3"], cells = (16, 24, 32, 48), ref = reference(spec)
     for degree in (2, 3, 4)
-        errs = [difference(spec, n, degree) for n in cells]
+        errs = [difference(spec, ref, n, degree) for n in cells]
         p = observed_order(cells, errs)
         check(@sprintf("degree %d gives order ≈ %d", degree, degree + 1),
             abs(p - (degree + 1)) < 1.0,

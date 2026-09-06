@@ -152,6 +152,28 @@ here than in a library:
   `r² = 0.9957`, and the control that a *rising* entropy is caught. The spline and spectral
   energies agree to **1.2e-7** for A1–A3.
 
+- **`scripts/run_a1.jl` … `run_a4.jl`, `runner.jl`, `projector_run.jl`, `converge.jl`,
+  `figures.jl`.** Each driver takes `--runs-dir` and `--results-dir` and derives no output path
+  from `@__DIR__`. Runs are serialised to `runs/` with `Serialization` — a stdlib, needing no
+  `[compat]` bound, for data that is regenerable and read by nothing outside this repository —
+  and each driver writes its own numbers to `results/<name>.md`, which is where prose quotes
+  them from.
+
+  **Recorded choice — A1 gets 128 spline cells, the others 64.** A1's Gaussian is the narrowest
+  of the four (`w₁ = 0.25`), and the `L²` projection error of `u₀` onto the spline space is
+  `1.05e-2` at 32 cells, `6.39e-4` at 64, `9.94e-5` at 96 and `3.11e-5` at 128. The contour
+  deviations A1 tracks fall to ~`1e-4` of the peak before `T`, so 64 cells would put the
+  measurement inside its own discretisation error.
+
+  **Recorded choice — A1's `τ_h` contours are `h ∈ {0.5, 0.4, 0.3, 0.2}` on the upper island,
+  and the band is forced.** The Gaussian sits *on* the separatrix (0.1 above it), so the low-`h`
+  contours carry the amplitude and the high-`h` ones near the island centres are empty. Measured
+  on `u₀`: the along-contour deviation is `1.2e-4` at `h = 0.9` but `T/τ_h = 34`, against
+  `2.3e-1` at `h = 0.05` where `T/τ_h = 0.6`. Above `h ≈ 0.6` the "decay" would be
+  discretisation noise; below `h ≈ 0.15` nothing relaxes within `T`, which is the manuscript's
+  own point about the separatrices. The fit window is `[1.5τ_h, 4.5τ_h]` per contour, since
+  `τ_h` varies by a factor 3.7 across them.
+
 ### Changed
 
 - **A1's spectral right-hand side hoists `X_h` out of the time loop.** `h` is prescribed and
@@ -160,6 +182,48 @@ here than in a library:
   instead. The two agree **exactly** (0.00e+00), and A1's `256²` spectral run drops from
   **69 minutes to 41**. That matters only for A1, whose `Δt = 1e-4` is set by the explicit
   stability limit and buys it ten times the step count of the other three.
+
+- **The projector bracket's relaxation rates are exact, not approximate.** The manuscript reads
+  them off a semi-log plot: "exponential relaxation of entropy with exponential rate ≈ 1", and
+  "the fact that ω has relaxation rate ≈ 1/2 is a consequence of the simple choice of the
+  entropy function". Both can be derived.
+
+  Linearising the projector flow about a relaxed state `ω* = φ*` — and keeping in mind that `H`
+  is a function of `ω` and varies under an arbitrary perturbation, even though it is conserved
+  *along* the flow — gives `∂_t ε = −[ε − Λε − (δc)φ*]` with
+  `δc = [(φ*,ε) − (φ*,Λε)]/H₀`. For `ε` in the eigenspace of `−Δ` with eigenvalue `λ ≠ 1`, `δc`
+  vanishes and
+
+      ∂_t ε = −(1 − 1/λ) ε .
+
+  `scripts/verify_projector_rates.jl` checks this against the Jacobian and gets `1 − 1/λ` to
+  **10 digits** for λ = 2, 4, 5, 8, 9, with the off-mode residual at `1.5e-11 … 5.2e-11`. So
+  `≈ 1/2` is the λ = 2 mode **exactly**, and `≈ 1` follows because `S − S_η` is quadratic in the
+  perturbation. The whole λ = 1 eigenspace is **neutral** — that is `eq:u-eta_Euler_periodic`'s
+  three-parameter family, and the manuscript's "minimally degenerate" made quantitative.
+
+  Two consequences for how the rates are measured, both recorded:
+
+  - **`T = 20` rather than 10 for A2–A4.** The λ = 4 mode decays at 3/4, only 1/4 faster than
+    λ = 2, so it contaminates a vorticity fit as `e^{−t/4}`: **8.2 %** of the signal at `t = 10`
+    and **0.67 %** at `t = 20`. A `T = 10` run measured **0.597** for what is exactly 1/2.
+  - **The vorticity rate is fitted *earlier* than the entropy rate**, over `[0.35T, 0.55T]`
+    against `[0.65T, 0.85T]`. `‖ω(t) − ω(T)‖` uses `ω(T)` as a stand-in for the limit — the
+    manuscript's own construction — but `ω(T)` is not the limit, and the resulting log-slope is
+    `−1/2 − (1/2)e^{−(T−t)/2}/(1 − e^{−(T−t)/2})`. That predicts **0.545** at `t = 15` and
+    **0.502** at `t = 9`; the same run measures **0.548** and **0.507**. The bias, not mode
+    contamination, is what dominates a late vorticity fit.
+
+### Fixed
+
+- **A rate fit could measure its own resolution floor.** `S − S_η` does not decay forever at a
+  finite resolution: it settles on a floor set by how well the mesh represents the relaxed
+  state. Measured on A4 at 20 spline cells, where it settles at `8.5e-8`, a late fit returned
+  **0.457** for a rate that is exactly **1** — while the spectral run at the same time, with a
+  lower floor, returned **1.022**. A floor expressed relative to the *maximum* cannot catch
+  this, because the plateau's height depends on the resolution rather than on the initial
+  excess. `settled_floor` scales it to the series' own terminal value instead, discarding only
+  the last stretch of a well-resolved run and the whole plateau of a floor-limited one.
 
 ### Found
 
