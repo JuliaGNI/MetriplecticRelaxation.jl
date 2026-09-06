@@ -55,6 +55,21 @@ header("8. the entropy rate is slower early and approaches 1 at the vertex")
 
 # This is the one claim A4 makes that A3 does not. Fitted in two windows: an early one, before
 # the trajectory has come off the cone boundary, and a late one approaching the vertex.
+#
+# THE ASSERTION IS ONLY ON THE LATE RATE. The early one is REPORTED, because the manuscript's
+# statement about it and the linearised spectrum point in opposite directions and this run is
+# what has to settle which is describing Fig. 7.
+#
+# The manuscript says "the cosine terms shift the initial condition closer to the boundary. As a
+# consequence the initial entropy relaxation rate is slower, but approaches ≈ 1 as the
+# trajectory approaches the vertex of the cone." That reasoning is about the PL constant
+# κ_η = 2a of `eq:shrunk-cone`, which vanishes as a state approaches the cone boundary — so it
+# is a statement about a LOWER BOUND on the rate, not about the rate itself.
+#
+# The spectrum says the opposite for the actual decay. A4's initial condition contains
+# cos(2x₂), which is a λ = 4 eigenmode; its contribution to S - S_η decays at 2(1 - 1/4) = 3/2,
+# against the λ = 2 mode's 2(1 - 1/2) = 1. An initial condition loaded with λ = 4 should
+# therefore shed entropy FASTER early and slow toward 1, not the reverse.
 for (nm, r) in (("spline", res.spline), ("spectral", res.spectral))
     Sη = euler_entropy_minimum(r.trace.H[1])
     excess = r.trace.S .- Sη
@@ -63,11 +78,18 @@ for (nm, r) in (("spline", res.spline), ("spectral", res.spectral))
     (r_late, r²l, nl) = fit_rate(r.trace.t, excess; window = ProjectorRun.RATE_WINDOW,
         floor = fl)
     check(@sprintf("%-8s the late rate approaches 1", nm),
-        abs(r_late - 1) < 0.05 && r²l > 0.9999,
+        isfinite(r_late) && abs(r_late - 1) < 0.05 && r²l > 0.9999,
+        nl == 0 ?
+        "no usable range: S - S_η is at its resolution floor throughout the window" :
         @sprintf("late %.5f   r² = %.6f   n = %d", r_late, r²l, nl))
-    check(@sprintf("%-8s the early rate is slower than the late one", nm),
-        r_early < r_late - 0.05,
-        @sprintf("early %.5f (r² = %.6f, n = %d)  <  late %.5f", r_early, r²e, ne, r_late))
+    check(@sprintf("%-8s early vs late rate  [REPORTED, not asserted]", nm), true,
+        @sprintf("early %.5f (r² = %.6f, n = %d)   late %.5f   -> early is %s",
+            r_early, r²e,
+            ne,
+            r_late,
+            !isfinite(r_early) || !isfinite(r_late) ? "unmeasurable here" :
+            r_early > r_late ? "FASTER (spectrum), not slower (manuscript)" :
+            "slower, as the manuscript says"))
 end
 
 # =============================================================================================

@@ -212,7 +212,9 @@ function projector_checks(res, spec, opts; label = "")
         (rS, r²S, nS) = fit_rate(r.trace.t, excess; window = RATE_WINDOW,
             floor = settled_floor(excess))
         check(@sprintf("%s%-8s S - S_η decays at rate ≈ 1", tag, nm),
-            abs(rS - 1) < 0.05 && r²S > 0.9999,
+            isfinite(rS) && abs(rS - 1) < 0.05 && r²S > 0.9999,
+            nS == 0 ?
+            "no usable range: S - S_η sits at its resolution floor across the whole window" :
             @sprintf("rate %.5f   r² = %.7f   n = %d   (exact: 1)", rS, r²S, nS))
 
         # The vorticity rate converges to 1/2 far more slowly than the entropy rate converges
@@ -260,7 +262,9 @@ function projector_checks(res, spec, opts; label = "")
         # S - S_η is quadratic in the distance to the relaxed state. The ratio is the statement
         # independent of both absolute rates, so it survives a run that is off both.
         check(@sprintf("%s%-8s the entropy rate is twice the vorticity rate", tag, nm),
-            abs(rS / rω - 2) < 0.35, @sprintf("rS/rω = %.5f", rS / rω))
+            isfinite(rS / rω) && abs(rS / rω - 2) < 0.35,
+            isfinite(rS / rω) ? @sprintf("rS/rω = %.5f", rS / rω) :
+            "not measurable: one of the two fits had no usable range")
     end
 
     # -----------------------------------------------------------------------------------------
