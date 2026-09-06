@@ -328,6 +328,29 @@ here than in a library:
   member of the family `eq:u-eta_Euler_periodic`. This reproduction uses the derived factor, and
   the discrepancy is a candidate finding for the manuscript rather than a change made silently.
 
+- **A4's early entropy relaxation rate is *faster* than its late one, where the manuscript says
+  slower.** Fig. 7's discussion reads: "The cosine terms shift the initial condition closer to
+  the boundary. As a consequence the initial entropy relaxation rate is slower, but approaches
+  ≈ 1 as the trajectory approaches the vertex of the cone." Measured over `t ∈ [0.2, 2]` against
+  `t ∈ [13, 17]`:
+
+  | | early | late |
+  |:--|--:|--:|
+  | spline | **1.24825** | 1.02011 |
+  | spectral | **1.24820** | 1.02186 |
+
+  The two discretisations agree to four digits, so this is a property of the equation. It is
+  also what the linearised spectrum predicts: `cos(2x₂)` is a `λ = 4` mode, whose contribution
+  to `S − S_η` decays at `2(1 − 1/4) = 3/2` against the `λ = 2` mode's `2(1 − 1/2) = 1`, so an
+  initial condition loaded with `λ = 4` must shed entropy *faster* early and slow toward 1.
+
+  **This is not necessarily an error in the manuscript.** Its reasoning is about the constant
+  `κ_η = 2a` of `eq:shrunk-cone`, which vanishes as a state approaches the cone boundary — a
+  statement about a *lower bound* on the rate, which an actual rate may freely exceed. What does
+  not reproduce is the reading of it as a description of Fig. 7's observed rate. The
+  reproduction therefore reports the early rate rather than asserting a direction, and
+  `run_a4.jl` says so at the check.
+
 ### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
 
 `Δt = 1e-4` (the manuscript's), `T = 10`, spectral `256²` (the manuscript's), spline `128²`
@@ -424,6 +447,37 @@ where the trajectory becomes indistinguishable from the vertex at plot resolutio
 discretisations give 3.10 independently, so it is not a discretisation artefact. A stricter
 threshold would move it later, so this is consistent with the figure rather than in conflict
 with it, but the number is not the manuscript's and is recorded as such.
+
+### Results — A4, reduced Euler under the projector bracket, second IC (§4.2, Fig. 7)
+
+`eq:ic-projector2`: `u₀ = cos(2x₂) + u_G`, `1/N = 1.8`, `x₀ = (π, 3π/2)`, `w = (0.3, 1)`.
+Everything else is A3's. **Both readings of the ambiguous initial condition were run.**
+
+| claim | literal, spectral | periodised, spectral |
+|:--|--:|--:|
+| `H₀` | 2.521919349 | 2.527758701 |
+| `H` conserved, max \|ΔH\|/\|H₀\| | **7.92e-15** | **7.73e-15** |
+| `S → S_η`, as `(S_T−S_η)/(S₀−S_η)` | **5.62e-11** | **5.53e-11** |
+| `S − S_η` decay rate (**exact: 1**) | 1.02186 | 1.02213 |
+| `‖ω(t)−ω(T)‖` decay rate (**exact: ½**) | 0.59605 | 0.59678 |
+
+- **The two readings differ, but no claim does.** `H₀` differs by **2.18e-3** relative and
+  `S(0)` by **1.79e-3** — small but not negligible, and a genuine difference in the physical
+  setup rather than in its solution. Both give the entropy rate to within 0.03 of 1 and both
+  reach `S_η` at `5.6e-11`, so the ambiguity changes the numbers without changing any
+  conclusion. That is the useful outcome: the reproduction does not need the question settled.
+
+- **The periodisation control is decisive at production resolution.** The spline/spectral
+  agreement on `S(0)` goes from **9.73e-05** with the printed formula to **1.90e-09** when the
+  Gaussian is periodised — **51 336× better**. Nothing else changes between the two runs, so
+  the disagreement is the stated initial condition's own discontinuity.
+
+- **`‖ω(t)−ω(T)‖` reads 0.596 rather than A3's 0.507**, and that is A4's initial condition
+  rather than a defect: `eq:ic-projector2` contains `cos(2x₂)`, which **is** a `λ = 4`
+  eigenmode of `−Δ`. The mode that contaminates a vorticity fit is therefore present at order
+  one rather than as a tail, and the fit reads high by correspondingly more. The entropy fit is
+  unaffected — 1.022, against A3's 1.000 — because in `‖ε‖²` the modes are separated by 0.5
+  instead of 0.25.
 
 ### Results — the deliberate deviation converges to the paper's method
 
