@@ -16,21 +16,34 @@
 # the repository's own `runs/` and `results/`, which are not tracked.
 
 const SCRIPTS = String[
-# §4  the periodic torus: analytical diffusion, then reduced Euler under the double and the
-#     projector bracket
-#   "run_a1.jl",
-#   "run_a2.jl",
-#   "run_a3.jl",
-#   "run_a4.jl",
-# §5.4  reduced Euler on [0,1]^2: single vortex, perturbed equilibrium, Gibbs entropy
-#   "run_b1.jl",
-#   "run_b2.jl",
-#   "run_b3.jl",
-# §5.5  Grad-Shafranov: the rectangle, then the mapped disk
-#   "run_c1.jl",
-#   "run_c2.jl",
-# the convergence-rate fits over the A runs
-#   "converge.jl"
+    # The verification scripts first: each settles a property the runs below rest on, and each is
+    # seconds rather than minutes. A failure here invalidates everything after it, so running them
+    # first is what makes a failed sweep readable.
+    "verify_torus_geometry.jl",
+    "verify_spectral.jl",
+    "verify_spline.jl",
+    "verify_diagnostics.jl",
+    "verify_projector_factor.jl",
+    "verify_projector_rates.jl",
+    # The refinement study behind the deliberate deviation: the spline discretisation must converge
+    # to the manuscript's spectral one, at the order the spline space has.
+    "converge.jl",
+    # §4  the periodic torus: analytical diffusion, then reduced Euler under the double and the
+    #     projector bracket. A1 is the long one -- the manuscript's Δt = 1e-4 buys it ten times the
+    #     step count of the others.
+    "run_a1.jl",
+    "run_a2.jl",
+    "run_a3.jl",
+    "run_a4.jl",
+    # The figures, last, because they read what the runs wrote.
+    "figures.jl"
+    # §5.4  reduced Euler on [0,1]^2: single vortex, perturbed equilibrium, Gibbs entropy
+    #   "run_b1.jl",
+    #   "run_b2.jl",
+    #   "run_b3.jl",
+    # §5.5  Grad-Shafranov: the rectangle, then the mapped disk
+    #   "run_c1.jl",
+    #   "run_c2.jl",
 ]
 
 const RULE = "="^67

@@ -1,5 +1,6 @@
 module MetriplecticRelaxation
 
+using CairoMakie
 using FFTW
 using LinearAlgebra
 using Printf
@@ -53,5 +54,9 @@ export Diagnostics, potential, energy, entropy, vorticity_mass, potential_norm²
        cone_coordinates, cone_residual, fit_rate, scatter_data
 
 include("diagnostics.jl")
+
+export figure_fields, figure_traces, figure_scatter, figure_cone, figure_rates, figure_tau
+
+include("figures.jl")
 
 end
