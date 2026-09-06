@@ -361,6 +361,37 @@ cells of degree 3, 100 000 steps.
   monotone throughout, `0.19578 → 0.04322` (spectral) and `→ 0.04265` (spline); vorticity mass
   at **5.7e-16**.
 
+### Results — A2, reduced Euler under the metric double bracket (§4.1, Figs. 2–3)
+
+`Δt = 1e-3` (the manuscript's), `T = 20`, spectral `256²` (the manuscript's), spline `64²`
+cells of degree 3, 20 000 steps.
+
+| claim | spline | spectral |
+|:--|--:|--:|
+| `H` conserved, max \|ΔH\|/\|H₀\| | 1.73e-13 | **1.66e-15** |
+| `S(0)` | 0.2243696428 | 0.2243696491 |
+| `S(T)` | 0.1863056311 | 0.1863057468 |
+| `S_η = H₀` | 0.0667843242 | 0.0667843277 |
+| `S(T) − S_η` | **+0.1195213** | **+0.1195214** |
+
+- **The entropy plateaus strictly above `S_η`, by 179 % of `S_η` itself.** This is the
+  manuscript's incomplete relaxation — "the entropy appears to converge to a value that is
+  higher than its constrained minimum" — and it is the reason §4.2 introduces the projector
+  bracket. It is confirmed here as the *expected* outcome: a run that drove `S` down to `S_η`
+  would contradict the paper, not improve on it. A3 is the same initial condition, grid and
+  time step under the projector bracket, and reaches `S_η` to **2.35e-10**; the only difference
+  between the two runs is the bracket.
+
+- **The double bracket completes 24.15 % of the entropy reduction available to it**, identically
+  in both discretisations. The manuscript quantifies this nowhere — it says only that the limit
+  is higher than `S_η` — so the fraction is a result of this reproduction rather than a
+  reproduction of a published number. The plateau is genuine: `S` moves by 2.9e-3 of the
+  remaining excess over the last 10 % of the run.
+
+- Energy is conserved to machine precision, and entropy is monotone throughout with a worst
+  increment of **−3.44e-05**, i.e. always decreasing. The two discretisations agree on the
+  final state to **6.98e-05** and on `S(T)` to **6.2e-07**.
+
 ### Results — A3, reduced Euler under the projector bracket (§4.2, Figs. 4–6)
 
 `Δt = 1e-3` (the manuscript's), `T = 20`, spectral `256²` (the manuscript's), spline `64²`
