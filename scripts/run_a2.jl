@@ -82,15 +82,14 @@ for (label, tr) in (("spline", trt), ("spectral", trg))
     # The relaxation is genuine, not absent: S fell by a substantial fraction of the reduction
     # available to it. HOW LARGE a fraction is a result of this run, not a requirement on it —
     # measured, the double bracket completes 24.15 % of it, identically in both
-    # discretisations. An earlier version of this check demanded more than half, which was an
-    # assumption with nothing behind it: the manuscript says only that the entropy "appears to
-    # converge to a value that is higher than its constrained minimum", and never how much
-    # higher. The threshold below is only large enough to separate a relaxing run from a
-    # stalled one.
+    # discretisations. Demanding more than half would be an assumption with nothing behind it:
+    # the manuscript says only that the entropy "appears to converge to a value that is higher
+    # than its constrained minimum", and never how much higher. The threshold below is only
+    # large enough to separate a relaxing run from a stalled one.
     frac = (tr.S[1] - tr.S[end]) / (tr.S[1] - Sη)
     check(@sprintf("%-8s S actually relaxed", label), frac > 0.1,
-        @sprintf("(S₀-S_T)/(S₀-S_η) = %.4f — the double bracket completes %.1f%% of the " *
-                 "available reduction; S₀ = %.10f", frac, 100frac, tr.S[1]))
+        @sprintf("(S₀-S_T)/(S₀-S_η) = %.4f — %.1f%% of the available reduction; S₀ = %.10f",
+            frac, 100frac, tr.S[1]))
 end
 
 # =============================================================================================
