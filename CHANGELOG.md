@@ -536,6 +536,11 @@ contours". Neither discretisation resolves an unboundedly steepening layer, and 
 resolve it differently. Every claim A1 makes — the contour averages, `τ_h`, the incomplete
 relaxation — is confirmed independently by both runs.
 
+Split by the global field norm, the total `7.985e-02` is **2.129e-02** from the 80.8 % of the
+domain with `h ≥ 0.01` and **7.696e-02** from the 19.2 % nearest the separatrix. Away from the
+layer the two discretisations agree at the level their resolutions predict; at it, neither is
+converged and they are not converging to each other either.
+
 `run_a1.jl` therefore asserts the comparison **away** from that layer and reports the total
 beside it, both normalised by the global field norm. Normalising a masked region by the field
 *inside* it is ill-posed here — A1's Gaussian sits on the separatrix, so `u ≈ 0` in the island
