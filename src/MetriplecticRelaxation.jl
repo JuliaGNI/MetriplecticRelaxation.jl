@@ -24,7 +24,7 @@ using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
 # same-named functions of their own — otherwise `canonical_bracket` would mean one thing on a
 # `TorusGrid` and an unrelated thing on a `SpectralTorus`, with no dispatch between them.
 import PoissonBrackets: canonical_bracket, hamiltonian_field, integrate, space, nbasis,
-                        hamiltonian, gradient, hessian
+                        hamiltonian, gradient, hessian, entropy
 
 export DOMAIN_LENGTH, DOMAIN_AREA
 export Gaussian, islands_h, ISLAND_CENTRES, CENTRAL_ISLANDS
@@ -36,7 +36,8 @@ export RunSpec, SECTION4_RUNS, SECTION4_ORDER, initial_condition, periodise
 include("torus.jl")
 
 export SpectralTorus, torus_field, poisson_periodic, canonical_bracket, hamiltonian_field,
-       double_bracket_field, projector_bracket_field, spectral_state, spectral_step!
+       double_bracket_field, parallel_diffusion, projector_bracket_field,
+       spectral_state, spectral_step!
 
 include("spectral.jl")
 
@@ -45,5 +46,11 @@ export SplineTorus, PoissonMap, LinearHamiltonian, EllipticEnergy,
        fixed_double_operator
 
 include("spline.jl")
+
+export Diagnostics, potential, energy, entropy, vorticity_mass, potential_norm²,
+       Trace, record!, energy_error, entropy_monotone, best_fit_euler,
+       cone_coordinates, cone_residual, fit_rate, scatter_data
+
+include("diagnostics.jl")
 
 end

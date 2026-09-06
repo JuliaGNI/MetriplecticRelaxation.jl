@@ -18,7 +18,8 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, torus_field, ∂₁, ∂₂, laplacian,
                               poisson_periodic, canonical_bracket, hamiltonian_field,
-                              double_bracket_field, projector_bracket_field,
+                              double_bracket_field, parallel_diffusion,
+                              projector_bracket_field,
                               integrate, l2inner, l2norm, mean_value, islands_h,
                               SECTION4_RUNS, spectral_state
 using PoissonBrackets: spectral_grid, ∂x, ∂y
@@ -111,6 +112,12 @@ let X = hamiltonian_field(g, H), ∂₁u = ∂₁(g, U), ∂₂u = ∂₂(g, U)
     nested = double_bracket_field(g, U, H)
     e = maximum(abs, div .- nested) / maximum(abs, nested)
     check("nested bracket = divergence form", e < 1e-12, @sprintf("rel %.2e", e))
+
+    # The hoisted form A1 actually runs, against the nested brackets it replaces.
+    hoisted = parallel_diffusion(g, U, X)
+    eh = maximum(abs, hoisted .- nested) / maximum(abs, nested)
+    check("parallel_diffusion (hoisted X_h) = nested bracket", eh < 1e-12,
+        @sprintf("rel %.2e", eh))
 
     check("∇·X_h = 0", maximum(abs, ∂₁(g, X[1]) .+ ∂₂(g, X[2])) < 1e-12,
         @sprintf("%.2e", maximum(abs, ∂₁(g, X[1]) .+ ∂₂(g, X[2]))))

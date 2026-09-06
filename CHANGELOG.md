@@ -121,6 +121,46 @@ here than in a library:
   `dH/dt` at **2.8e-17 … 3.7e-16** normalised with `dS/dt < 0` throughout. `MΛ` is symmetric to
   **3.7e-15**. The spline and spectral vector fields agree to **3.5e-4 … 4.8e-3** for A1–A3.
 
+- **`src/diagnostics.jl` — the quantities every run reports, written once against both
+  discretisations.** `Diagnostics` is the only place that knows which energy a run has, so the
+  drivers and figures never branch on it. Energy, entropy, vorticity mass, `‖φ‖²`, the `Trace`
+  time series, the cone residuals of `eq:theoretical-limits`, exponential rate fitting and the
+  scatter data.
+
+  **`best_fit_euler` has a closed form; the manuscript's three-phase search is not needed.**
+  Expanding `eq:u-eta_Euler_periodic` gives `ω_η = A(a₁cos x₁ + b₁sin x₁ + a₂cos x₂ + b₂sin x₂)`
+  with `A = √H₀/π` fixed by the energy and `a₁²+b₁²+a₂²+b₂² = 1`. The three phases parameterise
+  exactly the unit sphere in those four coefficients, and the modes are `L²`-orthogonal on `T²`,
+  so `‖ω − ω_η‖² = ‖ω‖² − 2A v·p + 2π²A²` is minimised over `‖v‖ = 1` at `v = p/‖p‖` — the
+  normalised projection.
+
+  Checked against the search it replaces: a `60³` scan over `(θ₀,θ₁,θ₂)` cannot beat it, coming
+  within **2.5e-4** relative, and doubling the scan resolution to `120³` cuts the gap **30×**
+  (**1.53e-4 → 5.04e-6`), which is what identifies the gap as the scan's own resolution rather
+  than a defect in the closed form. A state already on `𝔠_η` is fitted to **3.4e-16**.
+
+  **Recorded choice — the rate-fit window is `t ∈ [0.5T, 0.9T]`.** The manuscript's own reading
+  of Fig. 6 is that the rate is asymptotic: for the second initial condition "the initial
+  entropy relaxation rate is slower, but approaches ≈ 1 as the trajectory approaches the vertex
+  of the cone". Fitting from `t = 0` would average the transient with the asymptote and report
+  neither. `fit_rate` also returns `r²`, because a rate quoted without it says nothing about
+  whether the decay was exponential at all, and drops samples below `1e-12` of the peak so that
+  a round-off tail does not drag the slope toward zero.
+
+- **`scripts/verify_diagnostics.jl`** — 30 checks, including the fit-vs-scan comparison above,
+  exact recovery of known exponential rates (**1e-12**), an algebraic decay correctly showing
+  `r² = 0.9957`, and the control that a *rising* entropy is caught. The spline and spectral
+  energies agree to **1.2e-7** for A1–A3.
+
+### Changed
+
+- **A1's spectral right-hand side hoists `X_h` out of the time loop.** `h` is prescribed and
+  fixed there, but the nested-bracket form recomputes `∂₁h` and `∂₂h` on every evaluation —
+  four of its eight derivative applications. `parallel_diffusion` takes the precomputed field
+  instead. The two agree **exactly** (0.00e+00), and A1's `256²` spectral run drops from
+  **69 minutes to 41**. That matters only for A1, whose `Δt = 1e-4` is set by the explicit
+  stability limit and buys it ten times the step count of the other three.
+
 ### Found
 
 - **A4's initial condition as printed is discontinuous on the torus, by 8.5 % of its peak.**
