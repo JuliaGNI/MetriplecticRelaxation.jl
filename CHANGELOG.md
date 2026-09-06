@@ -51,7 +51,7 @@ here than in a library:
   Fig. 1 shows. A1 still costs the most, because its `Δt = 1e-4` is set by the explicit
   stability limit rather than by accuracy and buys it ten times the step count.
 
-- **`scripts/verify_torus_geometry.jl`** — 24 checks on that geometry, run before any solver was
+- **`scripts/verify_torus_geometry.jl`** — 26 checks on that geometry, run before any solver was
   built on it. The closed form agrees with quadrature of the arclength integral to **9e-16 …
   8.7e-15** over `h ∈ [1e-5, 0.9]`; `ℓ_h` is confirmed to be the *period* of the `X_h` flow, the
   manuscript's own characterisation, with the orbit closing to **1.6e-14**; and the contour
@@ -81,7 +81,7 @@ here than in a library:
   normalised across all four runs — so `u_Ω` is a constant carried alongside and added back only
   for plotting.
 
-- **`scripts/verify_spectral.jl`** — 27 checks: the operator agreement above, the Poisson solve
+- **`scripts/verify_spectral.jl`** — 29 checks: the operator agreement above, the Poisson solve
   (`−Δφ = ω` on eigenmodes to **5.6e-16**, `φ` mean-free to **1.5e-18**), the identity
   `[h,[h,u]] = ∇·(X_h⊗X_h ∇u)` of `eq:parallel-diffusion` to **4.7e-15** with `∇·X_h = 0` at
   **4.8e-15** and `X_h·∇h = 0` **exactly**, and the semi-discrete conservation laws: energy
@@ -116,7 +116,7 @@ here than in a library:
   agrees to **9.2e-15**, which is what makes it a substitution rather than a second
   implementation.
 
-- **`scripts/verify_spline.jl`** — 44 checks. All four brackets are symmetric, positive
+- **`scripts/verify_spline.jl`** — 52 checks. All four brackets are symmetric, positive
   semi-definite, and degenerate on the flow's own energy at **8.1e-16 … 1.3e-15**, giving
   `dH/dt` at **2.8e-17 … 3.7e-16** normalised with `dS/dt < 0` throughout. `MΛ` is symmetric to
   **3.7e-15**. The spline and spectral vector fields agree to **3.5e-4 … 4.8e-3** for A1–A3.
@@ -147,7 +147,7 @@ here than in a library:
   whether the decay was exponential at all, and drops samples below `1e-12` of the peak so that
   a round-off tail does not drag the slope toward zero.
 
-- **`scripts/verify_diagnostics.jl`** — 30 checks, including the fit-vs-scan comparison above,
+- **`scripts/verify_diagnostics.jl`** — 31 checks, including the fit-vs-scan comparison above,
   exact recovery of known exponential rates (**1e-12**), an algebraic decay correctly showing
   `r² = 0.9957`, and the control that a *rising* entropy is caught. The spline and spectral
   energies agree to **1.2e-7** for A1–A3.
@@ -174,14 +174,37 @@ here than in a library:
   own point about the separatrices. The fit window is `[1.5τ_h, 4.5τ_h]` per contour, since
   `τ_h` varies by a factor 3.7 across them.
 
+- **The repository itself.** Scaffolding only: `Project.toml` with the dependency set the
+  reproduction needs and hand-written `[compat]` bounds, the `src/` – `scripts/` – `test/` layout
+  with root-anchored `/runs` and `/results` in `.gitignore`, the `Checks` PASS/FAIL harness copied
+  from PoissonBrackets' `scripts/check.jl`, an empty `scripts/run_all.jl` driver list, and the
+  shared CI workflows and git hooks installed from `~/Research/Knowledge/AI/githooks/`. No physics,
+  no brackets and no run drivers yet.
+
+  The `julia` floor is **1.11**, not the 1.10 used across the rest of the tree: `PoissonBrackets`
+  and `SimpleSplines` are both unregistered and are reached through a `[sources]` table, which
+  Julia 1.10 ignores rather than honours, so a 1.10 environment fails to resolve rather than
+  resolving to something older.
+
+  Both sources are **paths to the local siblings**, not `{rev = "main", url = …}`. That follows
+  the rule `PoissonBrackets/scripts/Project.toml` already states — the url form resolves against
+  a cached clone and pins the environment to whatever was last fetched — and it is also the only
+  form that resolves here at all: Julia 1.13.0-rc3's `Pkg` segfaults (signal 11) in
+  `Updating git-repo` for a git-url source, offline as well as online and with the cached clone
+  already at the current commit.
+
 ### Changed
 
 - **A1's spectral right-hand side hoists `X_h` out of the time loop.** `h` is prescribed and
   fixed there, but the nested-bracket form recomputes `∂₁h` and `∂₂h` on every evaluation —
-  four of its eight derivative applications. `parallel_diffusion` takes the precomputed field
-  instead. The two agree **exactly** (0.00e+00), and A1's `256²` spectral run drops from
-  **69 minutes to 41**. That matters only for A1, whose `Δt = 1e-4` is set by the explicit
-  stability limit and buys it ten times the step count of the other three.
+  four of its eight derivative applications. `spectral_rhs` is now built once outside the loop,
+  mirroring `spline_rhs`, rather than being rebuilt on every step. The two agree **exactly**
+  (0.00e+00). An earlier incomplete hoist kept the computation out of the Runge-Kutta stages
+  only, leaving it inside the time loop — that version did 18 derivative applications per step
+  and ran in **41 minutes**. The final correct version hoists completely out of the time loop,
+  achieving 16 applications per step, and A1's `256²` spectral run drops from **69 minutes to
+  35 minutes**. That matters only for A1, whose `Δt = 1e-4` is set by the explicit stability
+  limit and buys it ten times the step count of the other three.
 
 - **The projector bracket's relaxation rates are exact, not approximate.** The manuscript reads
   them off a semi-log plot: "exponential relaxation of entropy with exponential rate ≈ 1", and
@@ -224,6 +247,86 @@ here than in a library:
   this, because the plateau's height depends on the resolution rather than on the initial
   excess. `settled_floor` scales it to the series' own terminal value instead, discarding only
   the last stretch of a well-resolved run and the whole plateau of a floor-limited one.
+
+- **A catastrophic cancellation in the contour quadrature, found by its own refinement check.**
+  The direct parameterisation forms `sin t = √(1 − h/cos²s)`, whose bracket is a difference of
+  two nearly equal numbers at the turning points, where `cos²s → h`. Near the separatrix that
+  cost most of the mantissa: at `h = 1e-4` the residual against the closed form was **1.3e-10**
+  and *grew* with the node count — `1.6e-11` at `n = 200` rising to `4.6e-9` at `n = 3200` —
+  which is the signature of round-off rather than of truncation, and is what identified the
+  cause instead of prompting a wider tolerance.
+
+  The cure is algebraic and exact: `cos²s = h + (1−h)cos²θ` and `sin t = √(1−h)|cos θ|/cos s`
+  are both sums of positive terms with no cancellation anywhere. The residual fell to
+  **2.1e-15** at `h = 1e-4` and now stays at round-off down to `h = 1e-5`, so the check runs at
+  a `1e-13` tolerance rather than the `1e-10` that the defective version could not meet.
+
+- **A1's `X_h` was never hoisted out of the time loop, only out of the Runge-Kutta stages.**
+  `spectral_step!` rebuilt the right-hand side on every step, recomputing `hamiltonian_field`
+  10⁵ times over A1 — **12.06 MB** of the **110.6 MB** a step allocates, and 18 derivative
+  applications per step against the 16 the docstring promised. `spectral_rhs` now mirrors
+  `spline_rhs` and is built once outside the loop. Verified **bit-identical** (max|Δ| = 0 after
+  20 steps at 256²), so the runs already completed remain valid; **10.9 %** fewer bytes per step
+  and **14 %** less time per step.
+
+  **Five checks asserted nothing.** The worst applied the projector formula with `v = φ`, i.e.
+  `φ − (φ,φ)/(φ,φ)·φ`, which is identically zero for any field whatever; it now applies the
+  projector and adds orthogonality (`Π_H ω ⊥ φ`), idempotency, and a control that `Π_H` is not
+  the identity. Four rows in `scripts/verify_projector_rates.jl` had the literal condition `true`;
+  they now assert that the effective fitted rate exceeds 1/2, falls as `T` grows, and tends to 1/2.
+  This matters because the file quotes check counts as evidence.
+
+  **The degree study in `converge.jl` was asserting the wrong claim.** It required the observed
+  order to equal `p+1`, but the measured orders exceed it in every degree — **4.41, 4.67 and 6.89**
+  for degrees 2, 3 and 4 over meshes of 32–96 cells — which is superconvergence on a uniform
+  periodic mesh. `p+1` is a lower bound on the rate, not a prediction, so the study now asserts
+  that the order is at least `p+1` and increases with the degree. (A4 as printed shows what a real
+  failure looks like under the same measurement: order **1.10**.)
+
+### Found
+
+- **A4's initial condition as printed is discontinuous on the torus, by 8.5 % of its peak.**
+  `eq:initial_gaussian` is written unmodified on `T²`, with no summation over periodic images.
+  How much that matters depends on how far the centre sits from the wrap, and A4 is the one run
+  where it is not negligible: its Gaussian is centred at `x₂ = 3π/2`, only `π/2` from the
+  boundary, with `w₂ = 1` and amplitude 1.8, so it still has the value
+  `1.8·exp(−(π/2)²) = 0.153` there — **8.5 %** of its own peak. A1 reaches only `1.2e-25` at
+  the wrap and A2/A3 `5.2e-5`.
+
+  This was found by the spline/spectral cross-check failing for A4 alone, at **6.9e-2** against
+  the **2.5e-4** of A2, whose Gaussian is otherwise identical. The control settles the cause:
+  periodising A4's Gaussian — the only change — brings the disagreement to **3.85e-4**, a
+  **180×** improvement landing exactly in the band A1–A3 occupy. So the disagreement is the
+  stated initial condition's own discontinuity and not a defect in either discretisation.
+  Periodising changes nothing for A1 (**1.2e-25**) or A2/A3 (**5.2e-5**).
+
+  Which reading the manuscript intends is not stated, so **both are run for A4 and both are
+  reported**: the literal form as the primary, being what is printed, and the periodised form
+  alongside it. `Gaussian` takes an `images` argument and `periodise` switches between them.
+
+- **A factor of 2 is missing from the §4.2 evolution equation as printed.** The equation just
+  below `eq:projector-brackets` reads `∂_t u = −[u − u_Ω − H(u)‖φ‖⁻²φ]`. The manuscript's own
+  definitions give `2H` there: `eq:L2-projector` sets `c(u,v) = ‖φ‖⁻²(φ,v)`, and with
+  `v = δS/δu = ω` and `eq:Euler_H_periodic`'s `H = ½(φ,u)` this is `c = 2H/‖φ‖²`.
+
+  This is **internal to §4.2** — the two printed equations cannot both be right. Substituting
+  the same `c` into `(S,S) = (ω, Π_H ω)` reproduces `eq:SS-projector`,
+  `(S,S) = 2S − 4H₀²/‖φ‖²`, only with the factor 2.
+
+  `scripts/verify_projector_factor.jl` settles it numerically. With the printed factor the
+  energy is **not** conserved — `dH/dt = −9.51`, i.e. **70 %** of `‖φ‖‖f‖` — while with the
+  derived factor it is **9.4e-17**; and `−dS/dt` matches `eq:SS-projector` to **8.1e-16** with
+  the factor 2 against a **192 %** relative error without it. The analytic test case one page
+  earlier is the mirror image and is unaffected: `eq:analytical_H` has no `½`, so the printed
+  factor is correct there (**7.7e-17**, against **38 %** for the factor 2). That asymmetry is
+  what makes this look like a transcription slip rather than a different convention — a
+  convention would have moved both.
+
+  **Why it would survive review unnoticed:** the factor-1 field is still symmetric and still
+  dissipates entropy (`dS/dt = −16.1` against the correct `−5.50`), so it looks healthy in both
+  plots Fig. 4 shows. What it does is relax to a state of the *wrong energy*, hence to the wrong
+  member of the family `eq:u-eta_Euler_periodic`. This reproduction uses the derived factor, and
+  the discrepancy is a candidate finding for the manuscript rather than a change made silently.
 
 ### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
 
@@ -305,82 +408,3 @@ beside it, both normalised by the global field norm. Normalising a masked region
 *inside* it is ill-posed here — A1's Gaussian sits on the separatrix, so `u ≈ 0` in the island
 interiors, and the first version of the check reported `6.4e-2` for a region carrying 7 % of the
 error.
-
-### Found
-
-- **A4's initial condition as printed is discontinuous on the torus, by 8.5 % of its peak.**
-  `eq:initial_gaussian` is written unmodified on `T²`, with no summation over periodic images.
-  How much that matters depends on how far the centre sits from the wrap, and A4 is the one run
-  where it is not negligible: its Gaussian is centred at `x₂ = 3π/2`, only `π/2` from the
-  boundary, with `w₂ = 1` and amplitude 1.8, so it still has the value
-  `1.8·exp(−(π/2)²) = 0.153` there — **8.5 %** of its own peak. A1 reaches only `1.2e-25` at
-  the wrap and A2/A3 `5.2e-5`.
-
-  This was found by the spline/spectral cross-check failing for A4 alone, at **6.9e-2** against
-  the **2.5e-4** of A2, whose Gaussian is otherwise identical. The control settles the cause:
-  periodising A4's Gaussian — the only change — brings the disagreement to **3.85e-4**, a
-  **180×** improvement landing exactly in the band A1–A3 occupy. So the disagreement is the
-  stated initial condition's own discontinuity and not a defect in either discretisation.
-  Periodising changes nothing for A1 (**1.2e-25**) or A2/A3 (**5.2e-5**).
-
-  Which reading the manuscript intends is not stated, so **both are run for A4 and both are
-  reported**: the literal form as the primary, being what is printed, and the periodised form
-  alongside it. `Gaussian` takes an `images` argument and `periodise` switches between them.
-
-- **A factor of 2 is missing from the §4.2 evolution equation as printed.** The equation just
-  below `eq:projector-brackets` reads `∂_t u = −[u − u_Ω − H(u)‖φ‖⁻²φ]`. The manuscript's own
-  definitions give `2H` there: `eq:L2-projector` sets `c(u,v) = ‖φ‖⁻²(φ,v)`, and with
-  `v = δS/δu = ω` and `eq:Euler_H_periodic`'s `H = ½(φ,u)` this is `c = 2H/‖φ‖²`.
-
-  This is **internal to §4.2** — the two printed equations cannot both be right. Substituting
-  the same `c` into `(S,S) = (ω, Π_H ω)` reproduces `eq:SS-projector`,
-  `(S,S) = 2S − 4H₀²/‖φ‖²`, only with the factor 2.
-
-  `scripts/verify_projector_factor.jl` settles it numerically. With the printed factor the
-  energy is **not** conserved — `dH/dt = −9.51`, i.e. **70 %** of `‖φ‖‖f‖` — while with the
-  derived factor it is **9.4e-17**; and `−dS/dt` matches `eq:SS-projector` to **8.1e-16** with
-  the factor 2 against a **192 %** relative error without it. The analytic test case one page
-  earlier is the mirror image and is unaffected: `eq:analytical_H` has no `½`, so the printed
-  factor is correct there (**7.7e-17**, against **38 %** for the factor 2). That asymmetry is
-  what makes this look like a transcription slip rather than a different convention — a
-  convention would have moved both.
-
-  **Why it would survive review unnoticed:** the factor-1 field is still symmetric and still
-  dissipates entropy (`dS/dt = −16.1` against the correct `−5.50`), so it looks healthy in both
-  plots Fig. 4 shows. What it does is relax to a state of the *wrong energy*, hence to the wrong
-  member of the family `eq:u-eta_Euler_periodic`. This reproduction uses the derived factor, and
-  the discrepancy is a candidate finding for the manuscript rather than a change made silently.
-
-### Fixed
-
-- **A catastrophic cancellation in the contour quadrature, found by its own refinement check.**
-  The direct parameterisation forms `sin t = √(1 − h/cos²s)`, whose bracket is a difference of
-  two nearly equal numbers at the turning points, where `cos²s → h`. Near the separatrix that
-  cost most of the mantissa: at `h = 1e-4` the residual against the closed form was **1.3e-10**
-  and *grew* with the node count — `1.6e-11` at `n = 200` rising to `4.6e-9` at `n = 3200` —
-  which is the signature of round-off rather than of truncation, and is what identified the
-  cause instead of prompting a wider tolerance.
-
-  The cure is algebraic and exact: `cos²s = h + (1−h)cos²θ` and `sin t = √(1−h)|cos θ|/cos s`
-  are both sums of positive terms with no cancellation anywhere. The residual fell to
-  **2.1e-15** at `h = 1e-4` and now stays at round-off down to `h = 1e-5`, so the check runs at
-  a `1e-13` tolerance rather than the `1e-10` that the defective version could not meet.
-
-- **The repository itself.** Scaffolding only: `Project.toml` with the dependency set the
-  reproduction needs and hand-written `[compat]` bounds, the `src/` – `scripts/` – `test/` layout
-  with root-anchored `/runs` and `/results` in `.gitignore`, the `Checks` PASS/FAIL harness copied
-  from PoissonBrackets' `scripts/check.jl`, an empty `scripts/run_all.jl` driver list, and the
-  shared CI workflows and git hooks installed from `~/Research/Knowledge/AI/githooks/`. No physics,
-  no brackets and no run drivers yet.
-
-  The `julia` floor is **1.11**, not the 1.10 used across the rest of the tree: `PoissonBrackets`
-  and `SimpleSplines` are both unregistered and are reached through a `[sources]` table, which
-  Julia 1.10 ignores rather than honours, so a 1.10 environment fails to resolve rather than
-  resolving to something older.
-
-  Both sources are **paths to the local siblings**, not `{rev = "main", url = …}`. That follows
-  the rule `PoissonBrackets/scripts/Project.toml` already states — the url form resolves against
-  a cached clone and pins the environment to whatever was last fetched — and it is also the only
-  form that resolves here at all: Julia 1.13.0-rc3's `Pkg` segfaults (signal 11) in
-  `Updating git-repo` for a git-url source, offline as well as online and with the cached clone
-  already at the current commit.
