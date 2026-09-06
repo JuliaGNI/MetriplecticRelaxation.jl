@@ -11,11 +11,18 @@ using SparseArrays
 # `using` of the two. PoissonBrackets is the entry point, and what is needed is named.
 using PoissonBrackets
 using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
-                       DoubleBracket, ProjectorBracket, MetriplecticFlow,
+                       DoubleBracket, ProjectorBracket, CollisionBracket, MetriplecticFlow,
                        QuadraticHamiltonian,
                        mass_matrix, mass_factorization, stiffness_matrix,
                        tensor_weighted_matrix, basis_integrals, ncells, degree,
+                       quadrature_nodes, quadrature_weights, basis_values, field,
                        project, evaluate, vectorfield
+
+# The boundary conditions and the V_D ⊂ V embedding Section 5 needs. PoissonBrackets re-exports
+# SimpleSplines' assembly interface but neither of these: `TensorSplineSpace(n, p, bc)`
+# dispatches on the condition type, and `recombination_matrix` is what expresses a
+# homogeneous-Dirichlet basis function in the clamped one — see `EulerSquare`.
+using SimpleSplines: Dirichlet, Free, BSplineBasis, UniformMesh, recombination_matrix
 
 # Extended, not shadowed. The spectral grid and the spline space are two more discretisations
 # of the objects these generic functions already name, so they get methods rather than
@@ -46,8 +53,16 @@ export SplineTorus, PoissonMap, LinearHamiltonian, EllipticEnergy,
 
 include("spline.jl")
 
+export SQUARE_LENGTH, DIRICHLET_EIGENVALUE
+export EulerSpec, SECTION5_RUNS, SECTION5_ORDER, gaussian_w2, perturbation_b2
+export EulerSquare, GibbsEntropy, euler_state, euler_flow, dirichlet_eigenvalue,
+       euler_entropy_floor, eigenmode_fit, gibbs_lambda, gibbs_fit, gibbs_residual,
+       interior_weights, state_extrema
+
+include("euler.jl")
+
 export Diagnostics, potential, energy, entropy, vorticity_mass, potential_norm²,
-       Trace, record!, energy_error, entropy_monotone, best_fit_euler,
+       Trace, record!, energy_error, entropy_monotone, entropy_plateau, best_fit_euler,
        cone_coordinates, cone_residual, fit_rate, scatter_data
 
 include("diagnostics.jl")

@@ -15,9 +15,18 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               potential_norm², best_fit_euler, fit_rate, record!,
                               entropy_monotone, cone_residual,
                               EllipticEnergy
+using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSquare, GibbsEntropy,
+                              euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
+                              dirichlet_eigenvalue, gibbs_lambda, gibbs_fit, gibbs_residual,
+                              interior_weights, state_extrema, gaussian_w2, perturbation_b2,
+                              entropy_plateau, DIRICHLET_EIGENVALUE, SQUARE_LENGTH
 using PoissonBrackets: nbasis, project, evaluate, spectral_grid, ∂x, ∂y, vectorfield,
                        gradient, entropy_gradient, issymmetric, ispositive_semidefinite,
-                       degeneracy_residual, domainvolume, hamiltonian, hessian
+                       degeneracy_residual, domainvolume, hamiltonian, hessian,
+                       CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
+                       Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
+                       metric_matrix, metric_apply, stiffness_matrix, field,
+                       quadrature_weights, basis_values
 using LinearAlgebra
 using Random
 using SparseArrays
@@ -346,5 +355,355 @@ end
         # Parallel to φ★ too: scaling moves along the family to another H₀, and every member
         # of it is a fixed point.
         @test abs(l2inner(g, jac(φ★), φ★) / l2inner(g, φ★, φ★)) < 1e-6
+    end
+end
+
+# =============================================================================================
+# Section 5.4: reduced Euler on [0,1]² with homogeneous Dirichlet conditions.
+#
+# The mesh here is 10 cells against the runs' 26, and every final time is a handful of steps.
+# What is asserted is again the STRUCTURE -- the transcription of the initial conditions, the
+# space, the bracket's three defining properties, the analytic entropy derivatives and the
+# algebra behind the two closed-form references -- all of which hold on any mesh.
+#
+# One deliberate exception to "coarser is fine": B3's own initial state is NOT admissible on a
+# coarse mesh, because the L² projection of its narrow Gaussian undershoots below zero and
+# `y log y` is undefined there. So the Gibbs tests use an admissible state of their own, and the
+# threshold mesh itself is a scripts/ measurement rather than a test -- 26 cells is 10 s per
+# implicit step.
+
+@testset "$(rpad("Section 5 Problem Tests", 80))" begin
+    @testset "$(rpad("Section 5 states w SQUARED, not w", 76))" begin
+        for name in SECTION5_ORDER
+            g = SECTION5_RUNS[name].gaussian
+            @test g.w[1]^2≈0.01 rtol=1e-14
+            @test g.w[2]^2≈0.07 rtol=1e-14
+        end
+        g = SECTION5_RUNS["b1"].gaussian
+        @test g(0.5, 0.5) == 1.0
+        # The e-folding distance is √(w²) = 0.1 and 0.2646, not 0.01 and 0.07.
+        @test g(0.5 + 0.1, 0.5) / g(0.5, 0.5)≈exp(-1) rtol=1e-14
+        @test g(0.5, 0.5 + sqrt(0.07)) / g(0.5, 0.5)≈exp(-1) rtol=1e-14
+        # The control: reading the printed number as w itself is wrong by order one.
+        @test !isapprox(g(0.5 + 0.01, 0.5) / g(0.5, 0.5), exp(-1); rtol = 0.1)
+        @test !isapprox(g(0.5, 0.5 + 0.07) / g(0.5, 0.5), exp(-1); rtol = 0.1)
+        # B2 states N and B3 states 1/N, which is the other easy transcription error.
+        @test SECTION5_RUNS["b2"].gaussian(0.5, 0.5)≈0.01 rtol=1e-14
+        @test SECTION5_RUNS["b3"].gaussian(0.5, 0.5)≈10.0 rtol=1e-14
+        @test all(isapprox.(gaussian_w2((0.25, 0.75), (0.04, 0.09), 2.0).w, (0.2, 0.3);
+            rtol = 1e-14))
+    end
+
+    @testset "$(rpad("B2's added mode IS an unstable equilibrium", 76))" begin
+        # An eigenfunction of -Δ satisfies ω = λφ, hence ∇(δS/δu) ∥ ∇(δH/δu): a stationary
+        # state of the relaxation. 52π² is not the lowest eigenvalue, so it is unstable.
+        ε = 1e-5
+        f = perturbation_b2
+        x₁, x₂ = 0.31, 0.57
+        lap = (f(x₁ + ε, x₂) - 2f(x₁, x₂) + f(x₁ - ε, x₂)) / ε^2 +
+              (f(x₁, x₂ + ε) - 2f(x₁, x₂) + f(x₁, x₂ - ε)) / ε^2
+        @test -lap / f(x₁, x₂)≈52π^2 rtol=1e-6
+        @test 52π^2 > DIRICHLET_EIGENVALUE
+        for p in ((0.0, 0.37), (1.0, 0.37), (0.42, 0.0), (0.42, 1.0))
+            @test abs(f(p...)) < 1e-15
+        end
+    end
+end
+
+@testset "$(rpad("Euler Square Tests", 80))" begin
+    sq = EulerSquare(10, 2)
+    N = nbasis(sq.space)
+
+    @testset "$(rpad("The space IS the unit square, and integrates it", 76))" begin
+        @test domainvolume(sq.space)≈1.0 atol=1e-14
+        @test sum(quadrature_weights(sq.space))≈1.0 atol=1e-13
+        # ∫ sin(πx₁)sin(πx₂) = (2/π)², for a function that vanishes on ∂Ω and is therefore
+        # representable here.
+        v = integrate(sq, project(sq.space, x -> sin(π * x[1]) * sin(π * x[2])))
+        @test v≈(2 / π)^2 rtol=1e-3
+        û = project(sq.space, x -> sin(π * x[1]) * sin(2π * x[2]))
+        @test project(sq.space, x -> evaluate(sq.space, û, (x[1], x[2])))≈û rtol=1e-11
+    end
+
+    @testset "$(rpad("Constants are NOT in the space, so K is nonsingular", 76))" begin
+        # Both halves of one fact, and it is the fact both §5.4 references rest on.
+        K = Matrix(stiffness_matrix(sq.space))
+        @test minimum(eigvals(Symmetric(K), Symmetric(Matrix(sq.M)))) > 1.0
+        c = project(sq.space, x -> 1.0)
+        @test abs(evaluate(sq.space, c, (0.0, 0.5))) < 1e-14
+        @test evaluate(sq.space, c, (0.02, 0.5)) < 0.9
+    end
+
+    @testset "$(rpad("Lambda INVERTS the Dirichlet Laplacian", 76))" begin
+        λh = dirichlet_eigenvalue(sq)
+        @test λh≈DIRICHLET_EIGENVALUE rtol=1e-4
+        @test λh >= DIRICHLET_EIGENVALUE
+        e = project(sq.space, x -> sin(π * x[1]) * sin(π * x[2]))
+        @test norm(sq.Λ * e .- e ./ λh) / norm(e) < 1e-5
+        # φ = Λω vanishes on ∂Ω identically, because every basis function does.
+        φ̂ = sq.Λ * project(sq.space, x -> sin(π * x[1]) * sin(2π * x[2]))
+        for p in ((0.0, 0.4), (1.0, 0.4), (0.4, 0.0), (0.4, 1.0))
+            @test abs(evaluate(sq.space, φ̂, p)) < 1e-15
+        end
+        @test norm(sq.MΛ - sq.MΛ') / norm(sq.MΛ) < 1e-14
+    end
+end
+
+@testset "$(rpad("Free State Space Tests", 80))" begin
+    # B3's space: ω unconstrained on ∂Ω, φ still the homogeneous-Dirichlet solve, reached
+    # through the recombination matrix. That split is the finding §5.4 turned up.
+    sqf = EulerSquare(12, 2; state = :free)
+
+    @testset "$(rpad("The CONSTANT is in the free space and phi still vanishes", 76))" begin
+        c = project(sqf.space, x -> 1.0)
+        @test evaluate(sqf.space, c, (0.0, 0.5))≈1.0 atol=1e-12
+        φ̂ = sqf.Λ * c
+        for p in ((0.0, 0.4), (1.0, 0.4), (0.4, 0.0), (0.4, 1.0))
+            @test abs(evaluate(sqf.space, φ̂, p)) < 1e-14
+        end
+        # -Δφ = 1 on the unit square: φ(½,½) is the classical torsion constant 0.07367135…,
+        # reached to 2e-6 at these 12 cells and to 7e-7 at the 16 of `verify_euler.jl`.
+        @test evaluate(sqf.space, φ̂, (0.5, 0.5))≈0.0736713532 atol=1e-5
+    end
+
+    @testset "$(rpad("M Lambda IS symmetric positive semi-definite there too", 76))" begin
+        @test norm(sqf.MΛ - sqf.MΛ') / norm(sqf.MΛ) < 1e-14
+        @test minimum(eigvals(Symmetric(sqf.MΛ))) > -1e-14
+        @test dirichlet_eigenvalue(sqf)≈DIRICHLET_EIGENVALUE rtol=1e-3
+        @test dirichlet_eigenvalue(sqf) >= DIRICHLET_EIGENVALUE
+    end
+
+    @testset "$(rpad("A bad state space name IS rejected", 76))" begin
+        @test_throws ArgumentError EulerSquare(4, 2; state = :neumann)
+    end
+end
+
+@testset "$(rpad("Collision Bracket Tests", 80))" begin
+    @testset "$(rpad("Every run's bracket IS symmetric, PSD and DEGENERATE", 76))" begin
+        for name in SECTION5_ORDER
+            spec = SECTION5_RUNS[name]
+            # Each run's own space, because that is part of the run.
+            sq = EulerSquare(10, 2; state = spec.state)
+            # Positive at every quadrature node, so B3's mobility M = ω is admissible, and not
+            # an eigenmode, so the vector field is not accidentally zero. The constant offset
+            # keeps it away from zero at the boundary and survives only in the free space.
+            ω̂ = project(sq.space,
+                x -> sin(π * x[1]) * sin(π * x[2]) *
+                     (1.5 + 0.4sin(2π * x[1]) - 0.3cos(π * x[2])) +
+                     (spec.state === :free ? 0.4 : 0.0))
+            @test state_extrema(sq, ω̂)[1] > 0
+            f = euler_flow(sq, spec)
+            @test issymmetric(f.metric, ω̂)
+            @test ispositive_semidefinite(f.metric, ω̂)
+            # The flow's form, not the bracket's: the bracket supplies its own generator and is
+            # clean by construction even when it is degenerate on the wrong energy.
+            @test degeneracy_residual(f, ω̂) < 1e-11
+            v = vectorfield(f, ω̂)
+            @test abs(dot(gradient(f, ω̂), v)) / (norm(gradient(f, ω̂)) * norm(v)) < 1e-11
+            @test dot(entropy_gradient(f, ω̂), v) < 0
+            @test entropy_production(f, ω̂) > 0
+            @test entropy_production(f, ω̂)≈-dot(entropy_gradient(f, ω̂), v) rtol=1e-12
+            # Two independent evaluations of the same operator: the 𝔽_s moments against the
+            # R/S/T factorisation.
+            c = Vector(sq.M * ω̂)
+            @test metric_apply(f.metric, ω̂, c)≈metric_matrix(f.metric, ω̂) * c rtol=1e-10
+        end
+    end
+
+    sq = EulerSquare(10, 2)
+    ω̂ = project(sq.space,
+        x -> sin(π * x[1]) * sin(π * x[2]) * (1.5 + 0.4sin(2π * x[1]) - 0.3cos(π * x[2])))
+
+    @testset "$(rpad("A MISMATCHED generator breaks the flow's degeneracy", 76))" begin
+        # The trap `MetriplecticFlow` documents: a bracket generated by a different elliptic
+        # problem is a perfectly good metric bracket, degenerate on the wrong energy.
+        # A prescribed field unrelated to φ, not another elliptic solve: (K+M)⁻¹M gives a
+        # stream function 0.95 φ, and degeneracy sees only direction.
+        ĥ = project(sq.space, x -> sin(2π * x[1]) * sin(3π * x[2]))
+        G = CollisionBracket(sq.space, ĥ)
+        fw = MetriplecticFlow(sq.space, G, QuadraticHamiltonian(sq.MΛ),
+            QuadraticHamiltonian(Matrix(sq.M)))
+        @test degeneracy_residual(G, ω̂) < 1e-11
+        # The ratio, not an absolute floor: `degeneracy_residual` normalises by max|𝔾| max|g|,
+        # which bounds one product rather than the N-term sum, so a complete misalignment
+        # normalises to 1e-3 -- thirteen orders above the clean value, and that is the gap.
+        @test degeneracy_residual(fw, ω̂) > 1e8 * degeneracy_residual(G, ω̂)
+    end
+
+    @testset "$(rpad("An INDEFINITE mobility loses positivity and nothing else", 76))" begin
+        # eq:M-condition requires M > 0. A mobility that changes sign keeps the symmetry and
+        # the degeneracy, which is why positivity is a separate assertion.
+        #
+        # x₁ - 0.3, not x₁ - 0.5: the latter integrates to zero over the square, so the
+        # bracket's moment m₀ = ∫M dμ vanishes and its recentring divides by it -- which
+        # destroys the degeneracy too, for a reason that has nothing to do with the sign.
+        Gi = CollisionBracket(sq.space, sq.Λ; mobility = (x, u) -> x[1] - 0.3,
+            mobility_derivative = 0)
+        @test !ispositive_semidefinite(Gi, ω̂)
+        @test issymmetric(Gi, ω̂)
+        @test degeneracy_residual(Gi, ω̂) < 1e-11
+    end
+end
+
+@testset "$(rpad("Gibbs Entropy Tests", 80))" begin
+    # The free space, because that is where `y log y` is usable at all: a state bounded away
+    # from zero needs a nonzero boundary trace.
+    sq = EulerSquare(10, 2; state = :free)
+    s = sq.space
+    ω̂ = project(s, x -> sin(π * x[1]) * sin(π * x[2]) * (1.5 + 0.4sin(2π * x[1])) + 0.4)
+
+    @testset "$(rpad("The analytic gradient and Hessian ARE the derivatives", 76))" begin
+        @test state_extrema(sq, ω̂)[1] > 0
+        for H in (QuadraticHamiltonian(Matrix(sq.M)), GibbsEntropy())
+            g = gradient(H, s, ω̂)
+            h = hessian(H, s, ω̂)
+            for _ in 1:3
+                v = randn(length(ω̂))
+                v ./= norm(v)
+                ε = 1e-6 * norm(ω̂)
+                dS = (hamiltonian(H, s, ω̂ .+ ε .* v) -
+                      hamiltonian(H, s, ω̂ .- ε .* v)) / 2ε
+                @test dS≈dot(g, v) rtol=1e-6
+                dg = (gradient(H, s, ω̂ .+ ε .* v) .- gradient(H, s, ω̂ .- ε .* v)) ./ 2ε
+                @test norm(dg .- h * v) / norm(h * v) < 1e-5
+            end
+        end
+    end
+
+    @testset "$(rpad("The Hessian of y log y IS 1/M, which is eq:M-condition", 76))" begin
+        # M ∂²_y s = 1 with s = y log y gives M = y, so the Hessian's weight is 1/ω exactly.
+        u = field(s, ω̂, (0, 0))
+        Φ = basis_values(s, (0, 0))
+        @test hessian(GibbsEntropy(), s, ω̂) ≈
+              Matrix(Φ * Diagonal(quadrature_weights(s) ./ u) * Φ') rtol=1e-14
+        @test all(isapprox.(u .* (1 ./ u), 1.0; rtol = 1e-15))
+    end
+
+    @testset "$(rpad("y log y REFUSES a state it does not admit", 76))" begin
+        # No guard: `log` raises, which is the correct outcome for a state the entropy is not
+        # defined on. A guard would turn it into a silently wrong number.
+        @test_throws DomainError hamiltonian(GibbsEntropy(), s, .-ω̂)
+    end
+end
+
+@testset "$(rpad("Section 5 Reference Tests", 80))" begin
+    sq = EulerSquare(12, 2)
+    λh = dirichlet_eigenvalue(sq)
+    F = eigen(Symmetric(Matrix(stiffness_matrix(sq.space))), Symmetric(Matrix(sq.M)))
+    ê = F.vectors[:, 1] ./ norm(F.vectors[:, 1])
+
+    @testset "$(rpad("S = lambda H IS an identity at the eigenmode", 76))" begin
+        Hη = dot(ê, sq.MΛ, ê) / 2
+        Sη = l2inner(sq, ê, ê) / 2
+        @test Sη≈euler_entropy_floor(Hη; λ = λh) rtol=1e-10
+        (λ, _, rel) = eigenmode_fit(sq, ê)
+        @test λ≈λh rtol=1e-10
+        @test rel < 1e-10
+    end
+
+    @testset "$(rpad("S/H >= lambda_h for EVERY state of the space", 76))" begin
+        # The Poincaré inequality, which is why the drivers assert S ≥ S_η at t = 0 as a
+        # precondition and not only at the end.
+        worst = Inf
+        for _ in 1:100
+            v = randn(nbasis(sq.space))
+            worst = min(worst, l2inner(sq, v, v) / dot(v, sq.MΛ, v))
+        end
+        @test worst > λh * (1 - 1e-9)
+        @test λh >= DIRICHLET_EIGENVALUE
+    end
+
+    @testset "$(rpad("gibbs_lambda IS exact at mu = 0 and WRONG otherwise", 76))" begin
+        # The manuscript's λ = (M+S)/2H₀ follows from log ω = λφ - 1 by substitution, so it
+        # holds exactly when the mass multiplier μ vanishes -- which is what the
+        # homogeneous-Dirichlet space forces -- and not otherwise.
+        w = quadrature_weights(sq.space)
+        ω̂ = project(sq.space, x -> sin(π * x[1]) * sin(π * x[2]) *
+                                   (1.5 + 0.4sin(2π * x[1])))
+        φ = field(sq.space, sq.Λ * ω̂, (0, 0))
+        for (λ, μ) in ((3.0, 0.0), (7.5, 0.0), (3.0, 0.4))
+            u = exp.(λ .* φ .+ μ .- 1)
+            S, M, H = dot(w, u .* log.(u)), dot(w, u), dot(w, u .* φ) / 2
+            @test S≈2λ * H + (μ - 1) * M rtol=1e-12
+            @test isapprox(gibbs_lambda(M, S, H), λ; rtol = 1e-10) == (μ == 0)
+        end
+    end
+
+    @testset "$(rpad("interior_weights DROPS exactly the boundary strip", 76))" begin
+        # e^{λφ-1} is e^{-1} on ∂Ω while every ω_h of the space is zero there, so B3's
+        # reference cannot hold in the last cell. This is the exclusion, and it is a strip.
+        w0 = interior_weights(sq)
+        @test sum(w0)≈1.0 atol=1e-13
+        for m in (1 / 12, 2 / 12, 4 / 12)
+            lost = (sum(w0) - sum(interior_weights(sq; margin = m))) / sum(w0)
+            @test abs(lost - (1 - (1 - 2m)^2)) < 0.05
+        end
+    end
+end
+
+@testset "$(rpad("Section 5 Short Run Tests", 80))" begin
+    @testset "$(rpad("Crank-Nicolson CONSERVES H and dissipates S", 76))" begin
+        # ImplicitMidpoint IS Crank-Nicolson for this field. Four steps is enough: H is
+        # conserved because the CONVERGED midpoint increment lies in the range of 𝔾(ū), which
+        # holds from the first step, and the relaxation itself is scripts/ business.
+        for name in ("b1", "b2")
+            spec = SECTION5_RUNS[name]
+            sq = EulerSquare(10, 2)
+            d = Diagnostics(sq, spec)
+            f = euler_flow(sq, spec)
+            ω̂ = euler_state(sq, spec)
+            H₀, S₀ = energy(d, ω̂), entropy(d, ω̂)
+            integ = Integrator(f, ImplicitMidpoint(), 0.5; û₀ = ω̂)
+            for _ in 1:4
+                integrate_step!(ω̂, integ)
+            end
+            @test abs(energy(d, ω̂) - H₀) / abs(H₀) < 1e-13
+            @test entropy(d, ω̂) <= S₀
+            # The Poincaré floor holds at every state, so it holds here.
+            @test entropy(d, ω̂) >= euler_entropy_floor(H₀; λ = dirichlet_eigenvalue(sq))
+        end
+    end
+
+    @testset "$(rpad("The Gibbs flow CONSERVES H on an admissible state", 76))" begin
+        # B3's own initial state needs 26 cells to be admissible at all, which is 14 s per
+        # step; the structural claim does not, so it is made on a state that is positive here.
+        spec = SECTION5_RUNS["b3"]
+        sq = EulerSquare(10, 2; state = spec.state)
+        d = Diagnostics(sq, spec)
+        f = euler_flow(sq, spec)
+        ω̂ = project(sq.space,
+            x -> 6sin(π * x[1]) * sin(π * x[2]) * (1.5 + 0.4sin(2π * x[1])) + 0.4)
+        @test state_extrema(sq, ω̂)[1] > 0
+        H₀, S₀ = energy(d, ω̂), entropy(d, ω̂)
+        @test S₀≈hamiltonian(GibbsEntropy(), sq.space, ω̂) rtol=1e-14
+        integ = Integrator(f, ImplicitMidpoint(), 1e-3; û₀ = ω̂)
+        for _ in 1:4
+            integrate_step!(ω̂, integ)
+        end
+        @test abs(energy(d, ω̂) - H₀) / abs(H₀) < 1e-12
+        @test entropy(d, ω̂) <= S₀
+    end
+
+    @testset "$(rpad("entropy_plateau SEPARATES a plateau from an immediate decay", 76))" begin
+        # The diagnostic B2's claim rests on, and the control that it is not vacuous. The
+        # entropy of `c·ω` is `c²S₀`, so a factor sequence is a chosen entropy trace.
+        g = SpectralTorus(16)
+        spec = SECTION4_RUNS["a3"]
+        d = Diagnostics(g, spec)
+        ω, _ = spectral_state(g, spec)
+        function trace_of(factors)
+            tr = Trace(ω)
+            for (i, c) in enumerate(factors)
+                record!(tr, d, 0.5i, c .* ω)
+            end
+            return tr
+        end
+        flat = trace_of([i <= 10 ? 1.0 : 1.0 - 0.05 * (i - 10) for i in 1:20])
+        early = trace_of([1.0 - 0.02i for i in 1:20])
+        @test entropy_plateau(flat)[2] > 8
+        @test entropy_plateau(flat)[3] < 1e-12
+        @test entropy_plateau(early)[2] <= 2
+        # A trace that never falls has no break to find.
+        @test entropy_plateau(trace_of(ones(5)))[2] == 0
     end
 end

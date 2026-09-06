@@ -17,11 +17,14 @@ module Runner
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               spectral_state, spectral_rhs, spectral_step,
-                              spline_state, spline_rhs, spline_step, record!
+                              spline_state, spline_rhs, spline_step, record!,
+                              EulerSquare, euler_state, euler_flow, state_extrema
+using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production
 using Printf
 using Serialization
 
-export Options, parse_options, run_spectral, run_spline, save_run, section, report
+export Options, parse_options, run_spectral, run_spline, run_euler, save_run, section,
+       report
 
 @doc raw"""
     Options
@@ -187,6 +190,60 @@ function run_spline(spec, opts::Options; observer = nothing)
         end
     end
     return (t, d, tr, uΩ)
+end
+
+@doc raw"""
+    run_euler(spec, opts; Δt = spec.Δt, T = spec.T, cells = opts.cells,
+              degree = opts.degree, observer = nothing)
+
+Integrate a Section 5.4 run on an [`EulerSquare`](@ref) with `ImplicitMidpoint` — which for
+this field **is** Crank-Nicolson, the manuscript's own method — returning
+`(square, diagnostics, flow, trace)`.
+
+The nonlinear solve is [`Integrator`](@ref)'s existing `SimpleSolvers.NewtonSolver` with the
+flow's analytic Jacobian and a **dense** LU. No solver code is written here and none should be:
+``\phi = \delta H/\delta u`` comes from an elliptic solve, so the Jacobian carries a
+structurally dense block, and a sparse solver handed that Jacobian would be handed one with the
+``\phi`` coupling dropped — Newton would degrade to a slow quasi-Newton and report nothing.
+
+`û₀` is passed to `Integrator`, which is what puts the residual tolerance at the round-off
+floor of *this* field's amplitude rather than at that of a field of order one. Newton runs to
+that tolerance and not to a fixed iteration count, because the claim being reproduced is energy
+conservation to machine precision and a lagged Jacobian converges only linearly — see
+`default_f_abstol`.
+
+`Δt`, `T`, `cells` and `degree` are overridable because they are choices rather than data, and
+the step-size study `run_b3.jl` performs varies the first of them.
+"""
+function run_euler(spec, opts::Options; Δt = spec.Δt, T = spec.T, cells::Int = opts.cells,
+        degree::Int = opts.degree, observer = nothing)
+    sq = EulerSquare(cells, degree; state = spec.state)
+    d = Diagnostics(sq, spec)
+    ω̂ = euler_state(sq, spec)
+    f = euler_flow(sq, spec)
+    integ = Integrator(f, ImplicitMidpoint(), Δt; û₀ = ω̂)
+
+    nsteps = round(Int, T / Δt)
+    stride = max(1, nsteps ÷ opts.samples)
+    tr = Trace(ω̂)
+    record!(tr, d, 0.0, ω̂)
+    observer === nothing || observer(sq, f, 0.0, ω̂)
+
+    t0 = time()
+    for k in 1:nsteps
+        integrate_step!(ω̂, integ)
+        if k % stride == 0 || k == nsteps
+            record!(tr, d, k * Δt, ω̂)
+            observer === nothing || observer(sq, f, k * Δt, ω̂)
+            if !opts.quiet && (k % (10stride) == 0 || k == nsteps)
+                (lo, hi) = state_extrema(sq, ω̂)
+                @printf("    euler %6.1f%%   t = %8.3f   H = %+.10e   S = %.10e   ω ∈ [%+.2e, %.3f]   [%.0f s]\n",
+                    100k / nsteps, k * Δt, tr.H[end], tr.S[end], lo, hi, time() - t0)
+                flush(stdout)
+            end
+        end
+    end
+    return (sq, d, f, tr)
 end
 
 @doc raw"""
