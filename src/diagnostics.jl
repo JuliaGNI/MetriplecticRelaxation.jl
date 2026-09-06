@@ -295,7 +295,10 @@ For the analytic test case ``\phi`` is ``h`` itself, and the plot is the manuscr
 ``h``-``u`` plane; for the reduced Euler runs it is the stream function. A functional relation
 appearing in this cloud is the manuscript's evidence that the final state is an equilibrium.
 """
-function scatter_data(d::Diagnostics{<:SpectralTorus}, ω, N::Int = 0)
+# `_N` is accepted and ignored: the spectral state already lives on the sample grid, so there is
+# nothing to resample. It stays in the signature because the two methods are one interface and
+# callers dispatch on the solver without knowing which they hold.
+function scatter_data(d::Diagnostics{<:SpectralTorus}, ω, _N::Int = 0)
     g = d.solver
     φ = d.hz === nothing ? poisson_periodic(g, ω) : torus_field(g, d.spec.h)
     return (vec(φ), vec(ω))

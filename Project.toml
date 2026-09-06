@@ -23,17 +23,23 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 # inherited from a dependency, so PoissonBrackets' own entry for SimpleSplines does not carry
 # over.
 #
-# Both are local siblings and are therefore paths rather than `{rev, url}`. The url form
-# resolves against a cached clone, which pins the environment to whatever was last fetched
-# rather than to the working tree this repository is developed against — the trap already
-# documented in `PoissonBrackets/scripts/Project.toml`.
+# These are urls rather than the relative sibling paths they used to be, because a path escapes
+# the repository and therefore does not exist on a CI runner: every job failed in `buildpkg`
+# with "expected package PoissonBrackets [2a9ffa85] to exist at path
+# /home/runner/work/Packages/PoissonBrackets", before a single test ran. That is the whole
+# matrix gated on a checkout layout only this machine has.
+#
+# The cost is the one the path form was chosen to avoid: resolution now follows `main` on the
+# remote rather than the sibling working tree, so a local change to either package is invisible
+# here until it is pushed. Develop against a sibling with `Pkg.develop(path=...)` in a local
+# environment; do not put the path back in this file.
 #
 # `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored and resolution fails outright with
 # "expected package PoissonBrackets to be registered". That is why the `julia` floor below is
 # 1.11 and not the tree's usual 1.10 — the `min` row of the CI matrix has to resolve.
 [sources]
-PoissonBrackets = {path = "../../Packages/PoissonBrackets"}
-SimpleSplines = {path = "../../Packages/SimpleSplines"}
+PoissonBrackets = {rev = "main", url = "https://github.com/JuliaGNI/PoissonBrackets.jl"}
+SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
 
 [compat]
 CairoMakie = "0.15"

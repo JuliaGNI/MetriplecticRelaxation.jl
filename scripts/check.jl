@@ -26,7 +26,7 @@
 # constrain them -- but they print through `check`, so one line per claim still holds.
 #
 # The functions here know nothing about grids.  Which resolutions a refinement uses is the
-# calling manuscript's business and lives in `torustools.jl`.
+# calling script's business.
 
 module Checks
 

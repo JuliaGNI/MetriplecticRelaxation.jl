@@ -16,8 +16,8 @@ module Runner
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
-                              spectral_state, spectral_rhs, spectral_step!,
-                              spline_state, spline_rhs, spline_step!, record!
+                              spectral_state, spectral_rhs, spectral_step,
+                              spline_state, spline_rhs, spline_step, record!
 using Printf
 using Serialization
 
@@ -51,27 +51,47 @@ end
 
 Read `--runs-dir`, `--results-dir`, `--spectral`, `--cells`, `--degree`, `--samples` and
 `--quiet` from `args`, falling back to the repository's own directories.
+
+An option that takes a value is rejected if the value is missing or is itself an option. Without
+that, `--runs-dir --results-dir out` silently binds the flag name as a path and `mkpath` then
+creates a directory called `--results-dir`, which is how one came to be sitting in the repository
+root.
 """
 function parse_options(args = ARGS; spectral = 256, cells = 64, degree = 3, samples = 400)
     root = dirname(@__DIR__)
     runs = joinpath(root, "runs")
     results = joinpath(root, "results")
     quiet = false
+
+    function value(i)
+        i < length(args) || throw(ArgumentError("$(args[i]) needs a value"))
+        v = args[i + 1]
+        startswith(v, "--") &&
+            throw(ArgumentError("$(args[i]) needs a value, got the option $(v)"))
+        return v
+    end
+
     i = 1
     while i <= length(args)
         a = args[i]
         if a == "--runs-dir"
-            runs = args[i += 1]
+            runs = value(i)
+            i += 1
         elseif a == "--results-dir"
-            results = args[i += 1]
+            results = value(i)
+            i += 1
         elseif a == "--spectral"
-            spectral = parse(Int, args[i += 1])
+            spectral = parse(Int, value(i))
+            i += 1
         elseif a == "--cells"
-            cells = parse(Int, args[i += 1])
+            cells = parse(Int, value(i))
+            i += 1
         elseif a == "--degree"
-            degree = parse(Int, args[i += 1])
+            degree = parse(Int, value(i))
+            i += 1
         elseif a == "--samples"
-            samples = parse(Int, args[i += 1])
+            samples = parse(Int, value(i))
+            i += 1
         elseif a == "--quiet"
             quiet = true
         else
@@ -118,7 +138,7 @@ function run_spectral(spec, opts::Options; observer = nothing)
 
     t0 = time()
     for k in 1:nsteps
-        ω = spectral_step!(rhs, ω, spec.Δt)
+        ω = spectral_step(rhs, ω, spec.Δt)
         if k % stride == 0 || k == nsteps
             record!(tr, d, k * spec.Δt, ω)
             observer === nothing || observer(g, k * spec.Δt, ω)
@@ -155,7 +175,7 @@ function run_spline(spec, opts::Options; observer = nothing)
 
     t0 = time()
     for k in 1:nsteps
-        ω̂ = spline_step!(rhs, ω̂, spec.Δt)
+        ω̂ = spline_step(rhs, ω̂, spec.Δt)
         if k % stride == 0 || k == nsteps
             record!(tr, d, k * spec.Δt, ω̂)
             observer === nothing || observer(t, k * spec.Δt, ω̂)

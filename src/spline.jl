@@ -61,7 +61,8 @@ function PoissonMap(s::TensorSplineSpace{T}) where {T}
     M = sparse(mass_matrix(s))
     b = Vector{T}(basis_integrals(s))
     B = [K sparse(reshape(b, N, 1)); sparse(reshape(b, 1, N)) spzeros(T, 1, 1)]
-    return PoissonMap{T, typeof(lu(B)), typeof(M)}(lu(B), M, b, N)
+    F = lu(B)
+    return PoissonMap{T, typeof(F), typeof(M)}(F, M, b, N)
 end
 
 Base.size(P::PoissonMap) = (P.N, P.N)
@@ -314,13 +315,13 @@ function spline_rhs(t::SplineTorus, spec::RunSpec)
 end
 
 @doc raw"""
-    spline_step!(rhs, ω̂, Δt)
+    spline_step(rhs, ω̂, Δt)
 
 One classical fourth-order Runge-Kutta step, matching the manuscript's own integrator.
 
 Returns the new coefficient vector; the input is not modified.
 """
-function spline_step!(rhs, ω̂::AbstractVector, Δt)
+function spline_step(rhs, ω̂::AbstractVector, Δt)
     k1 = rhs(ω̂)
     k2 = rhs(ω̂ .+ (Δt / 2) .* k1)
     k3 = rhs(ω̂ .+ (Δt / 2) .* k2)

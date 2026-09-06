@@ -66,7 +66,13 @@ header("2. S plateaus ABOVE S_η = H₀ — the manuscript's incomplete relaxati
 for (label, tr) in (("spline", trt), ("spectral", trg))
     Sη = euler_entropy_minimum(tr.H[1])
     excess = tr.S[end] - Sη
-    check(@sprintf("%-8s S(T) > S_η", label), excess > 0,
+    # The assertion is on the SIZE of the excess, not its sign. `excess > 0` is a theorem, not a
+    # result: `S_η` is the constrained minimum of `S`, so every admissible state satisfies
+    # `S ≥ S_η` and the check could not fail — it passes for A3's *complete* relaxation too,
+    # whose excess is 2.35e-10. What A2 claims is that the plateau sits far above the minimum,
+    # so the threshold is a fraction of `S_η`. Half is well clear of the 179 % measured here and
+    # nine orders above anything a relaxed run produces.
+    check(@sprintf("%-8s S(T) exceeds S_η by more than 50%%", label), excess / Sη > 0.5,
         @sprintf("S(T) = %.10f   S_η = H₀ = %.10f   excess = %+.6e (%.1f%% of S_η)",
             tr.S[end], Sη, excess, 100excess / Sη))
 

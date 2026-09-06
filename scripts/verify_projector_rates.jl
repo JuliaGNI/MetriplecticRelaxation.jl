@@ -151,8 +151,13 @@ let rates = [1 - 1 / λ for (_, _, λ) in MODES]
 end
 
 # S - S_η is quadratic in the perturbation, so its rate is twice the vorticity's. Verified
-# rather than asserted: perturb by a λ = 2 mode and compare the two.
-let v = torus_field(g, (a, b) -> cos(a + b))
+# rather than asserted: perturb by a λ = 2 mode at two amplitudes and compare.
+#
+# What makes this quadraticity rather than positivity is the LAST check in the block. `excess > 0`
+# alone is a theorem — S_η is the constrained minimum, so it holds for any admissible ω — and
+# would pass for a linear, cubic or constant dependence equally. The statement with content is
+# that `excess/δ²` is the SAME at both amplitudes, which is what is asserted below.
+let v = torus_field(g, (a, b) -> cos(a + b)), ratios = Float64[]
     for δ in (1e-3, 1e-4)
         ω = ω★ .+ δ .* v
         # Rescale to the same energy, since the cone and S_η are defined at fixed H₀.
@@ -160,9 +165,16 @@ let v = torus_field(g, (a, b) -> cos(a + b))
         ω = ω .* sqrt(H₀ / (l2inner(g, φ, ω) / 2))
         S = l2inner(g, ω, ω) / 2
         excess = S - euler_entropy_minimum(H₀)
-        check(@sprintf("δ = %.0e   S - S_η is quadratic in δ", δ), excess > 0,
+        push!(ratios, excess / δ^2)
+        check(@sprintf("δ = %.0e   S - S_η > 0", δ), excess > 0,
             @sprintf("S - S_η = %.6e   ratio to δ² = %.6f", excess, excess / δ^2))
     end
+    # A tenfold change in δ leaves the ratio fixed to well under a per cent. A linear term would
+    # move it by a factor of ten, so this separates quadratic from anything else present.
+    rel = abs(ratios[1] - ratios[2]) / max(abs(ratios[1]), abs(ratios[2]))
+    check("S - S_η is quadratic in δ: the ratio to δ² is δ-independent", rel < 0.01,
+        @sprintf("%.6f at δ = 1e-3 vs %.6f at δ = 1e-4   rel %.2e", ratios[1], ratios[2],
+            rel))
 end
 
 # =============================================================================================

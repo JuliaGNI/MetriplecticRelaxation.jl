@@ -1,7 +1,7 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
-                              torus_field, spectral_state, spectral_rhs, spectral_step!,
-                              spline_state, spline_rhs, spline_step!,
+                              torus_field, spectral_state, spectral_rhs, spectral_step,
+                              spline_state, spline_rhs, spline_step,
                               fixed_double_operator, spline_flow,
                               ∂₁, ∂₂, laplacian, poisson_periodic, canonical_bracket,
                               hamiltonian_field, double_bracket_field, parallel_diffusion,
@@ -268,7 +268,7 @@ end
             rhs = spectral_rhs(g, spec)
             H₀, S₀ = energy(dg, ω), entropy(dg, ω)
             for _ in 1:20
-                ω = spectral_step!(rhs, ω, spec.Δt)
+                ω = spectral_step(rhs, ω, spec.Δt)
             end
             @test abs(energy(dg, ω) - H₀) / abs(H₀) < 1e-10
             @test entropy(dg, ω) <= S₀
@@ -280,7 +280,7 @@ end
             rhs = spline_rhs(t, spec)
             Ĥ₀, Ŝ₀ = energy(dt, ω̂), entropy(dt, ω̂)
             for _ in 1:20
-                ω̂ = spline_step!(rhs, ω̂, spec.Δt)
+                ω̂ = spline_step(rhs, ω̂, spec.Δt)
             end
             @test abs(energy(dt, ω̂) - Ĥ₀) / abs(Ĥ₀) < 1e-10
             @test entropy(dt, ω̂) <= Ŝ₀

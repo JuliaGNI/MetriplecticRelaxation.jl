@@ -42,6 +42,9 @@ struct SpectralTorus{T, P, IP}
     x₂::Matrix{T}
     k₁::Matrix{T}
     k₂::Matrix{T}
+    ik₁::Matrix{Complex{T}}
+    ik₂::Matrix{Complex{T}}
+    negk²::Matrix{T}
     Δ⁻¹::Matrix{T}
     plan::P
     iplan::IP
@@ -61,10 +64,17 @@ function SpectralTorus(N::Int)
     # to zero is `eq:Poisson-eq-periodic`'s own normalisation.
     Δ⁻¹ = [(k₁[i, j]^2 + k₂[i, j]^2) == 0 ? 0.0 : 1 / (k₁[i, j]^2 + k₂[i, j]^2)
            for i in 1:N, j in 1:N]
+    # The three multipliers the operators below apply, formed once per grid rather than once per
+    # call. They are per-grid constants, and at the manuscript's 256² each is a megabyte: `∂₁`,
+    # `∂₂` and `laplacian` are evaluated sixteen times per RK4 step, so rebuilding them in the
+    # operator cost ~17 MB of a step's allocations for nothing.
+    ik₁ = im .* k₁
+    ik₂ = im .* k₂
+    negk² = .-(k₁ .^ 2 .+ k₂ .^ 2)
     buf = zeros(ComplexF64, N, N)
     plan = plan_fft(buf)
     iplan = plan_ifft(buf)
-    SpectralTorus(N, x₁, x₂, k₁, k₂, Δ⁻¹, plan, iplan)
+    SpectralTorus(N, x₁, x₂, k₁, k₂, ik₁, ik₂, negk², Δ⁻¹, plan, iplan)
 end
 
 Base.size(g::SpectralTorus) = (g.N, g.N)
@@ -84,13 +94,13 @@ torus_field(g::SpectralTorus, f) = f.(g.x₁, g.x₂)
 _apply(g::SpectralTorus, u, mult) = real.(g.iplan * (mult .* (g.plan * complex.(u))))
 
 "Partial derivative in the first coordinate."
-∂₁(g::SpectralTorus, u) = _apply(g, u, im .* g.k₁)
+∂₁(g::SpectralTorus, u) = _apply(g, u, g.ik₁)
 
 "Partial derivative in the second coordinate."
-∂₂(g::SpectralTorus, u) = _apply(g, u, im .* g.k₂)
+∂₂(g::SpectralTorus, u) = _apply(g, u, g.ik₂)
 
 "The Laplacian ``\\Delta u``."
-laplacian(g::SpectralTorus, u) = _apply(g, u, .-(g.k₁ .^ 2 .+ g.k₂ .^ 2))
+laplacian(g::SpectralTorus, u) = _apply(g, u, g.negk²)
 
 @doc raw"""
     poisson_periodic(g, ω)
@@ -182,7 +192,7 @@ of eight, so 16 per Runge-Kutta step instead of 32 — which on A1, the manuscri
 and 35.
 
 Realising it needs the field built **outside the time loop**, which is what
-[`spectral_rhs`](@ref) is for. Building it inside [`spectral_step!`](@ref) instead would
+[`spectral_rhs`](@ref) is for. Building it inside [`spectral_step`](@ref) instead would
 recompute ``X_h`` once per step rather than once per stage: 18 applications per step, not 16,
 and 12.06 MB of the 110.6 MB a step allocates — a 41-minute A1 rather than a 35-minute one.
 
@@ -265,7 +275,7 @@ whole simulation, so building the closure per step would recompute it 10⁵ time
 [`parallel_diffusion`](@ref). For A2-A4 the generating field genuinely depends on the state
 and is recomputed inside the closure at every stage, as it must be.
 
-Callers must hold the returned closure outside their time loop; `spectral_step!(rhs, ω, Δt)`
+Callers must hold the returned closure outside their time loop; `spectral_step(rhs, ω, Δt)`
 takes it rather than rebuilding it.
 """
 function spectral_rhs(g::SpectralTorus, spec::RunSpec)
@@ -284,7 +294,7 @@ function spectral_rhs(g::SpectralTorus, spec::RunSpec)
 end
 
 @doc raw"""
-    spectral_step!(rhs, ω, Δt)
+    spectral_step(rhs, ω, Δt)
 
 One classical fourth-order Runge-Kutta step of size `Δt`, the manuscript's own integrator
 ("the standard 4th order explicit Runge-Kutta method").
@@ -292,7 +302,7 @@ One classical fourth-order Runge-Kutta step of size `Δt`, the manuscript's own 
 `rhs` comes from [`spectral_rhs`](@ref) and is built once outside the time loop. Returns the
 new ``\omega``; the input is not modified.
 """
-function spectral_step!(rhs, ω, Δt)
+function spectral_step(rhs, ω, Δt)
     k1 = rhs(ω)
     k2 = rhs(ω .+ (Δt / 2) .* k1)
     k3 = rhs(ω .+ (Δt / 2) .* k2)

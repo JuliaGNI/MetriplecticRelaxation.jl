@@ -25,8 +25,8 @@
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION4_RUNS, SpectralTorus, SplineTorus,
-                              spectral_state, spectral_rhs, spectral_step!,
-                              spline_state, spline_rhs, spline_step!, spline_grid,
+                              spectral_state, spectral_rhs, spectral_step,
+                              spline_state, spline_rhs, spline_step, spline_grid,
                               periodise
 using Printf
 
@@ -58,7 +58,7 @@ function reference(spec)
     ωs, _ = spectral_state(g, spec)
     rhs = spectral_rhs(g, spec)
     for _ in 1:NSTEPS
-        ωs = spectral_step!(rhs, ωs, spec.Δt)
+        ωs = spectral_step(rhs, ωs, spec.Δt)
     end
     return ωs
 end
@@ -74,7 +74,7 @@ function difference(spec, ref, cells::Int, degree::Int)
     ω̂, _ = spline_state(t, spec)
     rhs = spline_rhs(t, spec)
     for _ in 1:NSTEPS
-        ω̂ = spline_step!(rhs, ω̂, spec.Δt)
+        ω̂ = spline_step(rhs, ω̂, spec.Δt)
     end
     d = spline_grid(t, ω̂, NREF) .- ref
     return sqrt(sum(abs2, d) / sum(abs2, ref))
@@ -107,8 +107,7 @@ for name in ("a1", "a2", "a3", "a4")
             @sprintf("rel L² = %.4e%s", e,
                 isnan(r) ? "" :
                 @sprintf("   ratio %.2f  (order %.2f)", r,
-                    log2(r) / log2(CELLS[length(errs)] / CELLS[length(errs) - 1]) *
-                    log2(2))))
+                    log2(r) / log2(CELLS[length(errs)] / CELLS[length(errs) - 1]))))
     end
     p = observed_order(CELLS, errs)
     RESULTS[name] = (; cells = CELLS, errs = errs, order = p)
@@ -118,6 +117,14 @@ for name in ("a1", "a2", "a3", "a4")
     # approximate. A4's is not: as printed it is discontinuous on T², so it is the one case
     # where the order must be WORSE, and if it were not, the discontinuity finding would be
     # wrong.
+    #
+    # `p` is a least-squares fit over all of CELLS, which starts at the 16 the degree study
+    # below deliberately excludes as pre-asymptotic. That is intentional here and it is the
+    # conservative direction: the coarse point sits above the asymptote, so including it LOWERS
+    # the fitted order (4.08 against 4.86 for a2 without it) and the assertion is a lower bound.
+    # A fit that dropped it would report a larger number, not a smaller one. The pairwise orders
+    # printed per line are the raw evidence, and they are not monotone — 4.42, 1.91, 5.01, 5.04
+    # for a1 — so `p` is a summary of a scattered sequence, not a measurement of a clean rate.
     if name == "a4"
         check("$(name): the order DEGRADES (its u₀ is discontinuous)", p < 2.5,
             @sprintf("observed order %.2f   (cubic splines give 4 for a smooth u₀)", p))

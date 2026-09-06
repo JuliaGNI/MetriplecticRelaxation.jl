@@ -224,10 +224,22 @@ function projector_checks(res, spec, opts; label = "")
         # exponent, and the vorticity fit still reads a few per cent high at any affordable T.
         #
         # So the check is not a tight tolerance on 1/2, which would only be a statement about T.
-        # It is the two things the spectrum actually predicts: every contaminating mode decays
-        # FASTER than 1/2, so the fitted rate must approach 1/2 strictly FROM ABOVE and must
-        # fall as the window moves later. A rate below 1/2, or one rising with time, would
-        # contradict the derivation.
+        # Two separate effects push the fitted rate ABOVE 1/2, and they move in OPPOSITE
+        # directions as the window slides, which is why no single window is "the right" one:
+        #
+        #   * contaminating modes decay faster than 1/2 (λ = 4 at 3/4), inflating an EARLY fit;
+        #     this contribution decays away as the window moves later;
+        #   * `ω(T)` stands in for the limit, and `reference_bias` inflates a LATE fit; this
+        #     contribution GROWS as the window approaches T.
+        #
+        # `VORTICITY_WINDOW` sits where the first has decayed and the second is still small
+        # (0.002 at its centre t = 9); `RATE_WINDOW` sits where the second dominates and is
+        # predicted exactly (0.045 at t = 15). The rate therefore RISES between them — 0.507 to
+        # 0.548 — and the check below asserts that rise rather than a fall.
+        #
+        # The lower bound is 0.47 rather than 0.5 because the least-squares fit over a finite
+        # window carries a curvature term of either sign, worth a few times 1e-3 here; it is
+        # slack for that, not an admission that the underlying rate may be below 1/2.
         d = distances(r)
         T = spec_T(r)
         (rω, r²ω, nω) = fit_rate(r.snap_t[1:(end - 1)], d[1:(end - 1)];
@@ -276,9 +288,15 @@ function projector_checks(res, spec, opts; label = "")
         target = Sη + 0.01 * (r.trace.S[1] - Sη)
         i = findfirst(<=(target), r.trace.S)
         tv = i === nothing ? NaN : r.trace.t[i]
-        check(@sprintf("%s%-8s the vertex is reached at t ≈ 5", tag, nm),
+        # The assertion is the ORDER of magnitude, not the manuscript's "≈ 5": Fig. 6 is read off
+        # a plot, and 99 % relaxed is this reproduction's own definition of "reached", so a
+        # tolerance tight around 5 would be testing that choice rather than the trajectory. The
+        # measured value is reported next to the manuscript's for comparison.
+        check(
+            @sprintf("%s%-8s the vertex is reached on the scale of Fig. 6 (2 ≤ t ≤ 8)",
+                tag, nm),
             i !== nothing && 2.0 <= tv <= 8.0,
-            @sprintf("t(99%% relaxed) = %.3f   (manuscript: t ≈ 5)", tv))
+            @sprintf("t(99%% relaxed) = %.3f   (manuscript reads t ≈ 5 off Fig. 6)", tv))
     end
 
     # -----------------------------------------------------------------------------------------

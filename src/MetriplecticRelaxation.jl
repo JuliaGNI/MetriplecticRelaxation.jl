@@ -36,12 +36,12 @@ include("torus.jl")
 
 export SpectralTorus, torus_field, poisson_periodic, canonical_bracket, hamiltonian_field,
        double_bracket_field, parallel_diffusion, projector_bracket_field,
-       spectral_state, spectral_rhs, spectral_step!
+       spectral_state, spectral_rhs, spectral_step
 
 include("spectral.jl")
 
 export SplineTorus, PoissonMap, LinearHamiltonian, EllipticEnergy,
-       spline_state, spline_flow, spline_rhs, spline_step!, spline_grid,
+       spline_state, spline_flow, spline_rhs, spline_step, spline_grid,
        fixed_double_operator
 
 include("spline.jl")

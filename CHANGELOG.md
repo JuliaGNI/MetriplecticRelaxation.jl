@@ -51,6 +51,10 @@ here than in a library:
   Fig. 1 shows. A1 still costs the most, because its `Δt = 1e-4` is set by the explicit
   stability limit rather than by accuracy and buys it ten times the step count.
 
+  **Superseded for A2–A4 further down this section: `T = 20`.** `T = 10` was measured to read
+  0.597 for a rate that is exactly 1/2, and the entry that changed it records why. A1 keeps
+  `T = 10`.
+
 - **`scripts/verify_torus_geometry.jl`** — 26 checks on that geometry, run before any solver was
   built on it. The closed form agrees with quadrature of the arclength integral to **9e-16 …
   8.7e-15** over `h ∈ [1e-5, 0.9]`; `ℓ_h` is confirmed to be the *period* of the `X_h` flow, the
@@ -139,13 +143,24 @@ here than in a library:
   (**1.53e-4 → 5.04e-6`), which is what identifies the gap as the scan's own resolution rather
   than a defect in the closed form. A state already on `𝔠_η` is fitted to **3.4e-16**.
 
-  **Recorded choice — the rate-fit window is `t ∈ [0.5T, 0.9T]`.** The manuscript's own reading
-  of Fig. 6 is that the rate is asymptotic: for the second initial condition "the initial
-  entropy relaxation rate is slower, but approaches ≈ 1 as the trajectory approaches the vertex
-  of the cone". Fitting from `t = 0` would average the transient with the asymptote and report
-  neither. `fit_rate` also returns `r²`, because a rate quoted without it says nothing about
-  whether the decay was exponential at all, and drops samples below `1e-12` of the peak so that
-  a round-off tail does not drag the slope toward zero.
+  **Recorded choice — there are two rate-fit windows, `t ∈ [0.65T, 0.85T]` for the entropy and
+  `t ∈ [0.35T, 0.55T]` for the vorticity.** The manuscript's own reading of Fig. 6 is that the
+  rate is asymptotic: for the second initial condition "the initial entropy relaxation rate is
+  slower, but approaches ≈ 1 as the trajectory approaches the vertex of the cone". Fitting from
+  `t = 0` would average the transient with the asymptote and report neither.
+
+  They differ because two errors pull in opposite directions as the window slides. Contaminating
+  modes decay faster than the one being measured and inflate an *early* fit; using `ω(T)` as a
+  stand-in for the limit inflates a *late* one, by the amount `reference_bias` predicts. The
+  entropy fit is quadratic in the perturbation, so its contamination clears four times faster in
+  the exponent and it can afford the later window; the vorticity fit cannot, and takes the
+  earlier one, where the reference bias is still 0.002. `projector_run.jl` then asserts the late
+  vorticity excess *is* the predicted bias, which is what identifies it as the `ω(T)` stand-in
+  rather than a failure of the rate to be 1/2.
+
+  `fit_rate` also returns `r²`, because a rate quoted without it says nothing about whether the
+  decay was exponential at all, and drops samples below `1e-12` of the peak so that a round-off
+  tail does not drag the slope toward zero.
 
 - **`scripts/verify_diagnostics.jl`** — 31 checks, including the fit-vs-scan comparison above,
   exact recovery of known exponential rates (**1e-12**), an algebraic decay correctly showing
@@ -237,6 +252,41 @@ here than in a library:
     **0.502** at `t = 9`; the same run measures **0.548** and **0.507**. The bias, not mode
     contamination, is what dominates a late vorticity fit.
 
+- **`[sources]` names the GitHub remotes instead of relative sibling paths.** `PoissonBrackets`
+  and `SimpleSplines` were `{path = "../../Packages/…"}`, which points outside the checkout and
+  therefore does not exist on a runner: every CI job failed in `julia-actions/julia-buildpkg`
+  with "expected package PoissonBrackets [2a9ffa85] to exist at path
+  `/home/runner/work/Packages/PoissonBrackets`" before a single test ran. The whole matrix was
+  gated on a directory layout only the author's machine has, and had been since the repository
+  was created — `main` failed identically. Both are now `{rev = "main", url = …}`, in the root
+  and in `scripts/`; `MetriplecticRelaxation = {path = ".."}` stays a path because it is inside
+  the checkout.
+
+  **This trades away what the path form was for.** Resolution now follows `main` on the remote,
+  so a local edit to either sibling is invisible here until it is pushed. Develop against a
+  working tree with `Pkg.develop(path=…)` in a scratch environment rather than by restoring the
+  path here.
+
+  **No measured number moves.** At the time of the switch both siblings' remote `main` matched
+  the local working tree except for one commit touching `.githooks/pre-commit` in each, so the
+  source resolved against is byte-identical to what produced the tables below. Verified by
+  `git ls-remote` against the cached refs rather than assumed.
+
+- **Dependencies updated to the latest available.** `GeometricBase` 0.14.10 → **0.14.11**, `JSON`
+  1.7.1 → **1.8.0**, `Parsers` 2.8.8 → **3.0.0**; every other registered dependency was already
+  at its registry maximum, and no `[compat]` bound is binding. The suite is unchanged at **133
+  passed** and all **177** verification checks still pass, so none of these moved a result.
+
+- **`spectral_step!` and `spline_step!` lost the `!`.** Neither mutates its argument — both
+  docstrings said so outright while the name promised the opposite. Renamed to `spectral_step`
+  and `spline_step` at all fourteen sites.
+
+- **`SpectralTorus` precomputes its three spectral multipliers.** `∂₁`, `∂₂` and `laplacian`
+  rebuilt `im .* k₁`, `im .* k₂` and `−(k₁² + k₂²)` on every call. These are per-grid constants,
+  and at the manuscript's `256²` each is a megabyte; the operators are applied sixteen times per
+  RK4 step, so this was **~17 MB of a step's allocations** — larger than the 12.06 MB the `X_h`
+  hoist above recovers. They are now fields, built once in the constructor.
+
 ### Fixed
 
 - **A rate fit could measure its own resolution floor.** `S − S_η` does not decay forever at a
@@ -282,6 +332,47 @@ here than in a library:
   periodic mesh. `p+1` is a lower bound on the rate, not a prediction, so the study now asserts
   that the order is at least `p+1` and increases with the degree. (A4 as printed shows what a real
   failure looks like under the same measurement: order **1.10**.)
+
+- **Two more checks that asserted a theorem rather than a claim.** The pattern the entry above
+  describes had survived in two further places, both of them on a *headline* result:
+
+  - `run_a2.jl` tested A2's central claim — that `S` plateaus above `S_η` — with `excess > 0`.
+    But `S_η` is the *constrained minimum* of `S`, so `S ≥ S_η` holds for every admissible state
+    by definition: the check could not fail, and passes for A3's **complete** relaxation too,
+    whose excess is `2.35e-10`. It now asserts the size of the excess, `> 50 %` of `S_η`, which
+    the measured **179 %** clears and a relaxed run misses by nine orders of magnitude.
+  - `verify_projector_rates.jl` had a check labelled "`S − S_η` is quadratic in `δ`" whose
+    condition was again `excess > 0` — true for a linear, cubic or constant dependence equally.
+    It computed the ratio to `δ²` at two amplitudes and printed both without ever comparing
+    them. It now asserts that the ratio is the same at `δ = 1e-3` and `δ = 1e-4` to under a per
+    cent, which is what distinguishes quadratic from anything else.
+
+- **A comment in `projector_run.jl` was refuted by the check three lines below it.** It claimed
+  the fitted vorticity rate "must fall as the window moves later" and that "one rising with time
+  would contradict the derivation" — while the very next check asserts a later window reads
+  **higher** (0.507 → 0.548), which is the reference bias the entry above derives. Two effects
+  push the rate above 1/2 and they move in opposite directions as the window slides; the comment
+  now says so, and explains why the lower bound is 0.47 rather than 0.5.
+
+- **`PoissonMap` factorised the bordered matrix twice.** `PoissonMap{T, typeof(lu(B)), …}(lu(B),
+  …)` calls `lu` in the type parameter and again in the value — `typeof` is an ordinary call and
+  evaluates its argument. Every spline torus paid for two LU decompositions of an `(N+1)`-square
+  sparse matrix and kept one.
+
+- **`parse_options` accepted an option as an option's value.** `--runs-dir --results-dir out`
+  bound the flag *name* as a path and `mkpath` then created a directory called `--results-dir`;
+  one had accumulated in the repository root. A missing or option-shaped value now raises.
+
+- **Three stale or inert lines.** `run_a1.jl`'s contour-average summary had the literal condition
+  `true` without the `[REPORTED]` marker the file's seven other such lines carry; `converge.jl`
+  multiplied a log-ratio by `log2(2)`, which is 1; and `check.jl` referred readers to a
+  `torustools.jl` that does not exist in this repository.
+
+- **Two of this file's own records had gone stale.** The "recorded choice" for the final time
+  still read `T = 10` for every run, superseded further down by `T = 20` for A2–A4; and the
+  rate-fit window was recorded as `[0.5T, 0.9T]` where the code uses `[0.65T, 0.85T]` for the
+  entropy and `[0.35T, 0.55T]` for the vorticity. Both now state what the code does, and the
+  window entry says why there are two.
 
 ### Found
 

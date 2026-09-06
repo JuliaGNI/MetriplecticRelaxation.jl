@@ -11,11 +11,12 @@ SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 # Repeated from the root `Project.toml` rather than inherited: a `[sources]` table is honoured
-# only for the *active* project, and a relative path in one is resolved against that project's
-# own directory. Both facts bite here — the root's `../../Packages/PoissonBrackets` would point
-# at `Experiments/Packages/PoissonBrackets` when this environment is active, so every nested
-# environment needs its own copy, at its own depth.
+# only for the *active* project, so every nested environment needs its own copy.
+#
+# The two unregistered packages are urls for the reason the root file gives — a relative sibling
+# path does not exist on a CI runner. `MetriplecticRelaxation` stays a path because it is this
+# repository, so `..` is inside the checkout and resolves wherever the checkout is.
 [sources]
 MetriplecticRelaxation = {path = ".."}
-PoissonBrackets = {path = "../../../Packages/PoissonBrackets"}
-SimpleSplines = {path = "../../../Packages/SimpleSplines"}
+PoissonBrackets = {rev = "main", url = "https://github.com/JuliaGNI/PoissonBrackets.jl"}
+SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}

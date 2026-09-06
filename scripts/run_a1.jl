@@ -153,8 +153,11 @@ let nh² = l2inner(ts, dt.hz, dt.hz), ûη = (trt.H[1] / nh²) .* dt.hz
     check("the relaxed state is NOT u_η (incomplete relaxation)", dist > 0.1,
         @sprintf("‖ω(T) - ω_η‖/‖ω_η‖ = %.4f", dist))
     # And it IS close to the contour-average field, which is the limit the manuscript predicts.
-    check("...but it does lie on the contour averages", true,
-        @sprintf("checked contour by contour above"))
+    # Marked REPORTED because this line asserts nothing on its own: the claim was established
+    # contour by contour by the deviation-collapse checks above, and repeating it here with a
+    # `true` condition would be a second PASS for one piece of evidence.
+    check("...but it does lie on the contour averages  [REPORTED]", true,
+        "established by the per-contour deviation collapse above")
 end
 
 # =============================================================================================
