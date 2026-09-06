@@ -33,8 +33,8 @@
 # `eq:u-eta_Euler_periodic`.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SpectralTorus, torus_field, poisson_periodic, integrate,
-                              l2inner, l2norm, mean_value, projector_bracket_field
+using MetriplecticRelaxation: SpectralTorus, torus_field, poisson_periodic,
+                              l2inner, l2norm, mean_value
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
@@ -63,15 +63,24 @@ check("ω is not an eigenfunction of -Δ (so the test is not vacuous)",
     abs(l2inner(g, Φ, Ω)) / (l2norm(g, Φ) * l2norm(g, Ω)) < 0.99,
     @sprintf("cos∠(φ,ω) = %.4f", l2inner(g, Φ, Ω) / (l2norm(g, Φ) * l2norm(g, Ω))))
 
-let Πω = Ω .- (l2inner(g, Φ, Ω) / l2inner(g, Φ, Φ)) .* Φ
-    check("Π_H φ = 0", l2norm(g, Φ .- (l2inner(g, Φ, Φ) / l2inner(g, Φ, Φ)) .* Φ) < 1e-13,
-        @sprintf("%.2e", l2norm(g, Φ .- Φ)))
-    check("Π_H is idempotent",
-        l2norm(g, Πω .- (Πω .- (l2inner(g, Φ, Πω) / l2inner(g, Φ, Φ)) .* Φ)) /
-        l2norm(g, Πω) < 1e-13,
-        @sprintf("%.2e",
-            l2norm(g, Πω .- (Πω .- (l2inner(g, Φ, Πω) / l2inner(g, Φ, Φ)) .* Φ)) /
-            l2norm(g, Πω)))
+"``\\Pi_H v = v - \\|\\phi\\|^{-2}(\\phi, v)\\phi``, `eq:L2-projector`."
+Π(v) = v .- (l2inner(g, Φ, v) / l2inner(g, Φ, Φ)) .* Φ
+
+let Πω = Π(Ω)
+    # `Π_H φ = 0` is checked by APPLYING the projector to φ, not by writing out the formula
+    # with v = φ: the latter is `φ - (φ,φ)/(φ,φ) φ`, identically zero for any φ whatever, and
+    # asserts nothing at all.
+    check("Π_H φ = 0", l2norm(g, Π(Φ)) / l2norm(g, Φ) < 1e-13,
+        @sprintf("‖Π_H φ‖/‖φ‖ = %.2e", l2norm(g, Π(Φ)) / l2norm(g, Φ)))
+    # The projected field is orthogonal to φ, which is what "projector onto the orthogonal
+    # complement" means and is not true of an arbitrary v.
+    check("Π_H ω ⊥ φ", abs(l2inner(g, Φ, Πω)) / (l2norm(g, Φ) * l2norm(g, Πω)) < 1e-13,
+        @sprintf("cos∠ = %.2e", abs(l2inner(g, Φ, Πω)) / (l2norm(g, Φ) * l2norm(g, Πω))))
+    check("Π_H is idempotent", l2norm(g, Π(Πω) .- Πω) / l2norm(g, Πω) < 1e-13,
+        @sprintf("%.2e", l2norm(g, Π(Πω) .- Πω) / l2norm(g, Πω)))
+    # And it is not the identity, or the three lines above would hold of nothing.
+    check("Π_H is not the identity", l2norm(g, Πω .- Ω) / l2norm(g, Ω) > 0.1,
+        @sprintf("‖Π_H ω - ω‖/‖ω‖ = %.4f", l2norm(g, Πω .- Ω) / l2norm(g, Ω)))
 end
 
 # =============================================================================================
@@ -115,9 +124,9 @@ header("4. the analytic test case is unaffected: there the printed factor is rig
 # is c = ||h-h_Ω||^{-2}(h-h_Ω, ω) = H/||h-h_Ω||^2 — exactly as printed.
 # The test field here is NOT `Ω`. `h = cos²x₁ sin²x₂` expands to
 # ¼(1 + cos2x₁ - cos2x₂ - ½cos(2x₁+2x₂) - ½cos(2x₁-2x₂)), whose modes are disjoint from `Ω`'s —
-# so `(h - h_Ω, Ω)` is exactly zero by orthogonality, `dH/dt = (κ-1)H` vanishes for EVERY κ, and
-# the control below would pass without testing anything. It was written that way first and the
-# κ = 2 line duly failed to fail, at 9e-17. `Ω₄` shares three of `h`'s four modes.
+# so `(h - h_Ω, Ω)` would be exactly zero by orthogonality, `dH/dt = (κ-1)H` would vanish for
+# EVERY κ, and the control below would pass without testing anything. `Ω₄` shares three of `h`'s
+# four modes, which is what gives the κ = 2 line something to fail on.
 let hf = torus_field(g, (a, b) -> cos(a)^2 * sin(b)^2), hz = hf .- mean_value(g, hf),
     Ω₄ = let u = Ω .+ torus_field(g,
             (a, b) -> 0.6cos(2a) - 0.35cos(2b) + 0.25cos(2a + 2b))

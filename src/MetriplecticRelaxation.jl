@@ -14,11 +14,8 @@ using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
                        DoubleBracket, ProjectorBracket, MetriplecticFlow,
                        QuadraticHamiltonian,
                        mass_matrix, mass_factorization, stiffness_matrix,
-                       tensor_weighted_matrix, quadrature_nodes, quadrature_weights,
-                       basis_values, basis_integrals, ncells, degree,
-                       project, field, evaluate,
-                       metric_apply, entropy_gradient, vectorfield, degeneracy_residual,
-                       domainvolume, spectral_grid
+                       tensor_weighted_matrix, basis_integrals, ncells, degree,
+                       project, evaluate, vectorfield
 
 # Extended, not shadowed. The spectral grid and the spline space are two more discretisations
 # of the objects these generic functions already name, so they get methods rather than
@@ -39,7 +36,7 @@ include("torus.jl")
 
 export SpectralTorus, torus_field, poisson_periodic, canonical_bracket, hamiltonian_field,
        double_bracket_field, parallel_diffusion, projector_bracket_field,
-       spectral_state, spectral_step!
+       spectral_state, spectral_rhs, spectral_step!
 
 include("spectral.jl")
 

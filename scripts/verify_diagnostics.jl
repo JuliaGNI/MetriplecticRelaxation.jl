@@ -17,8 +17,7 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, torus_fie
                               potential_norm², best_fit_euler, fit_rate, Trace, record!,
                               cone_residual, energy_error, entropy_monotone,
                               euler_minimiser, euler_entropy_minimum, l2inner, l2norm,
-                              mean_value, integrate, poisson_periodic, SECTION4_RUNS
-using PoissonBrackets: project
+                              integrate, SECTION4_RUNS
 using Printf
 using Random
 
@@ -33,7 +32,7 @@ const g = SpectralTorus(48)
 header("1. the energies and the entropy")
 
 let spec = SECTION4_RUNS["a2"], d = Diagnostics(g, spec)
-    ω, uΩ = spectral_state(g, spec)
+    ω, _ = spectral_state(g, spec)
     φ = potential(d, ω)
     check("H = ½(φ,ω) matches ½‖∇φ‖² by parts",
         abs(energy(d, ω) - l2inner(g, φ, ω) / 2) < 1e-13,
@@ -64,7 +63,7 @@ header("2. best_fit_euler is the minimiser over the three phases")
 let spec = SECTION4_RUNS["a3"], d = Diagnostics(g, spec)
     ω, _ = spectral_state(g, spec)
     H₀ = energy(d, ω)
-    fit, res, coef = best_fit_euler(d, ω, H₀)
+    fit, res, _ = best_fit_euler(d, ω, H₀)
 
     # (a) the fit is IN the family: it is a member of eq:u-eta_Euler_periodic, so its own
     #     entropy is S_η = H₀ exactly.
@@ -105,9 +104,15 @@ let spec = SECTION4_RUNS["a3"], d = Diagnostics(g, spec)
         r = l2inner(g, ω .- w, ω .- w)
         r < best2 && (best2 = r)
     end
-    check("doubling the scan resolution halves the gap",
+    # The threshold is 1.5 rather than the factor actually observed, which is about 30: the
+    # claim being tested is that the gap SHRINKS with the scan's resolution, i.e. that it is
+    # the scan's own discretisation and not a defect in the closed form. How fast it shrinks
+    # depends on how near a scan node the true optimum happens to fall, so a threshold set to
+    # the observed 30 would be measuring the grid alignment rather than the claim.
+    check("refining the scan shrinks the gap toward the closed form",
         (sqrt(best2) - res) < (scan - res) / 1.5,
-        @sprintf("gap %.3e -> %.3e", scan - res, sqrt(best2) - res))
+        @sprintf("gap %.3e -> %.3e   (factor %.1f)", scan - res, sqrt(best2) - res,
+            (scan - res) / max(sqrt(best2) - res, 1e-300)))
 
     # (d) a state already in the family is fitted exactly.
     let w = torus_field(g, euler_minimiser(H₀, 0.7, 1.3, 2.9))
@@ -184,13 +189,15 @@ end
 # =============================================================================================
 header("5. the spline diagnostics agree with the spectral ones")
 
-let ts = SplineTorus(64, 3)
+let ts = SplineTorus(64, 3), g64 = SpectralTorus(64)
+    # The spectral side is compared at 64 points rather than at `g`'s 48, so that both
+    # discretisations resolve the initial condition to the same order.
     for name in ("a1", "a2", "a3", "a4")
         spec = SECTION4_RUNS[name]
-        dg, dt = Diagnostics(g, spec), Diagnostics(ts, spec)
-        ωg, _ = spectral_state(SpectralTorus(64), spec)
+        dt = Diagnostics(ts, spec)
+        dg64 = Diagnostics(g64, spec)
+        ωg, _ = spectral_state(g64, spec)
         ω̂, _ = spline_state(ts, spec)
-        dg64 = Diagnostics(SpectralTorus(64), spec)
 
         eH = abs(energy(dg64, ωg) - energy(dt, ω̂)) / abs(energy(dg64, ωg))
         eS = abs(entropy(dg64, ωg) - entropy(dt, ω̂)) / abs(entropy(dg64, ωg))

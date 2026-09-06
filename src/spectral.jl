@@ -174,9 +174,18 @@ The same right-hand side as [`double_bracket_field`](@ref), evaluated from an
 Run A1's ``h`` is prescribed and fixed, so ``X_h`` is a constant of the whole simulation. The
 nested-bracket form recomputes it anyway: each [`canonical_bracket`](@ref) differentiates both
 of its arguments, so ``\partial_1 h`` and ``\partial_2 h`` are transformed four times per
-evaluation out of eight derivative applications. Hoisting them halves the cost exactly, which
-on A1 — the manuscript's ``\Delta t = 10^{-4}`` over ``10^5`` steps at ``256^2`` — is the
-difference between 69 and 35 minutes.
+evaluation out of eight derivative applications.
+
+Taking ``X_h`` as an argument halves that exactly — four applications per evaluation instead
+of eight, so 16 per Runge-Kutta step instead of 32 — which on A1, the manuscript's
+``\Delta t = 10^{-4}`` over ``10^5`` steps at ``256^2``, is the difference between 69 minutes
+and 35.
+
+Realising it needs the field built **outside the time loop**, which is what
+[`spectral_rhs`](@ref) is for. Building it inside [`spectral_step!`](@ref) instead would
+recompute ``X_h`` once per step rather than once per stage: 18 applications per step, not 16,
+and 12.06 MB of the 110.6 MB a step allocates. That is what this file did until the count was
+checked against the measured 41-minute run time, which matches 18/32 and not 16/32.
 
 `verify_spectral.jl` checks the two forms agree to round-off, so this is a hoist rather than a
 second discretisation.
@@ -246,37 +255,24 @@ function spectral_state(g::SpectralTorus, spec::RunSpec)
 end
 
 @doc raw"""
-    spectral_step!(g, ω, spec, ĥ)
+    spectral_rhs(g, spec)
 
-One classical fourth-order Runge-Kutta step of size `spec.Δt`, the manuscript's own
-integrator ("the standard 4th order explicit Runge-Kutta method").
+The right-hand side of run `spec` as a closure of ``\omega`` alone, built **once** and reused
+for every step and stage.
 
-`ĥ` is the prescribed Hamiltonian sampled on the grid for the analytic test case, and
-`nothing` for the reduced Euler runs, where the generating field is recomputed from
-``\omega`` at every stage through `eq:Poisson-eq-periodic`.
+This is the counterpart of [`spline_rhs`](@ref), and the reason both exist rather than the
+step function taking `spec` is A1. There the generating field ``X_h`` is a constant of the
+whole simulation, so building the closure per step would recompute it 10⁵ times — see
+[`parallel_diffusion`](@ref). For A2-A4 the generating field genuinely depends on the state
+and is recomputed inside the closure at every stage, as it must be.
 
-Returns the new ``\omega``; the input is not modified.
+Callers must hold the returned closure outside their time loop; `spectral_step!(rhs, ω, Δt)`
+takes it rather than rebuilding it.
 """
-function spectral_step!(g::SpectralTorus, ω, spec::RunSpec, ĥ)
-    f = _spectral_rhs(g, spec, ĥ)
-    Δt = spec.Δt
-    k1 = f(ω)
-    k2 = f(ω .+ (Δt / 2) .* k1)
-    k3 = f(ω .+ (Δt / 2) .* k2)
-    k4 = f(ω .+ Δt .* k3)
-    return ω .+ (Δt / 6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
-end
-
-"""
-    _spectral_rhs(g, spec, ĥ)
-
-The right-hand side of run `spec` as a closure of ``\\omega`` alone, which is what the
-Runge-Kutta stages need.
-"""
-function _spectral_rhs(g::SpectralTorus, spec::RunSpec, ĥ)
-    if spec.bracket === :double && ĥ !== nothing
-        # A1: h is prescribed and fixed, so X_h is hoisted out of the time loop entirely.
-        X = hamiltonian_field(g, ĥ)
+function spectral_rhs(g::SpectralTorus, spec::RunSpec)
+    if spec.bracket === :double && spec.h !== nothing
+        # A1: h is prescribed and fixed, so X_h is formed here, once, and closed over.
+        X = hamiltonian_field(g, torus_field(g, spec.h))
         return ω -> parallel_diffusion(g, ω, X)
     elseif spec.bracket === :double
         # A2: h is the stream function φ, recomputed from ω at every stage.
@@ -286,4 +282,21 @@ function _spectral_rhs(g::SpectralTorus, spec::RunSpec, ĥ)
     else
         throw(ArgumentError("unknown bracket $(spec.bracket)"))
     end
+end
+
+@doc raw"""
+    spectral_step!(rhs, ω, Δt)
+
+One classical fourth-order Runge-Kutta step of size `Δt`, the manuscript's own integrator
+("the standard 4th order explicit Runge-Kutta method").
+
+`rhs` comes from [`spectral_rhs`](@ref) and is built once outside the time loop. Returns the
+new ``\omega``; the input is not modified.
+"""
+function spectral_step!(rhs, ω, Δt)
+    k1 = rhs(ω)
+    k2 = rhs(ω .+ (Δt / 2) .* k1)
+    k3 = rhs(ω .+ (Δt / 2) .* k2)
+    k4 = rhs(ω .+ Δt .* k3)
+    return ω .+ (Δt / 6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
 end

@@ -25,8 +25,7 @@
 # forty minutes, and nothing here needs the trajectory, only its endpoint.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SplineTorus, spline_grid, islands_h, DOMAIN_LENGTH,
-                              SECTION4_RUNS
+using MetriplecticRelaxation: SplineTorus, spline_grid, islands_h, DOMAIN_LENGTH
 using Printf
 using Serialization
 

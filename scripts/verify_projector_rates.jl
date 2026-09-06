@@ -51,7 +51,7 @@
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, torus_field, poisson_periodic,
-                              projector_bracket_field, l2inner, l2norm, mean_value,
+                              projector_bracket_field, l2inner, l2norm,
                               euler_minimiser, euler_entropy_minimum
 using Printf
 
@@ -132,9 +132,9 @@ end
 # exactly there. Scaling φ★ moves along the family to a state of different H₀, and every member
 # of the family is a fixed point — so there is nothing for the flow to do.
 #
-# This check was first written asserting rate 2, from a linearisation that held H fixed. It
-# failed at -2e-10, which is what caught the omission: H depends on ω and varies under an
-# arbitrary perturbation, even though it is conserved ALONG the flow.
+# A linearisation that held H fixed would predict rate 2 here instead. It does not apply: H
+# depends on ω and varies under an arbitrary perturbation, even though it is conserved ALONG the
+# flow, and it is the resulting δc that cancels the decay.
 let v = copy(φ★)
     Jv = jacobian_apply(v)
     rate = -l2inner(g, Jv, v) / l2inner(g, v, v)
@@ -172,11 +172,20 @@ header("5. why T = 10 reads high, and T = 20 does not")
 # lambda = 4 mode is exp(-t/4) relative to the lambda = 2 mode, and an amplitude-weighted rate
 # is 0.5 + 0.25 * (its share). This is arithmetic on the exact spectrum, not a measurement --
 # it is what says the T = 10 run's 0.597 is a window artefact rather than a defect.
-for T in (7.0, 10.0, 13.0, 20.0)
-    share = exp(-0.25T)
-    eff = (0.5 + 0.75share) / (1 + share)
-    check(@sprintf("T = %4.1f   effective fitted rate", T), true,
-        @sprintf("λ=4 share %.4f   effective %.4f   (exact 0.5)", share, eff))
+#
+# Each row asserts what it claims rather than merely printing it: the effective rate must
+# exceed the exact 1/2, must fall as T grows, and must approach 1/2. A row with condition
+# `true` would inflate the check count with something that cannot fail.
+let effective(T) = (0.5 + 0.75exp(-0.25T)) / (1 + exp(-0.25T)), prev = Inf
+    for T in (7.0, 10.0, 13.0, 20.0)
+        eff = effective(T)
+        check(@sprintf("T = %4.1f   the effective fitted rate exceeds 1/2 and falls", T),
+            eff > 0.5 && eff < prev,
+            @sprintf("λ=4 share %.4f   effective %.4f   (exact 0.5)", exp(-0.25T), eff))
+        prev = eff
+    end
+    check("the effective rate → 1/2 as T grows", abs(effective(60.0) - 0.5) < 1e-6,
+        @sprintf("effective(60) = %.8f", effective(60.0)))
 end
 
 check("T = 20 puts the contamination below 1%", exp(-0.25 * 20) < 0.01,

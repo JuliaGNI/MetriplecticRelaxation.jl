@@ -20,10 +20,9 @@ using MetriplecticRelaxation: SpectralTorus, torus_field, ∂₁, ∂₂, laplac
                               poisson_periodic, canonical_bracket, hamiltonian_field,
                               double_bracket_field, parallel_diffusion,
                               projector_bracket_field,
-                              integrate, l2inner, l2norm, mean_value, islands_h,
+                              integrate, l2inner, l2norm, mean_value,
                               SECTION4_RUNS, spectral_state
 using PoissonBrackets: spectral_grid, ∂x, ∂y
-using LinearAlgebra
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))

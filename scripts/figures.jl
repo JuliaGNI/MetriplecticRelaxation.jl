@@ -124,8 +124,7 @@ for name in names
                 floor = 1e-8)
             push!(measured, 1 / rate)
         end
-        println(figure_tau(out("tau.png"), p.contours,
-            [relaxation_time(h) for h in p.contours], measured))
+        println(figure_tau(out("tau.png"), p.contours, measured))
     else
         H₀ = trg.H[1]
         println(figure_cone(out("cone.png"), traces, H₀))

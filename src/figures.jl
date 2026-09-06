@@ -152,16 +152,18 @@ function figure_rates(path, t, excess, td, dist)
 end
 
 @doc raw"""
-    figure_tau(path, hs, τs, measured)
+    figure_tau(path, hs, measured)
 
 The lower panel of Fig. 1: the relaxation time ``\tau_h`` against ``h`` on the contours of the
 two central islands.
 
 Where the manuscript plots only `eq:relaxation-time` evaluated from the formula, this draws the
 closed form of [`relaxation_time`](@ref) as a curve and the rate **measured from the run** as
-points over it, which is what makes the panel a test rather than an illustration.
+points over it, which is what makes the panel a test rather than an illustration. The curve is
+evaluated here over a refined ``h``, so only the contours `hs` and their `measured` times are
+passed in.
 """
-function figure_tau(path, hs, τs, measured)
+function figure_tau(path, hs, measured)
     fig = Figure(size = (560, 420))
     ax = Axis(fig[1, 1]; xlabel = "h", ylabel = "τ_h", yscale = log10)
     hh = range(max(minimum(hs) / 2, 1e-3), 1.0; length = 400)

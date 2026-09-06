@@ -255,9 +255,9 @@ end
 
 Written the direct way, ``\\sin t = \\sqrt{1 - h/\\cos^2 s}`` cancels catastrophically at the
 turning points, where ``\\cos^2 s \\to h`` makes the bracket a difference of two nearly equal
-numbers. Near the separatrix that costs most of the mantissa: at ``h = 10^{-4}`` the relative
-error in [`contour_length_quadrature`](@ref) was ``1.3 \\times 10^{-10}`` and grew with the
-node count instead of falling, which is the signature of round-off rather than of truncation.
+numbers. Near the separatrix that costs most of the mantissa: at ``h = 10^{-4}`` it gives a
+relative error of ``1.3 \\times 10^{-10}`` in [`contour_length_quadrature`](@ref), and one that
+grows with the node count instead of falling — the signature of round-off, not of truncation.
 
 Both identities below are exact and cancellation-free — every term is positive:
 

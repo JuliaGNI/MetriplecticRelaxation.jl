@@ -29,8 +29,8 @@ using .Checks: header, check, summary
 
 # Down to 1e-5, i.e. contours a factor 10^5 closer to the separatrix than to the island
 # centre. The tolerance is 1e-13 rather than a loose one because the parameterisation is
-# cancellation-free: see `_contour_point`. Before that fix the h = 1e-4 residual was 1.3e-10
-# and GREW with the node count, which is what identified it as round-off.
+# cancellation-free: see `_contour_point`. The direct parameterisation cannot meet it -- its
+# h = 1e-4 residual is 1.3e-10 and GROWS with the node count, which is round-off, not truncation.
 const HS = (0.9, 0.7, 0.5, 0.3, 0.1, 0.01, 1e-4, 1e-5)
 
 # =============================================================================================

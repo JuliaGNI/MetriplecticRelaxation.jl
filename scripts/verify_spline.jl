@@ -21,15 +21,15 @@
 #      cross-check the whole reproduction turns on, at the one place it can be made pointwise.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SplineTorus, PoissonMap, EllipticEnergy, LinearHamiltonian,
+using MetriplecticRelaxation: SplineTorus, EllipticEnergy,
                               spline_state, spline_flow, spline_rhs, spline_grid,
                               fixed_double_operator, SpectralTorus, spectral_state,
                               torus_field, poisson_periodic, double_bracket_field,
-                              projector_bracket_field, islands_h, SECTION4_RUNS,
-                              integrate, l2inner, l2norm, mean_value,
+                              projector_bracket_field, SECTION4_RUNS,
+                              integrate, mean_value,
                               initial_condition, periodise
-using PoissonBrackets: nbasis, project, evaluate, mass_matrix, vectorfield, hamiltonian,
-                       gradient, entropy, entropy_gradient, issymmetric,
+using PoissonBrackets: nbasis, project, evaluate, vectorfield, hamiltonian,
+                       gradient, entropy_gradient, issymmetric,
                        ispositive_semidefinite, degeneracy_residual, domainvolume
 using LinearAlgebra
 using Printf
@@ -183,8 +183,8 @@ header("6. spline and spectral agree on the vector field")
 # The two discretisations are compared where they can be compared pointwise: the right-hand side
 # evaluated on a common initial condition, sampled on the spectral grid. They do not agree to
 # round-off and must not be expected to -- one is 4th-order accurate and the other spectral --
-# so this is a RELATIVE agreement at the level of the coarser method's own error, and section 7
-# of `run_a1.jl` is what turns it into a refinement statement.
+# so this is a RELATIVE agreement at the level of the coarser method's own error, and
+# `converge.jl` is what turns it into a refinement statement.
 let Ns = 64, tf = SplineTorus(64, 3), g = SpectralTorus(Ns)
     for name in ("a1", "a2", "a3", "a4")
         spec = SECTION4_RUNS[name]

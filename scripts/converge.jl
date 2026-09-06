@@ -24,9 +24,10 @@
 # field that is not in the space at any resolution.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION4_RUNS, SpectralTorus, SplineTorus, RunSpec,
-                              spectral_state, spectral_step!, spline_state, spline_rhs,
-                              spline_step!, spline_grid, torus_field, periodise
+using MetriplecticRelaxation: SECTION4_RUNS, SpectralTorus, SplineTorus,
+                              spectral_state, spectral_rhs, spectral_step!,
+                              spline_state, spline_rhs, spline_step!, spline_grid,
+                              periodise
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
@@ -55,9 +56,9 @@ is the same every time.
 function reference(spec)
     g = SpectralTorus(NREF)
     ωs, _ = spectral_state(g, spec)
-    ĥ = spec.h === nothing ? nothing : torus_field(g, spec.h)
+    rhs = spectral_rhs(g, spec)
     for _ in 1:NSTEPS
-        ωs = spectral_step!(g, ωs, spec, ĥ)
+        ωs = spectral_step!(rhs, ωs, spec.Δt)
     end
     return ωs
 end

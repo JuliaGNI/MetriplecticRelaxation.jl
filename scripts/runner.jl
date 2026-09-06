@@ -16,9 +16,8 @@ module Runner
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
-                              spectral_state, spectral_step!, spline_state, spline_rhs,
-                              spline_step!, spline_grid, torus_field, record!,
-                              initial_condition, energy, entropy
+                              spectral_state, spectral_rhs, spectral_step!,
+                              spline_state, spline_rhs, spline_step!, record!
 using Printf
 using Serialization
 
@@ -107,7 +106,9 @@ function run_spectral(spec, opts::Options; observer = nothing)
     g = SpectralTorus(opts.spectral)
     d = Diagnostics(g, spec)
     ω, uΩ = spectral_state(g, spec)
-    ĥ = spec.h === nothing ? nothing : torus_field(g, spec.h)
+    # Built once, outside the loop, exactly as `spline_rhs` is below: for A1 the closure holds
+    # a fixed `X_h`, and rebuilding it per step would recompute that 10⁵ times.
+    rhs = spectral_rhs(g, spec)
 
     nsteps = round(Int, spec.T / spec.Δt)
     stride = max(1, nsteps ÷ opts.samples)
@@ -117,7 +118,7 @@ function run_spectral(spec, opts::Options; observer = nothing)
 
     t0 = time()
     for k in 1:nsteps
-        ω = spectral_step!(g, ω, spec, ĥ)
+        ω = spectral_step!(rhs, ω, spec.Δt)
         if k % stride == 0 || k == nsteps
             record!(tr, d, k * spec.Δt, ω)
             observer === nothing || observer(g, k * spec.Δt, ω)

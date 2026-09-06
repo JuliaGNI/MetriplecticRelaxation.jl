@@ -1,20 +1,20 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
-                              torus_field, spectral_state, spectral_step!,
-                              spline_state, spline_rhs, spline_step!, spline_grid,
+                              torus_field, spectral_state, spectral_rhs, spectral_step!,
+                              spline_state, spline_rhs, spline_step!,
                               fixed_double_operator, spline_flow,
                               ∂₁, ∂₂, laplacian, poisson_periodic, canonical_bracket,
                               hamiltonian_field, double_bracket_field, parallel_diffusion,
                               projector_bracket_field, integrate, l2inner, l2norm,
                               mean_value, agm, contour_length, contour_length_quadrature,
                               contour_average, contour_deviation, relaxation_time,
-                              islands_h, CENTRAL_ISLANDS, Gaussian, periodise,
-                              initial_condition, SECTION4_RUNS, SECTION4_ORDER,
+                              islands_h, CENTRAL_ISLANDS, periodise,
+                              SECTION4_RUNS, SECTION4_ORDER,
                               euler_minimiser, euler_entropy_minimum,
-                              analytic_entropy_minimum, energy, entropy, potential,
+                              energy, entropy,
                               potential_norm², best_fit_euler, fit_rate, record!,
-                              energy_error, entropy_monotone, cone_residual,
-                              EllipticEnergy, LinearHamiltonian, PoissonMap
+                              entropy_monotone, cone_residual,
+                              EllipticEnergy
 using PoissonBrackets: nbasis, project, evaluate, spectral_grid, ∂x, ∂y, vectorfield,
                        gradient, entropy_gradient, issymmetric, ispositive_semidefinite,
                        degeneracy_residual, domainvolume, hamiltonian, hessian
@@ -265,10 +265,10 @@ end
             g = SpectralTorus(48)
             dg = Diagnostics(g, spec)
             ω, _ = spectral_state(g, spec)
-            ĥ = spec.h === nothing ? nothing : torus_field(g, spec.h)
+            rhs = spectral_rhs(g, spec)
             H₀, S₀ = energy(dg, ω), entropy(dg, ω)
             for _ in 1:20
-                ω = spectral_step!(g, ω, spec, ĥ)
+                ω = spectral_step!(rhs, ω, spec.Δt)
             end
             @test abs(energy(dg, ω) - H₀) / abs(H₀) < 1e-10
             @test entropy(dg, ω) <= S₀
