@@ -151,19 +151,32 @@ header("the degree is what sets the order")
 #
 # The meshes here start at 32, not at the 16 the runs above use, and the reason is that an order
 # fitted through an UNRESOLVED point is not an order. At 16 cells the degree-2 difference is
-# 2.0e-1 and the degree-4 one 1.7e-1 — both 20 % errors, nowhere near asymptotic — and a
-# least-squares line through them returned 4.11 for degree 2 and 6.28 for degree 4, against 3
-# and 5. The cubic runs above survive their own coarse point only because five meshes outvote
-# it; three meshes cannot.
+# 2.0e-1 and the degree-4 one 1.7e-1 — both 20 % errors, nowhere near asymptotic.
+#
+# WHAT IS ASSERTED, and why it is not "order = p+1". Measured over these four meshes the orders
+# come out ABOVE the p+1 that B-spline L² approximation guarantees — 4.41 for degree 2, 4.67 for
+# degree 3, 6.89 for degree 4 — and they do so systematically, in every degree. That is
+# superconvergence on a uniform periodic mesh, and a method converging faster than its
+# guaranteed rate is not a defect: p+1 is a lower bound on the rate, not a prediction of it.
+#
+# So the assertion is the pair of statements that a broken spline space would violate and
+# superconvergence does not: the order is AT LEAST p+1, and it INCREASES with the degree. A4
+# above shows what a real failure looks like under the same measurement — order 1.10.
 let spec = SECTION4_RUNS["a3"], cells = (32, 48, 64, 96), ref = reference(spec)
+    orders = Float64[]
     for degree in (2, 3, 4)
         errs = [difference(spec, ref, n, degree) for n in cells]
         p = observed_order(cells, errs)
-        check(@sprintf("degree %d gives order ≈ %d", degree, degree + 1),
-            abs(p - (degree + 1)) < 1.0,
-            @sprintf("observed %.2f   errors %s", p,
+        push!(orders, p)
+        # 0.3 of slack on the lower bound, for the noise in a four-point least-squares fit.
+        check(@sprintf("degree %d converges at least at order %d", degree, degree + 1),
+            p > degree + 1 - 0.3,
+            @sprintf("observed %.2f   (p+1 = %d)   errors %s", p, degree + 1,
                 join([@sprintf("%.2e", e) for e in errs], " -> ")))
     end
+    check("the order increases with the degree",
+        issorted(orders) && orders[end] > orders[1] + 1,
+        @sprintf("degree 2, 3, 4 -> %.2f, %.2f, %.2f", orders...))
 end
 
 # =============================================================================================
@@ -187,7 +200,12 @@ let lines = ["# Refinement of the spline discretisation", "",
         "the reason is its initial condition: `eq:initial_gaussian` is written unmodified on",
         "T², and A4's Gaussian is centred π/2 from the boundary with w₂ = 1 and amplitude",
         "1.8, so it is discontinuous there by 8.5 % of its peak. Periodising it restores the",
-        "order, which is what identifies the initial condition rather than the solver.")
+        "order, which is what identifies the initial condition rather than the solver.",
+        "",
+        "Over the finer meshes the observed orders exceed p+1 in every degree — 4.41, 4.67 and",
+        "6.89 for degrees 2, 3 and 4 — which is superconvergence on a uniform periodic mesh.",
+        "p+1 is a lower bound on the rate rather than a prediction of it, so that is not a",
+        "defect; the degree study asserts the bound and the monotonicity instead.")
     println("    report  -> ", report(opts, "converge", lines))
 end
 

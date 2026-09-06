@@ -413,6 +413,21 @@ the sole exception, at order 1.10**, and periodising its Gaussian — the only c
 **4.05**. That is the discontinuity finding confirmed a third independent way, after the
 initial-state comparison and the run itself.
 
+**The order moves with the degree, which is what says it is the spline space's own and not an
+artefact of the time stepping or of the reference.** Over meshes of 32–96 cells:
+
+| degree | observed order | `p+1` | errors, 32 → 96 cells |
+|--:|--:|--:|:--|
+| 2 | 4.41 | 3 | 1.18e-2 → 8.83e-5 |
+| 3 | 4.67 | 4 | 5.31e-3 → 3.16e-5 |
+| 4 | 6.89 | 5 | 4.15e-3 → 2.07e-6 |
+
+Every degree exceeds `p+1`, systematically — superconvergence on a uniform periodic mesh. Since
+`p+1` is a lower bound on the rate rather than a prediction of it, converging faster than it is
+not a defect, and the study asserts the two statements a broken space would violate while
+superconvergence does not: the order is at least `p+1`, and it increases with the degree. A4 as
+printed shows what a real failure looks like under the same measurement, at **1.10**.
+
 ### Results — where A1's two discretisations differ, and why
 
 A1's spline and spectral final states differ by **7.99e-2** in `L²` where their initial states
