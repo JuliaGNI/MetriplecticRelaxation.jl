@@ -184,8 +184,7 @@ and 35.
 Realising it needs the field built **outside the time loop**, which is what
 [`spectral_rhs`](@ref) is for. Building it inside [`spectral_step!`](@ref) instead would
 recompute ``X_h`` once per step rather than once per stage: 18 applications per step, not 16,
-and 12.06 MB of the 110.6 MB a step allocates. That is what this file did until the count was
-checked against the measured 41-minute run time, which matches 18/32 and not 16/32.
+and 12.06 MB of the 110.6 MB a step allocates — a 41-minute A1 rather than a 35-minute one.
 
 `verify_spectral.jl` checks the two forms agree to round-off, so this is a hoist rather than a
 second discretisation.

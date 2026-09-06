@@ -120,10 +120,11 @@ function figure_cone(path, traces, H₀)
         lines!(ax, tr.S, 1 ./ tr.φ²; label = label, linewidth = 2)
     end
     scatter!(ax, [H₀], [1 / (2H₀)]; color = :black, markersize = 12, label = "vertex")
-    # Top-left, not bottom-right. The cone occupies the upper right, and the trajectory runs
-    # along its LOWER boundary from the top-right corner down to the vertex — so a legend at
-    # `:rb` sits exactly on top of the trajectory and hides where it starts. Left of the vertex
-    # is outside the cone entirely (`S < S_η` is forbidden) and therefore always empty.
+    # Top-left, not bottom-right. The trajectory runs along the cone's LOWER boundary, from the
+    # top-right corner down to the vertex, so a legend at `:rb` sits on top of it and hides
+    # where it starts. The top left is empty because the axis begins at the vertex and the
+    # cone's upper boundary *rises* from there — everything above that boundary, and hence the
+    # whole top-left corner, is outside the shaded band.
     axislegend(ax; position = :lt)
     save(path, fig)
     return path

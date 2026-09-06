@@ -86,7 +86,7 @@ let total = sum(abs2, spline_final .- spectral_final)
         mask = (hgrid .>= lo) .& (hgrid .< hi)
         share = sum(abs2, (spline_final .- spectral_final)[mask]) / total
         frac = count(mask) / length(mask)
-        check(@sprintf("h ∈ [%.3f, %.2f)", lo, hi), true,
+        check(@sprintf("h ∈ [%.3f, %.2f)  [REPORTED]", lo, hi), true,
             @sprintf("%5.1f%% of the squared difference on %5.1f%% of the nodes   rel L² %.3e",
                 100share, 100frac, masked_rel(spline_final, spectral_final, mask)))
     end
@@ -105,11 +105,11 @@ end
 # And the converse: away from the separatrix the two agree well.
 #
 # Measured against the GLOBAL field norm, not against the field restricted to the mask. The
-# restricted normalisation is ill-posed here and was written that way first: A1's Gaussian sits
-# ON the separatrix, so u is nearly zero inside the islands, and dividing a small difference by
-# a small field reported 6.4e-2 for a region carrying 7 % of the total error. What the
-# comparison has to answer is how much of the FIELD's own scale the disagreement amounts to,
-# and that is one denominator for every mask.
+# restricted normalisation is ill-posed here: A1's Gaussian sits ON the separatrix, so u is
+# nearly zero inside the islands, and dividing a small difference by a small field reports
+# 6.4e-2 for a region carrying 7 % of the total error. What the comparison has to answer is how
+# much of the FIELD's own scale the disagreement amounts to, and that is one denominator for
+# every mask.
 let mask = hgrid .>= 0.01, total = sum(abs2, spectral_final)
     e = sqrt(sum(abs2, (spline_final .- spectral_final)[mask]) / total)
     check("away from the separatrix (h ≥ 0.01) they agree", e < 3e-2,

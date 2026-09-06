@@ -174,9 +174,15 @@ let spec = SECTION4_RUNS["a3"], cells = (32, 48, 64, 96), ref = reference(spec)
             @sprintf("observed %.2f   (p+1 = %d)   errors %s", p, degree + 1,
                 join([@sprintf("%.2e", e) for e in errs], " -> ")))
     end
+    # The same 0.3 noise budget the lower bound above uses, and for the same reason: a strict
+    # `issorted` would assert an ordering across the degree-2-to-3 margin of 4.67 − 4.41 = 0.26,
+    # which is smaller than the scatter a four-point least-squares fit can produce. The
+    # end-to-end margin, 6.89 − 4.41 = 2.48, is the part of the claim that is safely outside it.
     check("the order increases with the degree",
-        issorted(orders) && orders[end] > orders[1] + 1,
-        @sprintf("degree 2, 3, 4 -> %.2f, %.2f, %.2f", orders...))
+        all(orders[i + 1] > orders[i] - 0.3 for i in 1:(length(orders) - 1)) &&
+            orders[end] > orders[1] + 1,
+        @sprintf("degree 2, 3, 4 -> %.2f, %.2f, %.2f   (end-to-end margin %.2f)",
+            orders..., orders[end] - orders[1]))
 end
 
 # =============================================================================================
