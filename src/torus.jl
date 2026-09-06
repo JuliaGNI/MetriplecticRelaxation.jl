@@ -31,39 +31,74 @@ u_G(x) = \frac{1}{N} \exp\Big[
     - \frac{(x_1 - x_{0,1})^2}{w_1^2} - \frac{(x_2 - x_{0,2})^2}{w_2^2} \Big] .
 ```
 
-Callable as `g(x₁, x₂)`.
+Callable as `g(x₁, x₂)`. `images` selects between the two readings below; it is `0` by
+default, which is the formula exactly as printed.
 
-# It is not periodic, and that is faithful
+# The formula is not periodic, and for run A4 that is not a rounding detail
 
-The manuscript writes this formula unmodified on ``\mathbb{T}^2``, with no periodic
-summation over images, so this reproduction does the same. The consequence is a jump across
-the boundary of size ``u_G`` evaluated at distance ``\pi`` from the centre: negligible at
-``10^{-69}`` for Section 4.1's ``w_2 = 0.4``, but ``5.2 \times 10^{-5}`` for the
-``w_2 = 1`` of the reduced Euler runs. Both discretisations absorb it the same way — the
-spectral one by sampling on a grid that is periodic by construction, the spline one by
-``L^2`` projection onto a periodic basis — so it does not bias the comparison between them.
-It does put a floor under how well either can represent the stated initial condition, which
-is why the run reports use the *projected* initial condition rather than the formula when
-they quote conserved quantities.
+The manuscript writes this formula unmodified on ``\mathbb{T}^2``, with no summation over
+periodic images. Taken literally it is therefore *discontinuous* across the boundary, by the
+value it still has at the far edge of the domain. How much that matters depends entirely on
+how far the centre sits from the wrap, and it differs by two orders of magnitude between the
+four runs:
+
+| run | ``x_{0,2}`` | ``w_2`` | amplitude | value at the wrap | jump / peak |
+|:--|--:|--:|--:|--:|--:|
+| A1 | ``\pi + 0.1`` | 0.25 | 1.59 | ``10^{-69}`` | ``10^{-69}`` |
+| A2, A3 | ``\pi`` | 1 | 1 | ``5.2 \times 10^{-5}`` | ``5.2 \times 10^{-5}`` |
+| **A4** | ``3\pi/2`` | 1 | **1.8** | **0.153** | **8.5 %** |
+
+A4's centre is only ``\pi/2`` from the boundary, so ``1.8 \, e^{-(\pi/2)^2} = 0.153``. That
+is a genuine discontinuity in the stated initial condition, not a discretisation artefact,
+and the two discretisations resolve it differently — measured, the spectral and spline
+initial states disagree by ``6.9 \times 10^{-2}`` for A4 against ``2.5 \times 10^{-4}`` for
+A2, whose Gaussian is otherwise identical.
+
+`images = n` sums over the periodic images ``x_0 + 2\pi k`` for ``k \in -n:n`` in each
+direction, which is the reading under which ``u_G`` is a function on ``\mathbb{T}^2`` at all.
+One image either way already converges to ``10^{-16}`` for every parameter set here.
+
+Which reading the manuscript intends is not stated. Both are therefore run for A4 and both
+are reported; `run_a4.jl` uses the literal form as the primary, being what is printed, and
+the periodised form as the control that identifies the discontinuity as the cause of the
+disagreement rather than the solver.
 """
 struct Gaussian{T}
     x₀::NTuple{2, T}
     w::NTuple{2, T}
     N::T
+    images::Int
 end
 
 # `x₀ = (π, π + 0.1)` is a `Tuple{Irrational, Float64}`, so the parameters have to be promoted
 # rather than required to arrive already matching.
-function Gaussian(x₀::Tuple, w::Tuple, N)
+function Gaussian(x₀::Tuple, w::Tuple, N; images::Int = 0)
     T = promote_type(map(typeof ∘ float, (x₀..., w..., N))...)
-    Gaussian{T}(map(T, x₀), map(T, w), T(N))
+    Gaussian{T}(map(T, x₀), map(T, w), T(N), images)
 end
 
-function (g::Gaussian)(x₁, x₂)
-    exp(-(x₁ - g.x₀[1])^2 / g.w[1]^2 - (x₂ - g.x₀[2])^2 / g.w[2]^2) / g.N
+function (g::Gaussian{T})(x₁, x₂) where {T}
+    acc = zero(T)
+    for k₂ in (-g.images):(g.images), k₁ in (-g.images):(g.images)
+
+        d₁ = x₁ - g.x₀[1] - k₁ * DOMAIN_LENGTH
+        d₂ = x₂ - g.x₀[2] - k₂ * DOMAIN_LENGTH
+        acc += exp(-d₁^2 / g.w[1]^2 - d₂^2 / g.w[2]^2)
+    end
+    return acc / g.N
 end
 
 (g::Gaussian)(x) = g(x[1], x[2])
+
+"""
+    periodise(g::Gaussian, images = 2)
+    periodise(spec::RunSpec, images = 2)
+
+The same object with the Gaussian summed over `images` periodic images in each direction —
+the reading under which the initial condition is a function on the torus rather than a
+formula restricted to ``[0,2\\pi]^2``. See [`Gaussian`](@ref).
+"""
+periodise(g::Gaussian, images::Int = 2) = Gaussian(g.x₀, g.w, g.N; images = images)
 
 @doc raw"""
     islands_h(x₁, x₂)
@@ -390,20 +425,43 @@ euler_entropy_minimum(H₀) = H₀
 @doc raw"""
     RunSpec
 
-The specification of one of the four Section 4 runs: its initial condition `u₀`, the bracket
-to use, the prescribed `h` where there is one, and the time step and final time.
+The specification of one of the four Section 4 runs: the bracket to use, the Gaussian and the
+`background` field added to it, the prescribed `h` where there is one, and the time step and
+final time.
+
+The initial condition is held as its two pieces rather than as one closure, so that
+[`periodise`](@ref) can reach the [`Gaussian`](@ref) inside it — A4's ``u_0 = \\cos(2x_2) +
+u_G`` is the one case where the two readings of ``u_G`` differ materially. Use
+[`initial_condition`](@ref) to get the callable.
 
 `Δt` is the manuscript's own; `T` is not, and is recorded here as a choice of this
 reproduction. See [`SECTION4_RUNS`](@ref).
 """
-struct RunSpec{F, H}
+struct RunSpec{B, H}
     name::String
     section::String
     bracket::Symbol
-    u₀::F
+    gaussian::Gaussian{Float64}
+    background::B
     h::H
     Δt::Float64
     T::Float64
+end
+
+"""
+    initial_condition(spec)
+
+The initial condition of run `spec` as a callable `(x₁, x₂)`: the Gaussian, plus the
+`background` field where the run has one.
+"""
+function initial_condition(spec::RunSpec)
+    spec.background === nothing ? spec.gaussian :
+    (x₁, x₂) -> spec.background(x₁, x₂) + spec.gaussian(x₁, x₂)
+end
+
+function periodise(spec::RunSpec, images::Int = 2)
+    RunSpec(spec.name * "-periodic", spec.section, spec.bracket,
+        periodise(spec.gaussian, images), spec.background, spec.h, spec.Δt, spec.T)
 end
 
 @doc raw"""
@@ -416,22 +474,26 @@ The four runs of Section 4, keyed by name.
 | `a3` | 4.2 | projector | as `a2` | ``10^{-3}`` |
 | `a4` | 4.2 | projector | ``\cos(2x_2) + u_G``, ``1/N = 1.8``, ``x_0 = (\pi, 3\pi/2)`` | ``10^{-3}`` |
 
-Everything in this table is the manuscript's, **except the final time ``T``**, which it
-never states. Fig. 6 places the vertex of the cone at ``t \approx 5``, so ``T = 10`` is
-taken for the reduced Euler runs, leaving as much trajectory again past the vertex to
-measure the asymptotic rates on. A1 has no such landmark and relaxes on the scale of
-[`relaxation_time`](@ref), which diverges at the separatrix and is ``1/4`` at an island
-centre; ``T = 20`` resolves the island interiors while leaving the separatrix stalled, which
-is the behaviour Fig. 1 shows.
+Everything in this table is the manuscript's, **except the final time ``T = 10``**, which it
+never states. Fig. 6 places the vertex of the cone at ``t \approx 5``, so ``T = 10`` leaves
+as much trajectory again past the vertex to measure the asymptotic rates on. A1 has no such
+landmark and relaxes on the scale of [`relaxation_time`](@ref), which is ``1/4`` at an island
+centre and diverges at the separatrix; ``T = 10`` is 40 relaxation times at the centre, which
+resolves the island interiors while leaving the separatrix stalled — the behaviour Fig. 1
+shows. A1 nonetheless costs the most, because the manuscript's ``\Delta t = 10^{-4}`` is set
+by the explicit stability limit rather than by accuracy and buys it ten times the step count.
 """
 const SECTION4_RUNS = Dict(
     "a1" => RunSpec("a1", "4.1", :double,
-        Gaussian((π, π + 0.1), (0.25, 0.4), 2π * 0.25 * 0.4), islands_h, 1e-4, 20.0),
+        Gaussian((π, π + 0.1), (0.25, 0.4), 2π * 0.25 * 0.4), nothing,
+        islands_h, 1e-4, 10.0),
     "a2" => RunSpec("a2", "4.1", :double,
-        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, 1e-3, 10.0),
+        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 10.0),
     "a3" => RunSpec("a3", "4.2", :projector,
-        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, 1e-3, 10.0),
+        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 10.0),
     "a4" => RunSpec("a4", "4.2", :projector,
-        let g = Gaussian((π, 3π / 2), (0.3, 1.0), 1 / 1.8)
-            (x₁, x₂) -> cos(2x₂) + g(x₁, x₂)
-        end, nothing, 1e-3, 10.0))
+        Gaussian((π, 3π / 2), (0.3, 1.0), 1 / 1.8), (x₁, x₂) -> cos(2x₂),
+        nothing, 1e-3, 10.0))
+
+"The four runs in the order Section 4 presents them."
+const SECTION4_ORDER = ("a1", "a2", "a3", "a4")

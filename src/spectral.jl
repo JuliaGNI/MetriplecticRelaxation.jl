@@ -219,7 +219,7 @@ both ``\omega`` and ``\phi`` are mean-free. ``u_\Omega`` is therefore a constant
 motion, carried alongside and added back only for plotting.
 """
 function spectral_state(g::SpectralTorus, spec::RunSpec)
-    u = torus_field(g, spec.u₀)
+    u = torus_field(g, initial_condition(spec))
     uΩ = mean_value(g, u)
     return (u .- uΩ, uΩ)
 end

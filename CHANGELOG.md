@@ -43,19 +43,13 @@ here than in a library:
   reference where the paper has a sampled estimate, so A1's `τ_h` check is against a closed form
   rather than against another numerical procedure.
 
-  **Recorded choice — the final time `T`, which the manuscript never states.** `Δt` is the
+  **Recorded choice — the final time `T = 10`, which the manuscript never states.** `Δt` is the
   paper's own (`1e-4` for A1, `1e-3` for A2–A4). For the reduced Euler runs Fig. 6 places the
-  vertex of the cone at `t ≈ 5`, so `T = 10` is taken, leaving as much trajectory again past the
-  vertex to measure the asymptotic rates on. A1 has no such landmark and is given `T = 20`,
-  which is 80 `τ_h` at an island centre and resolves the island interiors while leaving the
-  separatrix stalled — the behaviour Fig. 1 shows.
-
-  **Recorded choice — the Gaussian is not periodised.** The manuscript writes
-  `eq:initial_gaussian` unmodified on `T²`, with no summation over images, so this does too. The
-  resulting jump across the boundary is `1e-69` for §4.1's `w₂ = 0.4` but `5.2e-5` for the
-  `w₂ = 1` of the reduced Euler runs. Both discretisations absorb it the same way, so it does
-  not bias the spectral-versus-spline comparison, but it does put a floor under how well either
-  represents the stated initial condition.
+  vertex of the cone at `t ≈ 5`, so `T = 10` leaves as much trajectory again past the vertex to
+  measure the asymptotic rates on. A1 has no such landmark; `T = 10` is 40 `τ_h` at an island
+  centre and resolves the island interiors while leaving the separatrix stalled — the behaviour
+  Fig. 1 shows. A1 still costs the most, because its `Δt = 1e-4` is set by the explicit
+  stability limit rather than by accuracy and buys it ten times the step count.
 
 - **`scripts/verify_torus_geometry.jl`** — 24 checks on that geometry, run before any solver was
   built on it. The closed form agrees with quadrature of the arclength integral to **9e-16 …
@@ -94,7 +88,58 @@ here than in a library:
   conserved at **1.7e-17** (double) and **1.3e-16** (projector) normalised, entropy strictly
   decreasing, and `dS/dt = −∫|X_h·∇ω|²` matching to 11 digits.
 
+- **`src/spline.jl` — the B-spline Galerkin solver, which is the deliberate deviation.** The
+  same equations in a periodic tensor-product spline space, through PoissonBrackets'
+  `TensorSplineSpace`, `DoubleBracket`, `ProjectorBracket` and `MetriplecticFlow`. The numbers
+  do not match the spectral run bit for bit and must not be reported as if they did; what is
+  reproduced is the claims.
+
+  `PoissonMap` applies `Λ = K⁻¹M` as a cached sparse factorisation rather than as an assembled
+  matrix. `Λ` is dense — at `64²` cells that is 4096×4096, 134 MB, streamed once per
+  Runge-Kutta stage, and a `128²` run would need 2.1 GB and be impossible. `K` is singular on
+  the torus, and the obvious regularisation `K + bbᵀ/|Ω|` destroys the sparsity because
+  `bᵢ = ∫Φᵢ` is dense; the **bordered** system adds one row and column instead. Its Lagrange
+  multiplier comes out at **3.3e-16**, which is the check that the state really is mean-free.
+
+  `LinearHamiltonian` and `EllipticEnergy` are two `DiscreteHamiltonian`s PoissonBrackets does
+  not carry. A1's energy `H = (h−h_Ω, u)` is *linear*, and the package has no linear
+  Hamiltonian: `MassCasimir` has exactly the right structure but its docstring defines it as
+  the total mass, so using it would put a false statement in the code. `EllipticEnergy` exists
+  because `QuadraticHamiltonian(M*Λ)` would assemble the dense matrix `PoissonMap` avoids, its
+  constructor checking symmetry with `isapprox(A, A')`. Both are candidates for the package.
+
+  **A1 does not go through `vectorfield`.** Its `h` is prescribed, so `X_h` never changes and
+  the whole operator is a constant sparse matrix — **8.5 %** filled at `24²` — reducing the
+  right-hand side to `−M⁻¹Aω̂`. That matters because A1 runs at `Δt = 1e-4` and so takes ten
+  times the steps of the other three: at ~10 ms per generic evaluation its `4·10⁵` stages would
+  be over an hour. The assembled path is checked against `vectorfield(MetriplecticFlow)` and
+  agrees to **9.2e-15**, which is what makes it a substitution rather than a second
+  implementation.
+
+- **`scripts/verify_spline.jl`** — 44 checks. All four brackets are symmetric, positive
+  semi-definite, and degenerate on the flow's own energy at **8.1e-16 … 1.3e-15**, giving
+  `dH/dt` at **2.8e-17 … 3.7e-16** normalised with `dS/dt < 0` throughout. `MΛ` is symmetric to
+  **3.7e-15**. The spline and spectral vector fields agree to **3.5e-4 … 4.8e-3** for A1–A3.
+
 ### Found
+
+- **A4's initial condition as printed is discontinuous on the torus, by 8.5 % of its peak.**
+  `eq:initial_gaussian` is written unmodified on `T²`, with no summation over periodic images.
+  How much that matters depends on how far the centre sits from the wrap, and A4 is the one run
+  where it is not negligible: its Gaussian is centred at `x₂ = 3π/2`, only `π/2` from the
+  boundary, with `w₂ = 1` and amplitude 1.8, so it still has the value
+  `1.8·exp(−(π/2)²) = 0.153` there. A1 is at `1e-69` and A2/A3 at `5.2e-5`.
+
+  This was found by the spline/spectral cross-check failing for A4 alone, at **6.9e-2** against
+  the **2.5e-4** of A2, whose Gaussian is otherwise identical. The control settles the cause:
+  periodising A4's Gaussian — the only change — brings the disagreement to **3.85e-4**, a
+  **180×** improvement landing exactly in the band A1–A3 occupy. So the disagreement is the
+  stated initial condition's own discontinuity and not a defect in either discretisation.
+  Periodising changes nothing for A1 (**1.2e-25**) or A2/A3 (**5.2e-5**).
+
+  Which reading the manuscript intends is not stated, so **both are run for A4 and both are
+  reported**: the literal form as the primary, being what is printed, and the periodised form
+  alongside it. `Gaussian` takes an `images` argument and `periodise` switches between them.
 
 - **A factor of 2 is missing from the §4.2 evolution equation as printed.** The equation just
   below `eq:projector-brackets` reads `∂_t u = −[u − u_Ω − H(u)‖φ‖⁻²φ]`. The manuscript's own
