@@ -28,7 +28,8 @@ import PoissonBrackets: canonical_bracket, hamiltonian_field, integrate, space, 
 
 export DOMAIN_LENGTH, DOMAIN_AREA
 export Gaussian, islands_h, ISLAND_CENTRES, CENTRAL_ISLANDS
-export agm, contour_length, contour_length_quadrature, contour_average, relaxation_time
+export agm, contour_length, contour_length_quadrature, contour_average, relaxation_time,
+       contour_samples, contour_deviation
 export analytic_minimiser, analytic_entropy_minimum
 export euler_minimiser, euler_entropy_minimum
 export RunSpec, SECTION4_RUNS, SECTION4_ORDER, initial_condition, periodise

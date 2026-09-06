@@ -298,9 +298,29 @@ inverse-square-root singularity at each of the two turning points.
 Both branches ``t > 0`` and ``t < 0`` are averaged, which is what closes the contour.
 """
 function contour_average(u₀, h, centre; n::Int = 400)
+    pts, wts = contour_samples(h, centre; n = n)
+    return sum(w * u₀(p[1], p[2]) for (p, w) in zip(pts, wts)) / sum(wts)
+end
+
+@doc raw"""
+    contour_samples(h, centre; n = 400)
+
+Points on the contour `h` of the island at `centre`, and the weights ``d\xi`` of the flow-time
+measure, as `(points, weights)`.
+
+Both branches ``t > 0`` and ``t < 0`` are returned, which is what closes the contour, so there
+are `2n` points. `sum(weights)` is [`contour_length`](@ref)`(h)`, and
+``\sum w_i f(x_i) / \sum w_i`` is [`contour_average`](@ref) — this is the rule that function
+integrates with, exposed so that a *run* can be sampled on the same points.
+
+The weight is ``d\xi = d\theta / (2\sqrt{h}\cos s)``, smooth and bounded, rather than the
+arclength ``ds/|\nabla h|``, which has an inverse-square-root singularity at each turning
+point.
+"""
+function contour_samples(h, centre; n::Int = 400)
     ξ, wq = _gauss_legendre(n, -π / 2, π / 2)
-    num = 0.0
-    den = 0.0
+    pts = NTuple{2, Float64}[]
+    wts = Float64[]
     for (θ, w) in zip(ξ, wq)
         cs, sn, ct, st = _contour_point(h, θ)
         # `atan(st, ct)` rather than `acos(ct)`: the latter loses half the mantissa where
@@ -309,10 +329,33 @@ function contour_average(u₀, h, centre; n::Int = 400)
         s = asin(sn)
         dξ = w / (2 * sqrt(h) * cs)
         x₁ = centre[1] + s
-        num += dξ * (u₀(x₁, centre[2] + t) + u₀(x₁, centre[2] - t))
-        den += 2dξ
+        push!(pts, (x₁, centre[2] + t), (x₁, centre[2] - t))
+        push!(wts, dξ, dξ)
     end
-    return num / den
+    return pts, wts
+end
+
+@doc raw"""
+    contour_deviation(u, h, centre; n = 400)
+
+The flow-time-weighted standard deviation of `u` along the contour `h`,
+``\big(\overline{u^2} - \bar{u}^2\big)^{1/2}``, with the average of
+[`contour_average`](@ref).
+
+This is what decays at the rate `eq:relaxation-time` predicts. The manuscript's own solution
+of the reduced equation is
+``v(t,\theta,h) = \sum_n \hat{v}_n(0) e^{-n^2 \kappa_h t + in\theta}`` with
+``\kappa_h = 1/\tau_h``: the ``n = 0`` mode is the contour average and is constant, and
+everything else decays, the slowest at ``e^{-t/\tau_h}``. So the deviation from the average
+decays at rate ``1/\tau_h`` asymptotically, and measuring that rate against the closed form is
+a direct test of `eq:relaxation-time` on the run rather than a restatement of it.
+"""
+function contour_deviation(u, h, centre; n::Int = 400)
+    pts, wts = contour_samples(h, centre; n = n)
+    W = sum(wts)
+    vals = [u(p[1], p[2]) for p in pts]
+    m = sum(w * v for (w, v) in zip(wts, vals)) / W
+    return sqrt(max(sum(w * (v - m)^2 for (w, v) in zip(wts, vals)) / W, 0.0))
 end
 
 """
@@ -474,26 +517,38 @@ The four runs of Section 4, keyed by name.
 | `a3` | 4.2 | projector | as `a2` | ``10^{-3}`` |
 | `a4` | 4.2 | projector | ``\cos(2x_2) + u_G``, ``1/N = 1.8``, ``x_0 = (\pi, 3\pi/2)`` | ``10^{-3}`` |
 
-Everything in this table is the manuscript's, **except the final time ``T = 10``**, which it
-never states. Fig. 6 places the vertex of the cone at ``t \approx 5``, so ``T = 10`` leaves
-as much trajectory again past the vertex to measure the asymptotic rates on. A1 has no such
-landmark and relaxes on the scale of [`relaxation_time`](@ref), which is ``1/4`` at an island
-centre and diverges at the separatrix; ``T = 10`` is 40 relaxation times at the centre, which
-resolves the island interiors while leaving the separatrix stalled — the behaviour Fig. 1
-shows. A1 nonetheless costs the most, because the manuscript's ``\Delta t = 10^{-4}`` is set
-by the explicit stability limit rather than by accuracy and buys it ten times the step count.
+Everything in this table is the manuscript's, **except the final time ``T``**, which it never
+states.
+
+**A1 takes ``T = 10``.** It relaxes on the scale of [`relaxation_time`](@ref), which is
+``1/4`` at an island centre and diverges at the separatrix, so this is 40 relaxation times at
+the centre: enough to resolve the island interiors while leaving the separatrix stalled, which
+is the behaviour Fig. 1 shows. A1 still costs the most of the four, because the manuscript's
+``\Delta t = 10^{-4}`` is set by the explicit stability limit rather than by accuracy and buys
+it ten times the step count of the others.
+
+**A2, A3 and A4 take ``T = 20``, and the reason is the rates rather than the figures.** Fig. 6
+puts the vertex of the cone at ``t \approx 5``, so ``T = 10`` would be ample to *draw* every
+panel of §4.2 — but not to *measure* its exponents. The linearised spectrum of the projector
+flow is exactly ``\{1 - 1/\lambda\}`` over the eigenvalues of ``-\Delta``
+(`scripts/verify_projector_rates.jl`), so the manuscript's rate ``\approx 1/2`` is the
+``\lambda = 2`` mode exactly, and the next mode up, ``\lambda = 4``, decays at ``3/4`` — only
+``1/4`` faster. It therefore contaminates a fitted rate as ``e^{-t/4}``, which is still
+**8.2 %** of the signal at ``t = 10`` and biases the fit to ``0.519``. At ``t = 20`` it is
+**0.67 %** and the bias is ``0.0017``. A ``T = 10`` run measured ``0.597`` for what is exactly
+``1/2``, which is a pre-asymptotic window and not a defect.
 """
 const SECTION4_RUNS = Dict(
     "a1" => RunSpec("a1", "4.1", :double,
         Gaussian((π, π + 0.1), (0.25, 0.4), 2π * 0.25 * 0.4), nothing,
         islands_h, 1e-4, 10.0),
     "a2" => RunSpec("a2", "4.1", :double,
-        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 10.0),
+        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 20.0),
     "a3" => RunSpec("a3", "4.2", :projector,
-        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 10.0),
+        Gaussian((π, π), (0.3, 1.0), 1.0), nothing, nothing, 1e-3, 20.0),
     "a4" => RunSpec("a4", "4.2", :projector,
         Gaussian((π, 3π / 2), (0.3, 1.0), 1 / 1.8), (x₁, x₂) -> cos(2x₂),
-        nothing, 1e-3, 10.0))
+        nothing, 1e-3, 20.0))
 
 "The four runs in the order Section 4 presents them."
 const SECTION4_ORDER = ("a1", "a2", "a3", "a4")
