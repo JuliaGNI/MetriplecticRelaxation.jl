@@ -1,31 +1,54 @@
 #
-# The diagnostics every Section 4 run reports, written once against both discretisations.
+# The diagnostics every run reports, written once against every discretisation.
 #
-# `Diagnostics` is the one place that knows which energy a run has -- linear for the analytic
-# test case, the elliptic ½(φ,ω) for the reduced Euler ones -- so the drivers and the figures
-# never branch on it. Everything below dispatches on the solver, so the spectral and the spline
-# run produce numbers that are comparable by construction rather than by convention.
+# `Diagnostics` is the one place that knows which energy and which entropy a run has -- linear
+# or elliptic energy, quadratic or Gibbs entropy -- so the drivers and the figures never branch
+# on it. Everything below dispatches on the solver, so the spectral, the spline and the
+# Section 5 Dirichlet run produce numbers that are comparable by construction rather than by
+# convention.
 #
 
 @doc raw"""
     Diagnostics(solver, spec)
 
 The conserved and monitored quantities of run `spec` on `solver`, which may be a
-[`SpectralTorus`](@ref) or a [`SplineTorus`](@ref).
+[`SpectralTorus`](@ref), a [`SplineTorus`](@ref) or an [`EulerSquare`](@ref).
 
 Holds whatever the run's energy needs precomputed: ``h - h_\Omega`` for the analytic test
 case, nothing for the reduced Euler ones, where the generating field is recomputed from the
 state.
 """
-struct Diagnostics{S, X}
+struct Diagnostics{S, X, P}
     solver::S
-    spec::RunSpec
+    spec::P
     hz::X
 end
 
 function Diagnostics(solver, spec::RunSpec)
     hz = spec.h === nothing ? nothing : _centred_h(solver, spec.h)
-    Diagnostics{typeof(solver), typeof(hz)}(solver, spec, hz)
+    Diagnostics{typeof(solver), typeof(hz), typeof(spec)}(solver, spec, hz)
+end
+
+@doc raw"""
+    Diagnostics(sq::EulerSquare, spec::EulerSpec)
+
+The Section 5.4 case, which has no prescribed generating field: ``\delta H/\delta u`` is
+always the stream function of the Dirichlet Poisson solve, so `hz` is `nothing` and
+[`potential`](@ref) reads ``\Lambda\hat\omega``.
+"""
+function Diagnostics(sq::EulerSquare, spec::EulerSpec)
+    Diagnostics{typeof(sq), Nothing, typeof(spec)}(sq, spec, nothing)
+end
+
+@doc raw"""
+    Diagnostics(box::GradShafranovBox, spec::GSSpec)
+
+The Section 5.5 case. As for §5.4 there is no prescribed generating field —
+``\delta H/\delta u`` is the flux function ``\psi`` of the ``\Delta^*`` solve — so `hz` is
+`nothing` and [`potential`](@ref) reads ``\Lambda\hat{j}``.
+"""
+function Diagnostics(box::GradShafranovBox, spec::GSSpec)
+    Diagnostics{typeof(box), Nothing, typeof(spec)}(box, spec, nothing)
 end
 
 function _centred_h(g::SpectralTorus, h)
@@ -50,6 +73,10 @@ potential(d::Diagnostics{<:SpectralTorus}, ω) = d.hz === nothing ?
 
 potential(d::Diagnostics{<:SplineTorus}, ω̂) = d.hz === nothing ? d.solver.Λ * ω̂ : d.hz
 
+potential(d::Diagnostics{<:EulerSquare}, ω̂) = d.solver.Λ * ω̂
+
+potential(d::Diagnostics{<:GradShafranovBox}, ĵ) = d.solver.Λ * ĵ
+
 @doc raw"""
     energy(d, ω)
 
@@ -71,7 +98,44 @@ end
 """
 entropy(d::Diagnostics, ω) = l2inner(d.solver, ω, ω) / 2
 
-"``\\int_\\Omega \\omega \\, dx``, which is zero for the whole run and is monitored as a check."
+@doc raw"""
+    entropy(d::Diagnostics{<:EulerSquare}, ω̂)
+
+The Section 5.4 entropy, which is the run's own: ``\tfrac12 \int_\Omega \omega^2`` for
+`:quadratic` and ``\int_\Omega \omega \log \omega`` for `:gibbs`.
+
+The generic method above is the quadratic one and would report a plausible number for B3 rather
+than an error, which is exactly why B3 gets a method instead of a flag.
+"""
+function entropy(d::Diagnostics{<:EulerSquare}, ω̂)
+    d.spec.entropy === :gibbs ?
+    hamiltonian(GibbsEntropy(), d.solver.space, ω̂) : l2inner(d.solver, ω̂, ω̂) / 2
+end
+
+@doc raw"""
+    entropy(d::Diagnostics{<:GradShafranovBox}, ĵ)
+
+The Section 5.5 entropy ``\fun{S} = \int_\Omega u^2/2(Cr^2+D) \, d\mu``, which in the state
+variable ``j = u/r`` is the quadratic form ``\tfrac12 \hat{j}^T \mathbb{W}\hat{j}`` — see
+[`gs_entropy_weight`](@ref).
+
+The generic method would report ``\tfrac12\int j^2 dx``, a plausible number for a different
+entropy, which is why this is a method and not a flag.
+"""
+entropy(d::Diagnostics{<:GradShafranovBox}, ĵ) = dot(ĵ, d.solver.W, ĵ) / 2
+
+@doc raw"""
+    vorticity_mass(d, ω)
+
+``\int_\Omega \omega \, dx``, monitored as a check.
+
+It is a **Casimir of the continuous bracket**, since ``\delta M/\delta u = 1`` has vanishing
+gradient. Whether the discretisation inherits that depends on whether the constant function is
+in the space: on Section 4's periodic torus it is, and the mass stays at zero to round-off; on
+Section 5.4's homogeneous-Dirichlet space it is not, and the mass drifts. That drift is not a
+defect — it is the same absence of the constants that makes §5.4's closed-form references
+exact, see [`SECTION5_RUNS`](@ref) — so it is reported rather than asserted on.
+"""
 vorticity_mass(d::Diagnostics, ω) = integrate(d.solver, ω)
 
 "``\\|\\phi\\|^2_{L^2}``, the second coordinate of the cone diagram of Fig. 6."
@@ -140,6 +204,42 @@ function entropy_monotone(tr::Trace; tol = 0.0)
     Δ = diff(tr.S) ./ abs(tr.S[1])
     worst = isempty(Δ) ? 0.0 : maximum(Δ)
     return (worst <= tol, worst)
+end
+
+@doc raw"""
+    entropy_plateau(tr; fraction = 0.01)
+
+Where the entropy stops sitting still, as `(t_break, i_break, held)`.
+
+`i_break` is the first sample at which ``S`` has fallen by more than `fraction` of its total
+fall over the trace, `t_break` its time, and `held` the largest ``|S(t) - S(0)| /
+(S(0) - S(T))`` over the samples strictly before it.
+
+This is what B2's claim needs and monotonicity cannot supply. A perturbed equilibrium
+dissipates nothing until the instability has grown, so its trace is flat and then falls, and a
+monotone trace that fell from the first step would satisfy "S decreases" just as well.
+Asserting the plateau means asserting `t_break` is many time steps in — not one — *and* that
+`held` is small; the second without the first passes for a run that never moved at all. It is
+deliberately **not** "a substantial fraction of ``T``": B2's plateau measures ``t_break \approx
+8.5`` against ``T = 150``, i.e. 5.7 % of it, because ``T`` is set by how long the *decay* takes
+and not by how long the plateau lasts. `run_b2.jl` therefore asserts `t_break >= 4\Delta t`.
+
+`ib = 0` is the sentinel for "the entropy never fell", returned both when the total fall is
+non-positive and when no sample crosses the threshold. A caller bounding `ib` from above — B1's
+control on this diagnostic does — has to exclude it explicitly, or it admits the very runs the
+bound is meant to reject.
+
+`fraction` is the threshold that separates "still flat" from "now falling", and it is a
+choice: at ``10^{-2}`` of the total fall it sits far above the round-off of ``S`` and far
+below the fall itself.
+"""
+function entropy_plateau(tr::Trace; fraction = 0.01)
+    total = tr.S[1] - tr.S[end]
+    total <= 0 && return (NaN, 0, NaN)
+    i = findfirst(k -> (tr.S[1] - tr.S[k]) > fraction * total, eachindex(tr.S))
+    i === nothing && return (NaN, 0, 0.0)
+    held = i > 1 ? maximum(abs(tr.S[k] - tr.S[1]) / total for k in 1:(i - 1)) : 0.0
+    return (tr.t[i], i, held)
 end
 
 ## The reduced Euler entropy minimiser, fitted
@@ -308,4 +408,35 @@ function scatter_data(d::Diagnostics{<:SplineTorus}, ω̂, N::Int = 128)
     t = d.solver
     φ̂ = d.hz === nothing ? t.Λ * ω̂ : project(t.space, x -> d.spec.h(x[1], x[2]))
     return (vec(spline_grid(t, φ̂, N)), vec(spline_grid(t, ω̂, N)))
+end
+
+@doc raw"""
+    scatter_data(d::Diagnostics{<:EulerSquare}, ω̂)
+
+The ``(\phi, \omega)`` cloud of the Section 5.4 figures, sampled on the space's own
+**quadrature** grid rather than on a uniform one.
+
+Section 4 resamples, because there the pair has to be comparable with a spectral run on its
+collocation grid. Here there is no second discretisation, and the quadrature grid is where the
+entropy, the mobility and every reference residual are evaluated — so drawing the cloud on the
+same points means the figure shows the data the checks were computed from.
+"""
+function scatter_data(d::Diagnostics{<:EulerSquare}, ω̂)
+    s = d.solver.space
+    return (field(s, d.solver.Λ * ω̂, (0, 0)), field(s, ω̂, (0, 0)))
+end
+
+@doc raw"""
+    scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
+
+The ``\big(\psi, u/(Cr^2+D)\big)`` cloud of the Section 5.5 figures, on the quadrature grid.
+
+The ordinate is **not** the state variable. §5.5 plots ``u/(Cr^2+D)`` rather than ``u``
+"which should be proportional to ``\psi`` if the system reaches a state consistent with
+`eq:gs-ref`" — the ordinate is ``\delta S/\delta j``, and the plot is the equilibrium condition
+drawn directly. See [`gs_ordinate`](@ref).
+"""
+function scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
+    box = d.solver
+    return (field(box.space, box.Λ * ĵ, (0, 0)), gs_ordinate(box, ĵ))
 end

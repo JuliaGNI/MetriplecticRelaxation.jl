@@ -1,9 +1,9 @@
 #!/usr/bin/env julia
 #
-# Regenerate every Section 4 figure from the saved runs.
+# Regenerate every figure from the saved runs.
 #
-#     julia --project=scripts scripts/figures.jl [a1 a2 a3 a4] [--runs-dir DIR]
-#                                                              [--results-dir DIR]
+#     julia --project=scripts scripts/figures.jl [a1 … a4 b1 b2 b3 c1] [--runs-dir DIR]
+#                                                                   [--results-dir DIR]
 #
 # Reads `<runs-dir>/<name>.jls`, which a `run_aN.jl` wrote, and draws into `<results-dir>`.
 # Neither directory is tracked: figures are regenerated, never committed, and the numbers quoted
@@ -17,7 +17,9 @@ using MetriplecticRelaxation: SECTION4_RUNS, SECTION4_ORDER, islands_h, relaxati
                               euler_entropy_minimum, contour_average, CENTRAL_ISLANDS,
                               DOMAIN_LENGTH, figure_fields, figure_traces, figure_scatter,
                               figure_cone, figure_rates, figure_tau, fit_rate,
-                              initial_condition
+                              initial_condition,
+                              SECTION5_RUNS, SECTION5_ORDER,
+                              euler_entropy_floor, SECTION55_ORDER
 using Printf
 using Serialization
 
@@ -55,7 +57,12 @@ end
 
 const flags, wanted = split_args(ARGS)
 const opts = parse_options(flags)
-const names = isempty(wanted) ? collect(SECTION4_ORDER) : wanted
+const requested = if isempty(wanted)
+    [collect(SECTION4_ORDER); collect(SECTION5_ORDER); collect(SECTION55_ORDER)]
+else
+    wanted
+end
+const names = filter(in(SECTION4_ORDER), requested)
 
 "The `N`-by-`N` grid a spectral run was sampled on, as two coordinate vectors."
 function grid_axes(N)
@@ -143,4 +150,66 @@ for name in names
                 p.snapshots.spectral_t, p.distance.spectral))
         end
     end
+end
+
+# =============================================================================================
+# Section 5.4: the `sv_*`, `pe_*` and `ge_*` panels.
+#
+# Two figures per run rather than the four §4 gets, and the difference is not laziness. There is
+# no second discretisation here, so there is nothing to overlay on the trace panel; there is no
+# cone, because `eq:theoretical-limits` is a statement about the periodic torus; and the field
+# maps would need the state resampled off the quadrature grid, which is a solver operation and
+# does not belong in a figure script. What the manuscript's §5.4 panels actually show — the
+# (φ, ω) cloud collapsing onto a curve, and the conservation and dissipation traces — is here.
+
+for name in filter(in(SECTION5_ORDER), requested)
+    path = joinpath(opts.runs_dir, name * ".jls")
+    if !isfile(path)
+        @printf("%-4s  not run yet (%s)\n", name, path)
+        continue
+    end
+    p = open(deserialize, path)
+    tr = last(p.traces)[2]
+    out(f) = joinpath(opts.results_dir, name * "_" * f)
+
+    # `S_η = λ₁,₁H₀` is the constrained minimum for `s = ω²/2` and has no closed form for
+    # `s = ω log ω`, so B3's panel gets no reference line rather than a fabricated one.
+    Sη = SECTION5_RUNS[name].entropy === :quadratic ?
+         euler_entropy_floor(tr.H[1]; λ = p.λ.discrete) : nothing
+    println(figure_traces(out("traces.png"), p.traces, Sη))
+
+    # The reference over the cloud: the straight line ω = λφ for the quadratic entropy, the
+    # curve ω = e^{λφ-1} for the Gibbs one. Both are the manuscript's own, drawn from the λ the
+    # driver measured and printed.
+    φv = p.scatter.final[1]
+    xs = range(extrema(φv)...; length = 200)
+    reference = if SECTION5_RUNS[name].entropy === :quadratic
+        (collect(xs), p.λ.fitted .* xs)
+    else
+        (collect(xs), exp.(p.λ.formula .* xs .- 1))
+    end
+    println(figure_scatter(out("scatter.png"), p.scatter.initial, p.scatter.final;
+        reference = reference, xlabel = "φ", ylabel = "ω"))
+end
+
+# §5.5, the Grad-Shafranov runs. The same two panels as §5.4 and for the same reasons, with two
+# differences that are the manuscript's own: the entropy floor is `λ_h H₀` for the Grad-Shafranov
+# eigenvalue rather than the Dirichlet one, and the scatter ordinate is `u/(Cr²+D)` rather than
+# the state — `eq:gs-ref` is a statement about that field, not about `u`.
+for name in filter(in(SECTION55_ORDER), requested)
+    path = joinpath(opts.runs_dir, name * ".jls")
+    if !isfile(path)
+        @printf("%-4s  not run yet (%s)\n", name, path)
+        continue
+    end
+    p = open(deserialize, path)
+    tr = last(p.traces)[2]
+    out(f) = joinpath(opts.results_dir, name * "_" * f)
+
+    println(figure_traces(out("traces.png"), p.traces, p.λ.discrete * tr.H[1]))
+
+    φv = p.scatter.final[1]
+    xs = range(extrema(φv)...; length = 200)
+    println(figure_scatter(out("scatter.png"), p.scatter.initial, p.scatter.final;
+        reference = (collect(xs), p.λ.fitted .* xs), xlabel = "ψ", ylabel = "u/(Cr²+D)"))
 end
