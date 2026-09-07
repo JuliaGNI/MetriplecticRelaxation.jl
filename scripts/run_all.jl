@@ -28,8 +28,11 @@ const SCRIPTS = String[
     "verify_euler.jl",
     # §5.5's reference eigenvalue, before anything that compares a run against it: the whole
     # point of `takeda.jl` is that λ = 0.030302 comes from a computation the relaxation has no
-    # part in, so its verification runs before the relaxation is built.
+    # part in, so its verification runs before the relaxation is built. `verify_gradshafranov.jl`
+    # then settles the measure and the state variable, and it relaxes two spaces as a control, so
+    # it is minutes rather than seconds.
     "verify_takeda.jl",
+    "verify_gradshafranov.jl",
     # The refinement study behind the deliberate deviation: the spline discretisation must converge
     # to the manuscript's spectral one, at the order the spline space has.
     "converge.jl",
@@ -48,9 +51,10 @@ const SCRIPTS = String[
     "run_b1.jl",
     "run_b2.jl",
     "run_b3.jl",
-    # §5.5  Grad-Shafranov on the rectangle. Cheaper than the B runs despite the larger
-    #       problem, because its Δt is set by accuracy rather than by cost: 100 steps at
-    #       Δt = 0.25 against B1's 200 at Δt = 1, and ~5 s per step at 18×21 cells.
+    # §5.5  Grad-Shafranov on the rectangle. Comparable in cost to the B runs: 400 steps at
+    #       Δt = 0.0625 against B1's 200 at Δt = 1, and ~2.7 s per step at 18×21 cells, plus a
+    #       280-step study of the step size itself -- some twenty minutes in all. Δt is small
+    #       because it is set by ACCURACY here, unlike §5.4's, where it was set by cost.
     #
     #       C2, the mapped disk, has no driver: its relaxation is deferred, and the reason is in
     #       `disk_eigenvalue` and in `CHANGELOG.md`. Its reference eigenvalue is not deferred and
