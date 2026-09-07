@@ -49,16 +49,15 @@ using Printf
 #     fmt                 0       0     94
 #     relerr              2      61     14
 #     normerr             0       0      4
-#     failures            0       0      0
-#     reset_failures!     0       0      0
 #
 # So `check_exact`, `fmt` and `normerr` have no caller here and are not dead: removing them
-# from this copy alone would only make the three copies differ.  `failures` and
-# `reset_failures!` are the two that are dead in all three, and removing THEM is one change
-# across three repositories rather than a change here -- see `reset_failures!` below.
-export header, check, check_exact, check_refined, summary, fmt, relerr, normerr,
-       failures, reset_failures!
+# from this copy alone would only make the three copies differ.  A name with no caller in
+# *any* column is a different matter, and comes out of all three copies at once.
+export header, check, check_exact, check_refined, summary, fmt, relerr, normerr
 
+# The tally.  `check` pushes and `summary` reads; nothing else touches it.  There is
+# no accessor because nothing needs the labels programmatically, and no reset because
+# `run_all.jl` gives every script its own subprocess, so each one starts empty.
 const _failures = String[]
 
 """
@@ -176,24 +175,5 @@ integrand as `scale`: it is the size of the terms that were actually formed and 
 which is the quantity the residual has to be small compared with.
 """
 normerr(a, b, scale) = abs(a - b) / max(abs(scale), 1e-300)
-
-"The labels of the checks that have failed so far."
-failures() = copy(_failures)
-
-"""
-    reset_failures!()
-
-Forget the recorded failures, so that one process can run two suites in succession.
-
-**Nothing in this tree calls it, and `run_all.jl` in particular does not.**  That runner gives
-every script its own subprocess -- `success(pipeline(cmd; stdout, stderr))` -- so each starts
-with an empty tally and there is nothing to reset between them; a docstring saying otherwise
-described a runner that never existed.  Zero callers here, in `PoissonBrackets/scripts/` and in
-`Papers/Metriplectic Relaxation to Equilibria/scripts/`, by grep in all three and by the code
-graph in the two that are indexed.  It is left in place because this file is one of three
-near-identical copies: dropping it, and `failures` with it, is a single change across all
-three, not a change to the downstream copy.
-"""
-reset_failures!() = (empty!(_failures); nothing)
 
 end # module
