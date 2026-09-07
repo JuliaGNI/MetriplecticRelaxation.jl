@@ -275,6 +275,83 @@ here than in a library:
   cannot supply: the time at which `S` has fallen by 1 % of its total fall, and how flat it was
   before then.
 
+- **`src/euler.jl` — `euler_axis` and `euler_grid`, and with them §5.4's field maps.** The
+  `sv_*`, `pe_*` and `ge_*` colour maps were the one §5.4 panel that had never been drawn, and
+  the reason was real: everything else §5.4 measures — both entropies, the mobility, the
+  `(φ, ω)` cloud, every reference residual — lives on the space's own **quadrature** grid, whose
+  nodes sit in Gauss–Legendre clusters of `p+1` per cell. A colour map on those would show the
+  quadrature rule as much as the state. `euler_grid` resamples through the space's own
+  `evaluate`, so the map shows the same field the checks were computed from and not a second
+  interpolation of it; `φ` needs no separate method, being `sq.Λ * ω̂`. This is the
+  homogeneous-Dirichlet counterpart of `spline_grid` and differs from it in one deliberate way:
+  the torus axis omits its right endpoint because `x = 0` and `x = L` are the same point there,
+  and here they are not.
+
+  **Recorded choices, none of them the manuscript's.** 129 samples per axis, over `[0,1]`
+  with **both endpoints included**; odd on purpose, so that the initial condition's peak at
+  `(½,½)` falls on a node rather than straddling two — `figure_fields` shares one colour range
+  between its panels, and a peak sampled off-centre under-reports it. The contours drawn over
+  both panels are those of the **final** stream function, which is §4's own convention for the
+  reduced Euler runs and is the visual form of the equilibrium claim. The colour map is taken
+  from the data rather than fixed per run: `:balance` diverges about its own midpoint and is
+  therefore only honest where the shared range straddles zero. Measured over both panels,
+  `min/max` is **−0.999** for B2, whose added mode makes the vorticity genuinely signed, and
+  exactly **0** for B1 and B3, whose minimum *is* the Dirichlet edge — so B2 gets `:balance` and
+  the other two `:viridis`, with no threshold needed to separate the cases. Field-map ranges:
+  B1 `[0, 0.9987]`, B2 `[−1.0011, 1.0024]`, B3 `[0, 10.0871]`.
+
+  **The three runs were not re-run for this.** The space `euler_grid` resamples through is fixed
+  by `(cells, degree, state)`, all three of which the payload already records, so
+  `scripts/figures.jl` rebuilds the `EulerSquare` — one sparse Cholesky at `N = 676` — instead of
+  the grids being carried in `runs/*.jls`. That is seconds per figure revision against the 57
+  minutes, two hours and step-size study the *Results* sections below cost. `nbasis` is asserted
+  against the recorded `N`, so a payload written on a different space stops the script rather
+  than producing a picture of the wrong state.
+
+- **`scripts/verify_euler_grid.jl`** — 16 checks on that resampling, because a four-line
+  interpolation is exactly the kind of code that looks right and is silently wrong. The axis
+  carries 129 nodes over `[0,1]` at `h = 0.0078125` with `x₁ = 0` and `x_N = 1` exactly; a
+  trapezoidal integral of a resampled B1 state agrees with the space's own `∫ω` at
+  **6.323e-05** relative (`8.2430449243e-02` against `8.2435661894e-02`), which settles *which*
+  domain the grid covers by a route sharing no code with `euler_axis`. A polynomial the space
+  contains is reproduced to round-off at both degrees — **1.041e-16** for bi-degree `(2,2)` on
+  amplitude `6.25e-02`, **1.318e-16** for bi-degree `(3,3)` on `3.70e-02`. Every one of the four
+  edges is **exactly** `0.000e+00` for *random* degrees of freedom, not merely for a projection
+  of something that already vanished there.
+
+  **Three controls that must fail, and do.** The bi-degree-`(3,3)` polynomial on the degree-2
+  space is off by **5.556e-05**, relative **1.501e-03** — so "reproduced to round-off" is a
+  statement about the space and the two rows above are not vacuous. On the `:free` space the same
+  edge measurement reads **2.2802** against an interior range of `[−1.6735, 1.3830]`, which is
+  what a resampler that clamped, wrapped or dropped its boundary samples would hide. And the
+  index convention is measured rather than asserted: read the other way round, the asymmetric
+  test field is wrong by **5.564e-01** against **3.457e-05** read correctly, a ratio of
+  **16094×** on a field of peak 1.
+
+  **The transposition check needs an asymmetric test function or it proves nothing** — a radially
+  symmetric bump centred in the square passes a transposed implementation exactly. It therefore
+  carries B1's own widths, `w₁² = 0.01` against `w₂² = 0.07`, times `sin(πx₁)sin(πx₂)`. The
+  factor is not decoration; see *Found*. The other side of the same check is a rate rather than a
+  threshold: the direct error is projection error and must fall at `O(h^{p+1})`, so **8× per
+  halving of `h` at degree 2 is the tolerance, with no margin added**. Measured **1.38e-02 →
+  1.13e-03 → 3.46e-05**, i.e. **12×** and **33×** — both above the law, because `w₁ = 0.1`
+  against `h = 1/16` leaves the coarsest mesh still shedding a pre-asymptotic term. A rate
+  *below* 8 would say the resampling and not the projection was setting the floor.
+
+  **Dependency state.** Measured against the same tree as every other §5.4 number here —
+  PoissonBrackets `23dba270c9b1c10f9576a9a09043a0f4790d0cd8` and SimpleSplines
+  `6c199ca136d88712bf7505129153538a324e5c03`, both read out of `Manifest.toml` rather than
+  assumed. See *Results — §5.4, the dependency state* below.
+
+  **The suite is 407 tests, up from 401, green, and 97 s of testset time.** The six new ones are
+  the coarse `21²`-grid form of the same claims, in `Euler Square Tests`: the endpoints, the four
+  edges for random degrees of freedom, and an asymmetric polynomial the degree-3 space contains,
+  reproduced to round-off and wrong by order one read transposed. Degree 3 rather than the runs'
+  own degree 2, because the boundary-vanishing bi-degree-`(2,2)` polynomials are
+  `span{x(1−x)y(1−y)}` — one-dimensional, symmetric, and therefore blind to a transposition.
+  Earlier entries in this file quoting **401** record the count at the time they were written and
+  are left as they stand.
+
 ### Changed
 
 - **`scripts/check.jl` drops `failures` and `reset_failures!`.** The follow-up the export-list
@@ -856,6 +933,25 @@ here than in a library:
   departure is justified by the run rather than asserted in a comment. The alternative — a
   positivity-preserving limiter, or evolving `log ω` — is a different scheme, and this
   reproduction does not write one.
+
+- **§5.4's initial condition does not vanish on `∂Ω`, by 2.8 % of its peak along two of the four
+  edges** — and the field maps are where that becomes visible. The Gaussian's two widths are very
+  different: `w₁² = 0.01` leaves `ω₀(0, ½) = 1.39e-11` on the `x₁` edges, negligible, but
+  `w₂² = 0.07` is wide enough to reach the others and leaves **`ω₀(½, 0) = 2.81e-02`** against a
+  peak of 1. Every `ω_h ∈ V_D` is exactly zero there, so the initial panel of each `sv_*`,
+  `pe_*` and `ge_*` map shows the bump pinched to zero along the `x₂ = 0` and `x₂ = 1` edges.
+
+  This is §5.4's own setup and not a choice of this reproduction — the homogeneous-Dirichlet
+  space is what makes both of its closed-form references exact, per the entry above — and it is
+  the same mismatch `interior_weights` already exists to exclude from B3's reference fit. It is
+  recorded because it *looks* like a resampling defect and is not, and `verify_euler_grid.jl`
+  archives the measurement that tells the two apart: the max-norm error of the projected Gaussian
+  is **2.8116e-02 at 16, 32 and 64 cells alike**, located at `(½, 0)` every time. It is
+  mesh-*independent* because `ω_h` is exactly zero there, so the error simply *is* `ω₀(½,0)`; an
+  interpolation defect would converge and this cannot. The convergence check in the same section
+  therefore multiplies its test function by
+  `sin(πx₁)sin(πx₂)` — which makes it admissible while leaving the asymmetry that the
+  transposition control depends on — and the boundary values are reported on their own row.
 
 ### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
 

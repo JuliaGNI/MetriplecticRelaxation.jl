@@ -19,7 +19,9 @@ using MetriplecticRelaxation: SECTION4_RUNS, SECTION4_ORDER, islands_h, relaxati
                               figure_cone, figure_rates, figure_tau, fit_rate,
                               initial_condition,
                               SECTION5_RUNS, SECTION5_ORDER,
-                              euler_entropy_floor, SECTION55_ORDER
+                              euler_entropy_floor, SECTION55_ORDER,
+                              EulerSquare, euler_axis, euler_grid
+using PoissonBrackets: nbasis
 using Printf
 using Serialization
 
@@ -155,12 +157,25 @@ end
 # =============================================================================================
 # Section 5.4: the `sv_*`, `pe_*` and `ge_*` panels.
 #
-# Two figures per run rather than the four §4 gets, and the difference is not laziness. There is
-# no second discretisation here, so there is nothing to overlay on the trace panel; there is no
-# cone, because `eq:theoretical-limits` is a statement about the periodic torus; and the field
-# maps would need the state resampled off the quadrature grid, which is a solver operation and
-# does not belong in a figure script. What the manuscript's §5.4 panels actually show — the
-# (φ, ω) cloud collapsing onto a curve, and the conservation and dissipation traces — is here.
+# Three figures per run rather than the four §4 gets, and the one that is missing is missing for
+# a reason: there is no second discretisation here, so there is nothing to overlay on the trace
+# panel, and there is no cone, because `eq:theoretical-limits` is a statement about the periodic
+# torus.
+#
+# The field maps need the state resampled off the quadrature grid onto a uniform one, which is a
+# solver operation rather than a plotting one — so it is `euler_grid` in `src/euler.jl`, checked
+# in `verify_euler_grid.jl`, and only called from here. The space it resamples through is fixed
+# by `(cells, degree, state)`, all three of which the payload records, so the square is REBUILT
+# here rather than the grids being carried in the payload: one sparse Cholesky against re-running
+# an hour of Newton solves per figure revision. `nbasis` is checked against the recorded `N` so
+# that a payload written against a different space stops the script instead of drawing a figure
+# of the wrong state.
+
+# Samples per axis for the §5.4 field maps. Odd on purpose: all three runs share an initial
+# condition centred at (½,½), and an odd node count puts a sample exactly on the peak rather than
+# straddling it — which matters because `figure_fields` shares one colour range between its two
+# panels. 129 is 16 641 evaluations per field, seconds in all.
+const SECTION5_SAMPLES = 129
 
 for name in filter(in(SECTION5_ORDER), requested)
     path = joinpath(opts.runs_dir, name * ".jls")
@@ -172,6 +187,32 @@ for name in filter(in(SECTION5_ORDER), requested)
     tr = last(p.traces)[2]
     out(f) = joinpath(opts.results_dir, name * "_" * f)
 
+    # ---------------------------------------------------------------------------------------
+    # The field maps: ω at t = 0 and t = T, with the contours of the FINAL stream function over
+    # them — the same convention as §4's reduced Euler panels, and the visual form of the
+    # equilibrium claim, since the relaxed vorticity is constant on those contours.
+    state = SECTION5_RUNS[name].state
+    sq = EulerSquare(p.opts.cells, p.opts.degree; state = state)
+    nbasis(sq.space) == p.opts.N || error(
+        "$(name).jls was written on a space of N = $(p.opts.N) degrees of freedom, but " *
+        "EulerSquare($(p.opts.cells), $(p.opts.degree); state = :$(state)) has " *
+        "N = $(nbasis(sq.space))")
+    xs = euler_axis(SECTION5_SAMPLES)
+    ω₀g = euler_grid(sq, tr.initial, SECTION5_SAMPLES)
+    ωTg = euler_grid(sq, tr.final, SECTION5_SAMPLES)
+    # §4's rule, taken from the data rather than hard-coded per run: `:balance` diverges about
+    # its own midpoint, so it is only honest where the shared colour range of `figure_fields`
+    # actually straddles zero. B2's added mode makes it straddle; B1's vortex and B3's floored
+    # state are both single-signed, and drawing those with a diverging map would put white at
+    # 0.47 where a reader takes it for zero. No threshold is needed to separate the cases:
+    # measured over both panels, `min/max` is `-0.999` for B2 and exactly `0` for B1 and B3,
+    # whose minimum is the Dirichlet edge itself.
+    lo, hi = extrema(vcat(vec(ω₀g), vec(ωTg)))
+    println(figure_fields(out("fields.png"), xs, xs, ω₀g, ωTg,
+        euler_grid(sq, sq.Λ * tr.final, SECTION5_SAMPLES);
+        label = "ω", colormap = lo < 0 && hi > 0 ? :balance : :viridis))
+
+    # ---------------------------------------------------------------------------------------
     # `S_η = λ₁,₁H₀` is the constrained minimum for `s = ω²/2` and has no closed form for
     # `s = ω log ω`, so B3's panel gets no reference line rather than a fabricated one.
     Sη = SECTION5_RUNS[name].entropy === :quadratic ?

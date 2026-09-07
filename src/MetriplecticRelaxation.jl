@@ -63,7 +63,7 @@ export SQUARE_LENGTH, DIRICHLET_EIGENVALUE
 export EulerSpec, SECTION5_RUNS, SECTION5_ORDER, gaussian_w2, perturbation_b2, B3_FLOOR
 export EulerSquare, GibbsEntropy, euler_state, euler_flow, dirichlet_eigenvalue,
        euler_entropy_floor, eigenmode_fit, gibbs_lambda, gibbs_fit, gibbs_residual,
-       interior_weights, state_extrema
+       interior_weights, state_extrema, euler_axis, euler_grid
 
 include("euler.jl")
 
