@@ -26,6 +26,10 @@ const SCRIPTS = String[
     "verify_projector_factor.jl",
     "verify_projector_rates.jl",
     "verify_euler.jl",
+    # §5.5's reference eigenvalue, before anything that compares a run against it: the whole
+    # point of `takeda.jl` is that λ = 0.030302 comes from a computation the relaxation has no
+    # part in, so its verification runs before the relaxation is built.
+    "verify_takeda.jl",
     # The refinement study behind the deliberate deviation: the spline discretisation must converge
     # to the manuscript's spectral one, at the order the spline space has.
     "converge.jl",

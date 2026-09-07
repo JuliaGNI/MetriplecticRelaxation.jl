@@ -698,6 +698,89 @@ Everything else is A3's. **Both readings of the ambiguous initial condition were
   unaffected — 1.022, against A3's 1.000 — because in `‖ε‖²` the modes are separated by 0.5
   instead of 0.25.
 
+- **`src/takeda.jl` — the §5.5 Grad–Shafranov problem and its classical solver.** The
+  Herrnegger–Maschke profile constants, the measure `dμ = dr dz / r`, the mobility
+  `M = Cr²+D` of `eq:M-condition`, the profile `f(r,y) = (Cr²+D)y`, the Galerkin matrix of
+  `−Δ*` and of the profile, and the iteration of Takeda & Tokuda Eqs. (2.111)–(2.112) on a
+  uniform finite-difference grid. **It carries no relaxation and depends on no bracket**, which
+  is the point: the manuscript's `λ = 0.030302` is quoted as coming from "a standard
+  Grad–Shafranov solver", so reproducing it from the metriplectic flow would settle nothing —
+  the flow is what is being checked.
+
+  **`f` is linear here, so the "eigenvalue problem" really is one.** `f(r,·)` is defined as the
+  inverse of `∂_y s(r,·)`, and for `s = y²/2(Cr²+D)` that inverse is `(Cr²+D)y`. So
+  `eq:Grad-Shafranov-equation` reads `−Δ*ψ = λ(Cr²+D)ψ`, a linear symmetric generalised
+  eigenvalue problem, and Takeda's iteration — which is written for a general profile — becomes
+  inverse power iteration whose fixed point is the smallest eigenvalue. That is what makes an
+  algorithmically independent eigensolve available as a check on the iteration.
+
+  **Recorded choice — the normalisation, which is what `λ` comes out of.** The classical scheme
+  fixes the flux on the magnetic axis and reads `λ` off the amplitude the elliptic solve
+  returns: `−Δ*ψ̃ = f(r,ψᵏ)`, then `λᵏ⁺¹ = ψ_axis / max ψ̃` and `ψᵏ⁺¹ = λᵏ⁺¹ψ̃`. `ψ_axis = 1`,
+  stopping tolerance `1e-13` on the relative increment of `λ`, cap 2000 sweeps; measured, 65
+  sweeps on the `64²` grid. The reference itself (pp. 22–23 of Takeda & Tokuda 1991) was not
+  available to this session, so what is implemented is the scheme of that *class* as the
+  manuscript describes it, and the docstring says so.
+
+  **Recorded choice — the discretisation, and why it is not the runs'.** A second-order
+  conservative five-point stencil for `div_μ ∇` with `1/r` at the **cell faces**, on the
+  manuscript's own "uniform grid of `64 × 64` nodes", with the measure lumped. Face values
+  rather than node values because they are shared between neighbours, which makes the matrix
+  symmetric exactly and the Rayleigh quotient meaningful. It deliberately shares no assembly
+  code with the spline space the relaxation runs on, so agreement between the two is evidence
+  about the problem.
+
+- **`scripts/verify_takeda.jl`** — 27 checks in six sections, **eight of them controls that must
+  fail and do**: the measure dropped from `Δ*`, from the profile matrix, from both, the current
+  profile substituted for the state profile in the eigensolver and again inside the iteration
+  itself, and an unweighted stiffness matrix put through the `−Δ*` identity.
+
+### Results — the Grad–Shafranov reference eigenvalue λ (§5.5, step 11)
+
+Dependency state as for §5.4 above, re-confirmed against `Manifest.toml`: **PoissonBrackets
+`a13598b`**, tree `23dba270c9b1c10f9576a9a09043a0f4790d0cd8`; **SimpleSplines `c74e37d`**, tree
+`6c199ca136d88712bf7505129153538a324e5c03`.
+
+- **The manuscript's `λ = 0.030302` is a discrete number, and the continuum eigenvalue is
+  `0.0302346260`.** Nine digits, three routes that share no assembly code. On the rectangle the
+  problem *separates* — `Δ*` has no mixed term and `Cr²+D` depends on `r` alone — so
+  `ψ = R(r)sin(π(z+9.5)/19)` reduces it to a one-dimensional Sturm–Liouville problem, which a
+  1D spline Galerkin solve settles to a spread of **2.23e-11** over degrees 3–4 and 32–128
+  cells. A **two-dimensional** Galerkin solve that uses no separation at all agrees to
+  **4.9e-09**, which is what makes the separation legitimate rather than assumed. And the
+  finite-volume iteration converges onto it at a **fitted order 2.06** over six grids,
+  Richardson-extrapolating from 48²/96² to within **2.7e-06**.
+
+- **The printed number is reproduced to 0.25 %, and that is the honest figure.** Takeda's
+  iteration on the manuscript's own `64 × 64` node grid gives **0.0302248584**, i.e.
+  `−2.55e-03` relative to `0.030302`. The last three digits of the printed value cannot be
+  recovered, because recovering them means recovering the authors' element, mesh and stopping
+  tolerance from one sentence of description.
+
+  What *can* be said, and is measured: the printed value sits **0.22 % above** the continuum
+  limit, and a conforming Galerkin eigenvalue approaches its limit **from above** — so the sign
+  is the expected one. Tensor-product `Q₁` on this geometry brackets it: `0.0304253` at 16
+  cells, `0.0303193` at 24, `0.0302823` at 32, `0.0302469` at 63, every one above the limit. So
+  `0.030302` is what a low-order conforming element gives on a mesh of the stated order, and
+  `0.0302346260` is what any of them converges to.
+
+- **The measure is load-bearing in both places, and each is an O(1) error.** `dμ = dr dz/r` has
+  to appear in `−Δ*` **and** in the profile matrix. Measured on the same space: the consistent
+  pair gives `0.0302346`, no measure anywhere `0.0264256` (−13 %), the measure in `Δ*` only
+  `0.0060680` (a factor 5 low), and in the profile matrix only `0.1199882` (a factor 4 high).
+  None of the three is a tolerance-scale slip.
+
+- **The manuscript prints two profiles, and mistaking them costs a factor 4.6.** §5.5 gives the
+  equilibrium current as `(4π/c)J_φ = λ(Cr + D/r)ψ` and, equivalently, the state condition as
+  `u/(Cr²+D) = λψ` — the same statement, because `u = r(4π/c)J_φ`. Reading the current form as
+  `f` gives `λ = 0.1402132` against `0.0301943` on a `32²` grid, and it fails the defining
+  identity `∂_y s(r, f(r,y)) = y` by **86 %**. Both are checked.
+
+- **`ψ` is single-signed on the interior**, minimum `6.31e-04` against a peak of 1 at `r = 5`,
+  which is what makes the scatter plot of `u/(Cr²+D)` against `ψ` a single line through the
+  origin rather than two branches. The second axial mode is `0.0364702`, a ratio of **1.206**
+  above the first, so the relaxed state's axial structure is unambiguous.
+
 ### Results — the deliberate deviation converges to the paper's method
 
 `scripts/converge.jl`, against a `192²` Fourier reference after 200 steps. Cubic B-splines are
