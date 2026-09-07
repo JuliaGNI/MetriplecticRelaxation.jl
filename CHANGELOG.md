@@ -384,6 +384,38 @@ here than in a library:
 
 ### Fixed
 
+- **`projector_run.jl`'s three numeric bounds now bound something.** All three were constants
+  read off one run, and two of them by three to five orders.
+
+  The cross-discretisation rows switch on the run, for the reason `verify_spline.jl` already
+  switches: A4 as printed is the only run whose two discretisations are handed *different*
+  initial data, because `eq:initial_gaussian` is discontinuous on `T²` by 8.5 % of A4's own
+  peak. Re-measured on this manifest, and identical to what #2 recorded:
+
+  | run | final state | `H₀` | `S(0)` | `S(T)` |
+  |:--|--:|--:|--:|--:|
+  | `a3` | 1.419e-07 | 5.31e-08 | 2.78e-08 | 5.31e-08 |
+  | `a4` as printed | 5.367e-04 | 1.29e-04 | 9.73e-05 | 1.29e-04 |
+  | `a4-periodic` | 1.264e-07 | 5.94e-09 | 1.90e-09 | 5.91e-09 |
+
+  So `1e-1` and `5e-2` become `5e-3`/`1e-3` for A4 as printed and `1e-6`/`5e-7` for the other
+  two — 7.0× to 9.4× the worst measurement each has to admit, on quantities that are
+  deterministic.
+
+  **Measured, the old constants admitted a badly degraded discretisation and the new ones
+  reject it.** `run_a3.jl --spectral 64 --cells 16 --degree 1` — two spline degrees and a
+  factor 4 in cells below the run's own space — gives final state **1.284e-02**, `H₀`
+  **2.57e-02**, `S(0)` **2.78e-02**, `S(T)` **1.31e-02**. Every one of those **passes** the old
+  `1e-1`/`5e-2` and **fails** the new bounds.
+
+  The vorticity-rate row's lower bound goes from `0.47` to **0.495**. Its own comment gives the
+  reason as a finite-window curvature term "worth a few times 1e-3", which supports about
+  0.495, not 0.47 — an order of magnitude more slack than the stated reason, so the two are
+  reconciled in favour of the reason. Measured, the smallest rate in this window is A3's
+  **0.50679** (both discretisations), A4's is 0.59607/0.59605 and A4-periodic's 0.59678, so
+  0.495 clears the smallest by 2.3 %. Not fragile: even the degraded control run above still
+  measures **0.50635**.
+
 - **`verify_spline.jl`'s vector-field agreement tolerance switches on the run, as its
   initial-condition row above it already did.** One `1e-1`, set by A4, left A1–A3 asserted
   **20× to 280×** loose: measured, A1 gives `4.80e-03`, A2 `2.69e-03`, A3 `3.51e-04` and A4
