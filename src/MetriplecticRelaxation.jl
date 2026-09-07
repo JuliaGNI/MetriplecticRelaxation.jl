@@ -67,8 +67,15 @@ export gs_density, herrnegger_mobility, herrnegger_profile
 export gs_stiffness, gs_profile_matrix, gs_eigenvalue, separable_eigenvalue
 export TakedaGrid, takeda_iterate, takeda_eigenvalue, takeda_field,
        takeda_order, takeda_extrapolate
+export DISK_MAP, GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM
+export disk_map, DiskTriangulation, disk_area, disk_matrices, disk_eigenvalue
 
 include("takeda.jl")
+
+export GSSpec, SECTION55_RUNS, SECTION55_ORDER, gs_entropy_weight
+export GradShafranovBox, gs_state, gs_flow, gs_current, gs_ordinate, gs_fit, gs_rayleigh
+
+include("gradshafranov.jl")
 
 export Diagnostics, potential, energy, entropy, vorticity_mass, potential_norm²,
        Trace, record!, energy_error, entropy_monotone, entropy_plateau, best_fit_euler,

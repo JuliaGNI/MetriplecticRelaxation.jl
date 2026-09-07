@@ -2,7 +2,7 @@
 #
 # Regenerate every figure from the saved runs.
 #
-#     julia --project=scripts scripts/figures.jl [a1 … a4 b1 b2 b3] [--runs-dir DIR]
+#     julia --project=scripts scripts/figures.jl [a1 … a4 b1 b2 b3 c1] [--runs-dir DIR]
 #                                                                   [--results-dir DIR]
 #
 # Reads `<runs-dir>/<name>.jls`, which a `run_aN.jl` wrote, and draws into `<results-dir>`.
@@ -19,7 +19,7 @@ using MetriplecticRelaxation: SECTION4_RUNS, SECTION4_ORDER, islands_h, relaxati
                               figure_cone, figure_rates, figure_tau, fit_rate,
                               initial_condition,
                               SECTION5_RUNS, SECTION5_ORDER, DIRICHLET_EIGENVALUE,
-                              euler_entropy_floor
+                              euler_entropy_floor, SECTION55_ORDER
 using Printf
 using Serialization
 
@@ -57,8 +57,11 @@ end
 
 const flags, wanted = split_args(ARGS)
 const opts = parse_options(flags)
-const requested = isempty(wanted) ? [collect(SECTION4_ORDER); collect(SECTION5_ORDER)] :
-                  wanted
+const requested = if isempty(wanted)
+    [collect(SECTION4_ORDER); collect(SECTION5_ORDER); collect(SECTION55_ORDER)]
+else
+    wanted
+end
 const names = filter(in(SECTION4_ORDER), requested)
 
 "The `N`-by-`N` grid a spectral run was sampled on, as two coordinate vectors."
@@ -187,4 +190,26 @@ for name in filter(in(SECTION5_ORDER), requested)
     end
     println(figure_scatter(out("scatter.png"), p.scatter.initial, p.scatter.final;
         reference = reference, xlabel = "φ", ylabel = "ω"))
+end
+
+# §5.5, the Grad-Shafranov runs. The same two panels as §5.4 and for the same reasons, with two
+# differences that are the manuscript's own: the entropy floor is `λ_h H₀` for the Grad-Shafranov
+# eigenvalue rather than the Dirichlet one, and the scatter ordinate is `u/(Cr²+D)` rather than
+# the state — `eq:gs-ref` is a statement about that field, not about `u`.
+for name in filter(in(SECTION55_ORDER), requested)
+    path = joinpath(opts.runs_dir, name * ".jls")
+    if !isfile(path)
+        @printf("%-4s  not run yet (%s)\n", name, path)
+        continue
+    end
+    p = open(deserialize, path)
+    tr = last(p.traces)[2]
+    out(f) = joinpath(opts.results_dir, name * "_" * f)
+
+    println(figure_traces(out("traces.png"), p.traces, p.λ.discrete * tr.H[1]))
+
+    φv = p.scatter.final[1]
+    xs = range(extrema(φv)...; length = 200)
+    println(figure_scatter(out("scatter.png"), p.scatter.initial, p.scatter.final;
+        reference = (collect(xs), p.λ.fitted .* xs), xlabel = "ψ", ylabel = "u/(Cr²+D)"))
 end

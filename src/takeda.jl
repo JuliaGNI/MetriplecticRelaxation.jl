@@ -465,3 +465,223 @@ function takeda_extrapolate(λa, λb, na, nb)
     q = (nb / na)^2
     return λb + (λb - λa) / (q - 1)
 end
+
+## C2's geometry, and its reference eigenvalue
+
+@doc raw"""
+The constants of `eq:mapping`, the map that carries the unit disk onto C2's domain:
+``e = 1.4``, ``\varepsilon = 0.3``, ``a = 4``, ``b = 3``, ``c = 6.3``, and
+``\xi = 1/\sqrt{1 - \varepsilon^2/4}``.
+
+A slightly modified form of the map of Zoni and Güçlü, which the manuscript cites — the same
+paper whose subject is the ``C^1`` polar-spline construction C2's relaxation would need.
+"""
+const DISK_MAP = (e = 1.4, ε = 0.3, a = 4.0, b = 3.0, c = 6.3, ξ = 1 / sqrt(1 - 0.3^2 / 4))
+
+@doc raw"""
+    disk_map(s, θ)
+
+`eq:mapping`: the point of C2's domain that the unit-disk point ``s e^{i\theta}`` maps to,
+as ``(r, z)``.
+
+```math
+r = a \Big[ b + \frac{1}{\varepsilon}
+    \Big( 1 - \sqrt{1 + \varepsilon(\varepsilon + 2 s \cos\theta)} \Big) \Big] , \qquad
+z = c \, \frac{e \, \xi \, s \sin\theta}
+             {2 - \sqrt{1 + \varepsilon(\varepsilon + 2 s \cos\theta)}} .
+```
+
+The image is ``r \in [8, 16]``, ``z \in [-9.749139, 9.749139]``, of area ``114.777`` — the
+Jacobian integrated over the parameter disk, and comparable to C1's rectangle, which has area
+114 — with the pole ``s = 0`` at ``r = 11.412925``. That last number is what makes C2's initial
+condition consistent: its Gaussian is centred at ``r_0 = 12``, just outboard of the axis.
+None of the four appears in the manuscript; all four are what its constants produce.
+
+**The map degenerates at ``s = 0``**: the whole circle ``s = 0`` collapses to one point, so
+the parametrisation is not a diffeomorphism there, and that is the whole reason C2's relaxation
+is deferred rather than run. See [`disk_eigenvalue`](@ref) for why the *eigenvalue* is
+nevertheless computable without regularising anything.
+"""
+function disk_map(s, θ)
+    (; e, ε, a, b, c, ξ) = DISK_MAP
+    q = sqrt(1 + ε * (ε + 2s * cos(θ)))
+    return (a * (b + (1 - q) / ε), c * e * ξ * s * sin(θ) / (2 - q))
+end
+
+@doc raw"""
+The eigenvalue ``\lambda = 0.002599`` the manuscript quotes for C2, "computed by a standard
+Grad-Shafranov solver".
+
+As for [`GS_LAMBDA_RECTANGLE`](@ref) this is a discrete number: the continuum value is
+[`GS_LAMBDA_DISK_CONTINUUM`](@ref)` = 0.0025970`, and the printed one sits ``0.075\,\%`` above
+it, from above as a conforming Galerkin eigenvalue must. A ``P_1`` triangulation of 64 radial
+by 128 angular cells gives ``0.00259909``, which rounds to the printed value.
+"""
+const GS_LAMBDA_DISK = 0.002599
+
+@doc raw"""
+The continuum Grad-Shafranov eigenvalue of C2's mapped domain, ``\lambda = 0.0025970``.
+
+Measured, not quoted: [`disk_eigenvalue`](@ref) converges onto it at second order over six
+refinements and Richardson-extrapolates to this value from the two finest. Five digits rather
+than the rectangle's nine, because there is no separation of variables here and no
+one-dimensional reference to be had — see [`separable_eigenvalue`](@ref).
+"""
+const GS_LAMBDA_DISK_CONTINUUM = 0.0025970
+
+@doc raw"""
+    DiskTriangulation(n, m)
+
+A triangulation of C2's domain: `n` rings by `m` angular sectors of the unit disk, pushed
+through [`disk_map`](@ref), with the pole as node 1.
+
+`triangles` are index triples, `boundary` the node indices on ``\partial\Omega`` (the image of
+``s = 1``). The innermost ring is `m` triangles with a vertex at the pole; every outer ring is
+`2m` triangles.
+"""
+struct DiskTriangulation{T}
+    r::Vector{T}
+    z::Vector{T}
+    triangles::Vector{NTuple{3, Int}}
+    boundary::Vector{Int}
+end
+
+function DiskTriangulation(n::Int, m::Int)
+    (n ≥ 1 && m ≥ 3) || throw(ArgumentError(
+        "a disk needs at least one ring and three sectors, got $(n) × $(m)"))
+    (r₀, z₀) = disk_map(0.0, 0.0)
+    r, z = [r₀], [z₀]
+    for i in 1:n, j in 1:m
+
+        (rj, zj) = disk_map(i / n, 2π * (j - 1) / m)
+        push!(r, rj)
+        push!(z, zj)
+    end
+    node(i, j) = 1 + (i - 1) * m + mod(j - 1, m) + 1
+    tris = NTuple{3, Int}[(1, node(1, j), node(1, j + 1)) for j in 1:m]
+    for i in 1:(n - 1), j in 1:m
+
+        push!(tris, (node(i, j), node(i + 1, j), node(i + 1, j + 1)))
+        push!(tris, (node(i, j), node(i + 1, j + 1), node(i, j + 1)))
+    end
+    DiskTriangulation(r, z, tris, [node(n, j) for j in 1:m])
+end
+
+Base.length(t::DiskTriangulation) = length(t.r)
+
+function Base.show(io::IO, t::DiskTriangulation)
+    print(io, "DiskTriangulation(", length(t.r), " nodes, ", length(t.triangles),
+        " triangles, ", length(t.boundary), " on ∂Ω)")
+end
+
+@doc raw"""
+    disk_area(t::DiskTriangulation)
+
+The area of the triangulated domain, ``\sum_e |T_e|`` — the check that the map has been
+transcribed correctly.
+
+It approaches the true area ``114.777`` **from below**, at second order, because a polygon
+inscribed in a convex boundary is smaller than the region it approximates: measured, `114.605`
+at 32 × 64, `114.734` at 64 × 128 and `114.766` at 128 × 256. So a check against the exact
+value needs a tolerance that says which mesh it was measured on.
+"""
+function disk_area(t::DiskTriangulation{T}) where {T}
+    s = zero(T)
+    for (i, j, k) in t.triangles
+        s += abs((t.r[j] - t.r[i]) * (t.z[k] - t.z[i]) -
+                 (t.r[k] - t.r[i]) * (t.z[j] - t.z[i])) / 2
+    end
+    return s
+end
+
+@doc raw"""
+    disk_matrices(t::DiskTriangulation)
+
+The ``P_1`` Galerkin matrices of C2's eigenvalue problem on the interior nodes of `t`,
+
+```math
+\mathbb{K}_{IJ} = \int_\Omega \nabla \phi_I \cdot \nabla \phi_J \, d\mu , \qquad
+\mathbb{B}_{IJ} = \int_\Omega (C r^2 + D) \, \phi_I \phi_J \, d\mu ,
+```
+
+returned as `(K, B, free)` with `free` the interior node indices.
+
+Both weights are taken at the element **centroid**, which is exact for a linear weight and
+second order in general — the same order as ``P_1``'s eigenvalue error, so it is not the term
+that limits the result. `verify_takeda.jl` measures the order rather than taking that on trust.
+"""
+function disk_matrices(t::DiskTriangulation{T}) where {T}
+    N = length(t.r)
+    Is, Js, Ks, Bs = Int[], Int[], T[], T[]
+    for e in t.triangles
+        x = (t.r[e[1]], t.r[e[2]], t.r[e[3]])
+        y = (t.z[e[1]], t.z[e[2]], t.z[e[3]])
+        det = (x[2] - x[1]) * (y[3] - y[1]) - (x[3] - x[1]) * (y[2] - y[1])
+        area = abs(det) / 2
+        iszero(area) && continue
+        # ∇φ of the three linear shape functions, constant on the element
+        gx = (y[2] - y[3], y[3] - y[1], y[1] - y[2]) ./ det
+        gy = (x[3] - x[2], x[1] - x[3], x[2] - x[1]) ./ det
+        rc = (x[1] + x[2] + x[3]) / 3
+        # ∫ dμ over the element, and the same against the profile: dμ = dr dz / r
+        wk = area / rc
+        wb = area * herrnegger_mobility(rc) / rc
+        for p in 1:3, q in 1:3
+
+            push!(Is, e[p])
+            push!(Js, e[q])
+            push!(Ks, wk * (gx[p] * gx[q] + gy[p] * gy[q]))
+            # the exact P₁ element mass matrix, area/12 × (1 + δ_pq), scaled by the weight
+            push!(Bs, wb * (p == q ? 1 / 6 : 1 / 12))
+        end
+    end
+    free = setdiff(1:N, t.boundary)
+    return (sparse(Is, Js, Ks, N, N)[free, free],
+        sparse(Is, Js, Bs, N, N)[free, free], free)
+end
+
+@doc raw"""
+    disk_eigenvalue(n, m; tol = 1e-13, maxiter = 2000)
+
+The smallest eigenvalue of ``-\Delta^*\psi = \lambda (Cr^2+D)\psi`` on C2's mapped domain, by
+inverse iteration on the ``P_1`` matrices of [`disk_matrices`](@ref).
+
+# Why a triangulation of the physical domain, and why this is not what C2's relaxation needs
+
+The obvious route is the isogeometric one: solve on the parameter square
+``(s,\theta) \in [0,1] \times [0,2\pi)``, periodic in ``\theta``, pulling the metric back
+through [`disk_map`](@ref). It cannot be taken here, and the obstruction is not a matter of
+effort: at ``s = 0`` the map collapses the whole circle to a point, so a function on the
+parameter square is single-valued at the pole only if its ``\theta``-dependence there is
+constrained, and a tensor-product spline space provides no such constraint. Enforcing it needs
+a **polar-spline** construction — the first two rows of the ``s``-basis replaced by a
+three-function pole triangle — which is what Zoni and Güçlü build and what SimpleSplines does
+not have.
+
+A triangulation of the **physical** domain has no such problem: the pole is an ordinary node,
+``P_1`` needs only ``C^0``, and nothing is regularised, punctured or floored. So the reference
+eigenvalue is computable exactly as the manuscript's own solver computes it.
+
+What this does *not* give is C2's relaxation. That needs ``\nabla\psi`` on the space the state
+lives in, sampled at the quadrature points of a [`CollisionBracket`](@ref) — and
+PoissonBrackets' only two-dimensional space is the tensor-product
+[`TensorSplineSpace`](@ref). There is no ``P_1`` triangular `DiscreteSpace`, so this mesh
+cannot carry the flow, and the parameter square cannot carry the pole. Either obstruction alone
+defers C2; `CHANGELOG.md` records both.
+"""
+function disk_eigenvalue(n::Int, m::Int; tol = 1e-13, maxiter::Int = 2000)
+    t = DiskTriangulation(n, m)
+    (K, B, free) = disk_matrices(t)
+    F = cholesky(Symmetric(K))
+    x = ones(length(free))
+    λ = 0.0
+    for _ in 1:maxiter
+        y = F \ (B * x)
+        λnew = dot(x, B, x) / dot(x, B * y)
+        conv = abs(λnew - λ) < tol * abs(λnew)
+        λ = λnew
+        x = y ./ maximum(abs, y)
+        conv && break
+    end
+    return (; λ, dof = length(free), area = disk_area(t))
+end

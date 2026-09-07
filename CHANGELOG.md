@@ -730,10 +730,54 @@ Everything else is A3's. **Both readings of the ambiguous initial condition were
   code with the spline space the relaxation runs on, so agreement between the two is evidence
   about the problem.
 
-- **`scripts/verify_takeda.jl`** — 27 checks in six sections, **eight of them controls that must
-  fail and do**: the measure dropped from `Δ*`, from the profile matrix, from both, the current
-  profile substituted for the state profile in the eigensolver and again inside the iteration
-  itself, and an unweighted stiffness matrix put through the `−Δ*` identity.
+- **`scripts/verify_takeda.jl`** — 38 checks in seven sections, **ten of them controls that must
+  fail and do**: the measure dropped from `Δ*`, from the profile matrix, from both, on each of
+  the two geometries; the current profile substituted for the state profile in the eigensolver
+  and again inside the iteration itself; and an unweighted stiffness matrix put through the
+  `−Δ*` identity.
+
+- **`src/gradshafranov.jl` — the §5.5 relaxation on the rectangle.** `GradShafranovBox` (the
+  space, the `Δ*` solution operator, the energy and entropy forms), `gs_state`, `gs_flow`,
+  `gs_fit`, `gs_rayleigh`, `gs_ordinate`, `gs_current`, and `SECTION55_RUNS` with C1's recorded
+  choices. Plus `Diagnostics`, `potential`, `entropy` and `scatter_data` methods in
+  `src/diagnostics.jl`, so the §5.5 run produces numbers comparable with §4's and §5.4's by
+  construction.
+
+  **The state variable is `j = u/r`, not `u`, and that is forced rather than presentational.**
+  The manuscript's state is `u = (4π/c) r J_φ` with functional derivatives taken in the
+  `L²(μ)` product. `CollisionBracket` forms `𝔾 = M⁻¹𝔸M⁻¹` with the space's own mass matrix, so
+  energy conservation — `𝔾 ∂H/∂û = 0` — holds exactly when `M⁻¹∂H/∂û` is the bracket's
+  generating field `ψ̂`. In the `u` formulation the elliptic solve is `Λ = (K^μ)⁻¹M^μ`, so
+  `∂H/∂û = M^μψ̂` and the degeneracy would need the **μ-weighted** mass matrix in the sandwich,
+  which no tensor-product mass operator provides. Substituting `u = rj` cancels the measure
+  against the Jacobian: `∫ f δu dμ = ∫ f δj dx`, every functional derivative is numerically the
+  same function in both formulations, and the weak `Δ*` solve becomes `Λ = (K^μ)⁻¹M` with the
+  **plain** mass matrix on the right. Then `Λᵀ K^μ = M` and `∂H/∂ĵ = Mψ̂` exactly.
+
+  Measured, on the same space and the same initial state: `𝔾 ∂H/∂ĵ` is **8.99e-16** in the `j`
+  formulation and **3.74e-03** in the `u` one — a factor of 4·10¹². And `Λᵀ K^μ = M` holds to
+  **1.93e-15**. The energy is still the poloidal magnetic energy: `½ĵᵀMΛĵ` equals
+  `½ψ̂ᵀK^μψ̂ = ½∫|∇ψ|²dμ` to the last bit, and the entropy `½ĵᵀWĵ` equals
+  `∫u²/2(Cr²+D) dμ` to the last bit, both checked rather than asserted.
+
+  The price is recorded: `u_h = r j_h` is a spline times `r` and not itself a spline, so the
+  trial space is `rV` where the manuscript's is `V`. Same order, different discretisation.
+
+- **`scripts/verify_gradshafranov.jl`** — 42 checks in ten sections, **fourteen of them
+  controls**, run before the relaxation. **`scripts/run_c1.jl`** and `run_gs` in `scripts/runner.jl`; a
+  §5.5 block in `scripts/figures.jl`, whose scatter ordinate is `u/(Cr²+D)` and not the state,
+  because `eq:gs-ref` is a statement about that field.
+
+- **`test/runtests.jl` — a `Grad-Shafranov Problem Tests` set of 135 assertions**, coarse-grid
+  versions of every §5.5 claim including four controls: the squared widths read as widths, the
+  current profile read as the state profile, the `u` formulation's lost degeneracy, and the `dx`
+  reading of `eq:entropy-2D`. The suite is 401 tests and green in 90 s.
+
+- **`src/takeda.jl` also carries C2's geometry and its reference eigenvalue.** `disk_map`
+  (`eq:mapping`), `DiskTriangulation`, `disk_matrices`, `disk_eigenvalue`, `disk_area`. C2's
+  *relaxation* is deferred; its printed `λ = 0.002599` is not, and reproducing it needs no
+  polar spline because a triangulation of the **physical** domain has the pole as an ordinary
+  node.
 
 ### Results — the Grad–Shafranov reference eigenvalue λ (§5.5, step 11)
 
@@ -780,6 +824,155 @@ Dependency state as for §5.4 above, re-confirmed against `Manifest.toml`: **Poi
   which is what makes the scatter plot of `u/(Cr²+D)` against `ψ` a single line through the
   origin rather than two branches. The second axial mode is `0.0364702`, a ratio of **1.206**
   above the first, so the relaxed state's axial structure is unambiguous.
+
+### Results — C1, Grad–Shafranov on the rectangle (§5.5, figs `gsr_*`)
+
+**The recorded choices, all of them:** `Δt = 0.0625`, `T = 25` (400 steps), `18 × 21` cells of
+degree 2 (`N = 378`, state space `V_D`, `j ∈ V_D`), quadrature at SimpleSplines' default
+`⌈3p/2⌉ = 3` points per cell per axis, the nonlinear solve `Integrator`'s `NewtonSolver` with a
+dense LU, run to `default_f_abstol = 3.35e-13` absolute rather than to an iteration count, and
+the stopping criterion the excess entropy `(S − λ_h H₀)/λ_h H₀`. §5.5 states none of these. The
+reasoning for each, with the measurements behind it, is in `SECTION55_RUNS`; what each produced
+is below.
+
+- **`H` is conserved at the Newton residual tolerance, and the bound has a derivation.** `H` is
+  quadratic, so the midpoint increment satisfies `ΔH = ∂H/∂ĵ(j̄)·(ĵⁿ⁺¹−ĵⁿ)` exactly; the
+  increment is `−Δt 𝔾(j̄)∂S/∂ĵ(j̄)` plus the Newton residual `ρ`, and the first term is
+  annihilated by the degeneracy — so `ΔH = ∂H/∂ĵ(j̄)·ρ` per step, **independent of `Δt`**.
+  Measured over 400 steps: `max|ΔH|/H₀ = 5.324e-12`, `max|ΔH| = 1.654e-12` on
+  `H₀ = 3.106658399115e-01`, against `f_abstol/H₀ = 1.08e-12` — a factor **4.93** on a
+  random-walk bound of `√400 = 20`.
+
+- **`S` falls monotonically to `λ_h H₀` and then stops, and three diagnostics land on signed
+  round-off because of it.** `S: 2.6564011390e-02 → 9.3929192900e-03`, and
+  `(S(T) − λ_h H₀)/λ_h H₀ = −5.3172e-12` — it reaches the floor to twelve digits, and completes
+  `1.000000000003` of the reduction available to it. Once there, the *evaluated* differences
+  float: the worst entropy increment over the whole trace is `+7.836e-16` relative to `S₀`, and
+  the entropy production reaches `−3.78e-18` against a maximum of `4.5348e-01` — a min/max of
+  `−8.3e-18`. **Those are the equilibrium being reached, not a defect**, and `run_c1.jl` says so
+  by splitting each claim: strict where the quantity is above round-off, sign-to-scale
+  everywhere. The `Δt = 0.25` run that preceded this one did *not* reach that floor (its
+  smallest production was `8.4e-12`), which is what makes the distinction worth drawing.
+
+  For this entropy monotonicity is a **theorem at any step size**, unlike §5.4's B3: `S` is
+  quadratic, so the same midpoint identity gives `S(ĵⁿ⁺¹) − S(ĵⁿ) = −Δt gᵀ𝔾g ≤ 0` by positive
+  semi-definiteness alone.
+
+- **The scatter collapses onto `u/(Cr²+D) = λψ`, and reaches the floor set by a projection.**
+  `‖u/(Cr²+D) − λψ‖/‖u/(Cr²+D)‖` in `L²(μ)` falls from **6.3955e-01** at `t = 0` to
+  **6.9980e-05**, which is *exactly* the number `verify_gradshafranov.jl` measures for the space
+  itself (`6.998e-05` at 18×21). It is not zero and should not be: the discrete equilibrium
+  satisfies `Π(σj) = λψ` — the `L²` **projection** of the ordinate is proportional to `ψ` — so
+  the pointwise residual is the projection error of `σj`, and it falls with the mesh
+  (`2.2e-03`, `4.3e-04`, `1.5e-04`, `7.0e-05` at 6×7, 10×12, 14×16, 18×21). The run is asked to
+  reach that floor, and it reaches it to four digits.
+
+- **Three estimates of `λ`, and they agree in the order their errors predict.** The Rayleigh
+  quotient `S/H = 0.03023479920660` equals the space's own eigenvalue
+  `λ_h = 0.03023479920660` to **1.95e-15** — that is the sharp statement that the run arrived,
+  both being the smallest eigenvalue of the pencil `(MΛ, W)`. The pointwise fit gives
+  `0.030234799155`, `−1.70e-09` relative, and the ratio `|Δλ|/(λ_h · rel²) = **0.3463**` — a
+  clean second-order law, the §5.5 counterpart of §5.4's measured `0.2474`.
+
+- **The relaxation and the classical solver agree.** `λ_h = 0.030234799207` against Takeda's
+  iteration on the manuscript's own 64×64 node grid, `0.0302248584`: **+3.29e-04** relative,
+  which is the finite-volume grid's own error and the larger of the two. Against the continuum
+  eigenvalue, **+5.73e-06**. Against the manuscript's printed `0.030302`, **+2.22e-03** — and
+  the printed value is `+2.23e-03` from the continuum one, so the reproduction and the paper
+  disagree by essentially exactly the paper's own discretisation error, from the same side.
+
+- **`Δt = 0.0625` is where the trajectory becomes resolved, and the coarse-mesh answer does not
+  transfer.** Measured on the run's own space at `t = 2.5`: `‖Δt − Δt/2‖ = 2.738e-04`,
+  `‖Δt/2 − Δt/4‖ = 7.390e-05`, **ratio 3.705** — implicit midpoint's second order. At
+  `Δt = 0.25` the same difference is `1.35e-02` with a ratio of 9.8, i.e. above the asymptotic
+  regime: Crank–Nicolson damps a stiff mode by only `4/(λΔt)` per step, so too large a step does
+  not blow up, it slows the *apparent* relaxation as `Δt²`. **Nothing else in the run's output
+  would have caught it** — `H`, monotonicity and the equilibrium are all `Δt`-independent — which
+  is why the first pass of this run, at `Δt = 0.25`, passed every other check and was still
+  wrong about the trajectory. The stiffest mode's rate grows like `h⁻²`, so the resolved step
+  depends on the mesh and the `10 × 12` study that first suggested `Δt = 0.25` did not carry
+  over to `18 × 21`.
+
+- **The mass drifts by +83.7 %**, `∫u dμ = ∫j dx` from `1.0097733919` to `1.8545274685`. Not a
+  defect and not asserted on: the constant function is not in `V_D`, which is the same absence
+  that forces the equilibrium's multipliers `μ` and `c` to zero and so makes `eq:gs-ref` exact.
+  §5.4's B1 drifts +46 % for the same reason.
+
+- **The state-space control separates cleanly, and it has to be a relaxation.** Both spaces
+  relaxed for 240 steps on `10 × 12` cells: the free space `V` misses `eq:gs-ref` by
+  **2.5171e-01** against `V_D`'s **4.2761e-04** — a factor **589** — and carries the three
+  multipliers `(μ, c₁, c₂)` at **2456×** the size, while its mass is held to **4.4e-16** where
+  `V_D`'s drifts **+83.5 %**. That is S8's §5.4 finding reproduced on §5.5's problem.
+
+  **The cheaper eigen-based control reports nothing, and that is worth recording.** The pencil
+  `(MΛ, W)` carries no mass constraint, so its lowest eigenvector is the `μ = 0, c = 0` member in
+  *both* spaces: measured, the two eigenvalues agree to **5.36e-09** and both eigenvectors fit
+  `eq:gs-ref` to `4e-04`. What separates the spaces is that the **flow** in `V` conserves the
+  mass and the momenta and so cannot reach that member from an initial state whose mass is
+  nonzero. A control built on the fixed-point problem instead of on the flow would have passed
+  while measuring the wrong thing — the first version of this check did exactly that.
+
+- **Cost:** 400 steps in **1 090 s** at `N = 378` (2.7 s per step), plus 280 steps for the
+  step-size study. The manuscript's `64 × 64` would be `N = 4096` and, at the measured `O(N³)`
+  scaling of the nonlocal bracket's Jacobian, days.
+
+### Results — C2's reference eigenvalue λ = 0.002599, on the mapped disk (§5.5, step 13, half)
+
+**C2's relaxation is deferred; its reference eigenvalue is reproduced.** The two are separable
+because the obstruction is about the *state space*, not about the geometry.
+
+- **`eq:mapping` is transcribed correctly, and three consequences of the printed constants say
+  so.** The image of the unit disk is `r ∈ [8, 16]` exactly, `z ∈ [−9.749139, 9.749139]`, of
+  area **114.77699** (the Jacobian integrated over the parameter disk) — against C1's
+  rectangle's 114, so the two experiments are on domains of deliberately comparable size — with
+  the pole at `r = 11.412925`, just inboard of the Gaussian centre `r₀ = 12` the manuscript
+  specifies. None of those four numbers is in the paper; all four are what its constants
+  produce. The triangulated area approaches the exact one **from below** at second order —
+  114.605, 114.734, 114.766 at 32×64, 64×128, 128×256 — because an inscribed polygon is smaller
+  than the region it approximates, so a check on it names its mesh.
+
+- **λ = 0.002599 is reproduced to 3.3e-05 relative — all six printed digits.** `P₁` finite
+  elements on a triangulation of the *physical* domain, at 64 radial by 128 angular cells
+  (8065 degrees of freedom), give **0.0025990851**. The continuum value is **0.0025970**,
+  established by a **fitted order 1.9895** over seven refinements
+  (0.0027256, 0.0026547, 0.0026296, 0.0026116, 0.0026052, 0.0026007, 0.0025991) and a Richardson
+  extrapolation landing within **1.4e-05** of it. So the printed number sits **0.077 %** above
+  the continuum limit — the same pattern as C1's `0.030302`, and from the same side, because a
+  conforming Galerkin eigenvalue converges from above.
+
+- **A control that behaves differently on the two geometries, reported rather than tuned.**
+  Dropping `dμ` from `Δ*` alone moves λ to `0.00020973` (−92 %) and from the profile matrix
+  alone to `0.03101267` (a factor 12); but dropping it from **both** moves λ only to
+  `0.00255080`, **−2.3 %**. The weight sits on both sides of the Rayleigh quotient and largely
+  cancels, and what survives is set by how far `r` varies: a factor of 2 on the disk against a
+  factor of 7 on the rectangle, where the same control is −13 %. **C1 is the geometry that
+  discriminates between the readings of the measure, and C2 is not** — a check run only on the
+  disk would be far weaker than it looks.
+
+### Results — C2's relaxation, deferred, and the two independent reasons
+
+Not a partial result and not a regularised one. Two obstructions, either sufficient on its own:
+
+1. **The pole of `eq:mapping`.** The isogeometric route — solve on the parameter square
+   `(s,θ) ∈ [0,1]×[0,2π)`, periodic in `θ`, pulling the metric back through the map — is the
+   right one and needs only a Jacobian-weighted assembly on top of `tensor_weighted_matrix`.
+   But at `s = 0` the map collapses the **whole circle to a single point**: measured, the spread
+   of `disk_map(0, θ)` over sixteen angles is `0.000e+00`. A function on the parameter square is
+   therefore single-valued at the pole only if its `θ`-dependence there is constrained, and a
+   tensor-product spline space provides no such constraint — so the space is not even `C⁰` at
+   the pole, let alone `C¹`. Imposing it needs a **polar-spline** construction, the first two
+   rows of the `s`-basis replaced by a three-function pole triangle, which is what
+   Zoni & Güçlü build — the very paper the manuscript cites for the map — and which
+   SimpleSplines does not have.
+2. **PoissonBrackets has no triangular space.** Its only two-dimensional `DiscreteSpace` is the
+   tensor-product `TensorSplineSpace`, and `CollisionBracket` reads `∇ψ` at *its* quadrature
+   points. The `P₁` triangulation that gives the reference eigenvalue above cannot carry the
+   flow, and the parameter square cannot carry the pole.
+
+**Nothing was regularised to get around this.** No `ε` floor on `s`, no puncture at the origin,
+no modified basis near `s = 0`. C2 joins the 3D Beltrami case (§6.4) as deferred, and for a
+related reason: both need a spline construction the stack does not have — a polar space here, a
+de Rham complex there.
 
 ### Results — the deliberate deviation converges to the paper's method
 

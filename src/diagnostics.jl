@@ -40,6 +40,17 @@ function Diagnostics(sq::EulerSquare, spec::EulerSpec)
     Diagnostics{typeof(sq), Nothing, typeof(spec)}(sq, spec, nothing)
 end
 
+@doc raw"""
+    Diagnostics(box::GradShafranovBox, spec::GSSpec)
+
+The Section 5.5 case. As for §5.4 there is no prescribed generating field —
+``\delta H/\delta u`` is the flux function ``\psi`` of the ``\Delta^*`` solve — so `hz` is
+`nothing` and [`potential`](@ref) reads ``\Lambda\hat{j}``.
+"""
+function Diagnostics(box::GradShafranovBox, spec::GSSpec)
+    Diagnostics{typeof(box), Nothing, typeof(spec)}(box, spec, nothing)
+end
+
 function _centred_h(g::SpectralTorus, h)
     H = torus_field(g, h)
     return H .- mean_value(g, H)
@@ -63,6 +74,8 @@ potential(d::Diagnostics{<:SpectralTorus}, ω) = d.hz === nothing ?
 potential(d::Diagnostics{<:SplineTorus}, ω̂) = d.hz === nothing ? d.solver.Λ * ω̂ : d.hz
 
 potential(d::Diagnostics{<:EulerSquare}, ω̂) = d.solver.Λ * ω̂
+
+potential(d::Diagnostics{<:GradShafranovBox}, ĵ) = d.solver.Λ * ĵ
 
 @doc raw"""
     energy(d, ω)
@@ -98,6 +111,18 @@ function entropy(d::Diagnostics{<:EulerSquare}, ω̂)
     d.spec.entropy === :gibbs ?
     hamiltonian(GibbsEntropy(), d.solver.space, ω̂) : l2inner(d.solver, ω̂, ω̂) / 2
 end
+
+@doc raw"""
+    entropy(d::Diagnostics{<:GradShafranovBox}, ĵ)
+
+The Section 5.5 entropy ``\fun{S} = \int_\Omega u^2/2(Cr^2+D) \, d\mu``, which in the state
+variable ``j = u/r`` is the quadratic form ``\tfrac12 \hat{j}^T \mathbb{W}\hat{j}`` — see
+[`gs_entropy_weight`](@ref).
+
+The generic method would report ``\tfrac12\int j^2 dx``, a plausible number for a different
+entropy, which is why this is a method and not a flag.
+"""
+entropy(d::Diagnostics{<:GradShafranovBox}, ĵ) = dot(ĵ, d.solver.W, ĵ) / 2
 
 @doc raw"""
     vorticity_mass(d, ω)
@@ -391,4 +416,19 @@ same points means the figure shows the data the checks were computed from.
 function scatter_data(d::Diagnostics{<:EulerSquare}, ω̂)
     s = d.solver.space
     return (field(s, d.solver.Λ * ω̂, (0, 0)), field(s, ω̂, (0, 0)))
+end
+
+@doc raw"""
+    scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
+
+The ``\big(\psi, u/(Cr^2+D)\big)`` cloud of the Section 5.5 figures, on the quadrature grid.
+
+The ordinate is **not** the state variable. §5.5 plots ``u/(Cr^2+D)`` rather than ``u``
+"which should be proportional to ``\psi`` if the system reaches a state consistent with
+`eq:gs-ref`" — the ordinate is ``\delta S/\delta j``, and the plot is the equilibrium condition
+drawn directly. See [`gs_ordinate`](@ref).
+"""
+function scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
+    box = d.solver
+    return (field(box.space, box.Λ * ĵ, (0, 0)), gs_ordinate(box, ĵ))
 end

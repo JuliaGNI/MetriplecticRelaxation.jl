@@ -48,11 +48,16 @@ const SCRIPTS = String[
     "run_b1.jl",
     "run_b2.jl",
     "run_b3.jl",
+    # §5.5  Grad-Shafranov on the rectangle. Cheaper than the B runs despite the larger
+    #       problem, because its Δt is set by accuracy rather than by cost: 100 steps at
+    #       Δt = 0.25 against B1's 200 at Δt = 1, and ~5 s per step at 18×21 cells.
+    #
+    #       C2, the mapped disk, has no driver: its relaxation is deferred, and the reason is in
+    #       `disk_eigenvalue` and in `CHANGELOG.md`. Its reference eigenvalue is not deferred and
+    #       is checked in `verify_takeda.jl`.
+    "run_c1.jl",
     # The figures, last, because they read what the runs wrote.
     "figures.jl"
-    # §5.5  Grad-Shafranov: the rectangle, then the mapped disk
-    #   "run_c1.jl",
-    #   "run_c2.jl",
 ]
 
 const RULE = "="^67

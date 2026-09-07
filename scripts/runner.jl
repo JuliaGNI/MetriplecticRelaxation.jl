@@ -18,13 +18,14 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               spectral_state, spectral_rhs, spectral_step,
                               spline_state, spline_rhs, spline_step, record!,
-                              EulerSquare, euler_state, euler_flow, state_extrema
+                              EulerSquare, euler_state, euler_flow, state_extrema,
+                              GradShafranovBox, gs_state, gs_flow, gs_fit
 using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production
 using Printf
 using Serialization
 
-export Options, parse_options, run_spectral, run_spline, run_euler, save_run, section,
-       report
+export Options, parse_options, run_spectral, run_spline, run_euler, run_gs, save_run,
+       section, report
 
 @doc raw"""
     Options
@@ -244,6 +245,53 @@ function run_euler(spec, opts::Options; Δt = spec.Δt, T = spec.T, cells::Int =
         end
     end
     return (sq, d, f, tr)
+end
+
+@doc raw"""
+    run_gs(spec, opts; Δt = spec.Δt, T = spec.T, cells = spec.cells,
+           degree = spec.degree, state = :dirichlet, observer = nothing)
+
+Integrate a Section 5.5 Grad-Shafranov run on a [`GradShafranovBox`](@ref) with
+`ImplicitMidpoint`, returning `(box, diagnostics, flow, trace)`.
+
+Same integrator, same nonlinear solve and same reasoning about the dense Jacobian as
+[`run_euler`](@ref); what differs is the geometry, the measure and the state variable
+``j = u/r``, all of which are the box's business rather than the loop's.
+
+The resolution comes from `spec` rather than from `opts` — §5.5's mesh is **anisotropic**, so a
+single `--cells` would have to pick one of the two axes, and the ratio is a recorded choice
+([`SECTION55_RUNS`](@ref)) rather than a knob. `cells` overrides it as a pair for the
+convergence and control studies the driver runs.
+"""
+function run_gs(spec, opts::Options; Δt = spec.Δt, T = spec.T, cells = spec.cells,
+        degree::Int = spec.degree, state::Symbol = :dirichlet, observer = nothing)
+    box = GradShafranovBox(cells, degree; state = state)
+    d = Diagnostics(box, spec)
+    ĵ = gs_state(box, spec)
+    f = gs_flow(box)
+    integ = Integrator(f, ImplicitMidpoint(), Δt; û₀ = ĵ)
+
+    nsteps = round(Int, T / Δt)
+    stride = max(1, nsteps ÷ opts.samples)
+    tr = Trace(ĵ)
+    record!(tr, d, 0.0, ĵ)
+    observer === nothing || observer(box, f, 0.0, ĵ)
+
+    t0 = time()
+    for k in 1:nsteps
+        integrate_step!(ĵ, integ)
+        if k % stride == 0 || k == nsteps
+            record!(tr, d, k * Δt, ĵ)
+            observer === nothing || observer(box, f, k * Δt, ĵ)
+            if !opts.quiet && (k % (10stride) == 0 || k == nsteps)
+                (λ, _, rel) = gs_fit(box, ĵ)
+                @printf("    gs %6.1f%%   t = %7.3f   H = %+.10e   S = %.10e   λ = %.8f   rel = %.3e   [%.0f s]\n",
+                    100k / nsteps, k * Δt, tr.H[end], tr.S[end], λ, rel, time() - t0)
+                flush(stdout)
+            end
+        end
+    end
+    return (box, d, f, tr)
 end
 
 @doc raw"""

@@ -5,21 +5,28 @@
 #
 #     julia --project=scripts scripts/verify_takeda.jl
 #
-# THE CLAIM: the eigenvalue lambda = 0.030302 that Fig. gsr_sol's green crosses are drawn with
-# is reproducible from the manuscript's own description, INDEPENDENTLY of any relaxation run.
+# THE CLAIM: both eigenvalues the manuscript prints -- lambda = 0.030302 for C1's rectangle and
+# lambda = 0.002599 for C2's mapped disk -- are reproducible from its own description,
+# INDEPENDENTLY of any relaxation run.
 #
-# It is reproducible, and it is not exact.  The continuum eigenvalue of C1's problem is
-# 0.0302346260 -- nine digits, three independent routes -- and the printed number sits 0.22 %
-# above it, which is the discretisation error of the authors' own reference solver.  A
-# conforming Galerkin eigenvalue converges from above, so the sign is right and the size is
-# what a low-order element on a 64 x 64 grid gives.  Section 4 measures that rather than
-# asserting it.
+# They are reproducible, and neither is exact.  C1's continuum eigenvalue is 0.0302346260 --
+# nine digits, three independent routes -- and the printed number sits 0.22 % above it; C2's is
+# 0.0025970 and its printed number sits 0.077 % above.  A conforming Galerkin eigenvalue
+# converges from above, so the sign is right in both cases and the size is what a low-order
+# element on the stated grid gives.  Sections 4 and 7 measure that rather than asserting it.
 #
-# The controls in Section 5 are the point of the script.  Section 5.5's measure
-# dmu = dr dz / r has to appear in the Delta-star operator AND in the profile matrix, and a
-# stray factor of r in either is not a small error: it moves lambda by between four and five
-# times its own value.  So does mistaking the manuscript's printed CURRENT profile
-# (Cr + D/r) for its state profile (Cr^2 + D).  None of those four can pass.
+# The controls are the point of the script.  Section 5.5's measure dmu = dr dz / r has to appear
+# in the Delta-star operator AND in the profile matrix, and a stray factor of r in either is not
+# a small error: on the rectangle it moves lambda by between four and five times its own value.
+# So does mistaking the manuscript's printed CURRENT profile (Cr + D/r) for its state profile
+# (Cr^2 + D).  Ten controls run in all and none of them can pass.
+#
+# One of them behaves differently on the two geometries, and that is reported as a finding
+# rather than tuned away: dropping the measure from BOTH matrices largely CANCELS, because the
+# weight sits on both sides of the Rayleigh quotient.  What survives is set by how far r varies
+# -- a factor of 7 on the rectangle, where the error is 13 %, and a factor of 2 on the disk,
+# where it is 2 %.  So C1 is the geometry that discriminates between the readings, and a check
+# run only on C2 would be much weaker than it looks.
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: TensorSplineSpace, GS_RADIAL, GS_AXIAL,
@@ -28,10 +35,13 @@ using MetriplecticRelaxation: TensorSplineSpace, GS_RADIAL, GS_AXIAL,
                               gs_density, herrnegger_mobility, herrnegger_profile,
                               gs_stiffness, gs_eigenvalue, separable_eigenvalue,
                               TakedaGrid, takeda_iterate, takeda_eigenvalue, takeda_field,
-                              takeda_order, takeda_extrapolate
+                              takeda_order, takeda_extrapolate,
+                              GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM, disk_map,
+                              DiskTriangulation, disk_area, disk_matrices, disk_eigenvalue
 using PoissonBrackets: quadrature_nodes, quadrature_weights, weighted_matrix, project
 using SimpleSplines: UniformMesh, Dirichlet
 using LinearAlgebra
+using SparseArrays
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
@@ -309,6 +319,134 @@ let Ψ = takeda_field(g64, it64.ψ), interior = Ψ[2:(end - 1), 2:(end - 1)]
         all(iszero, Ψ[1, :]) && all(iszero, Ψ[end, :]) && all(iszero, Ψ[:, 1]) &&
             all(iszero, Ψ[:, end]),
         "all four edges are identically zero by construction")
+end
+
+# =================================================================================================
+header("7. C2's mapped domain and its reference eigenvalue λ = 0.002599")
+
+# C2's RELAXATION is deferred -- the pole of eq:mapping needs a polar-spline space, and
+# PoissonBrackets has no triangular DiscreteSpace either; `disk_eigenvalue` says both. Its
+# reference EIGENVALUE is not deferred: a P₁ triangulation of the physical domain has the pole as
+# an ordinary node, so the number the manuscript prints can be checked with nothing regularised.
+
+# The map first. If it is mistranscribed the eigenvalue below is meaningless, so the geometry is
+# measured against three independent consequences of the printed constants.
+let t = DiskTriangulation(64, 128)
+    check("the map's image is r ∈ [8, 16]",
+        abs(minimum(t.r) - 8) < 1e-12 && abs(maximum(t.r) - 16) < 1e-12,
+        @sprintf("r ∈ [%.12f, %.12f]", minimum(t.r), maximum(t.r)))
+    check("its pole sits at r = 11.4129, just inboard of the Gaussian's r₀ = 12",
+        abs(t.r[1] - 11.412924654785932) < 1e-9,
+        @sprintf("pole at r = %.12f   z = %.3e   r₀ = 12", t.r[1], t.z[1]))
+    # The true area is 114.77699, the Jacobian integrated over the parameter disk; the
+    # triangulation approaches it from below at second order, hence the mesh-dependent bound.
+    check("and its area is 114.777, comparable to C1's rectangle's 114",
+        abs(disk_area(t) / 114.77699 - 1) < 5e-4 && disk_area(t) < 114.77699,
+        @sprintf("|Ω_disk| = %.6f at 64×128 (exact 114.77699)   |Ω_rect| = %.1f   z ∈ [%.6f, %.6f]",
+            disk_area(t), 6 * 19.0, minimum(t.z), maximum(t.z)))
+end
+
+# s = 0 collapses to a point: every node of the innermost ring of the PARAMETER disk maps to the
+# same physical point. That is the obstruction, stated as a measurement rather than as prose.
+let θs = range(0, 2π; length = 17)[1:(end - 1)], pts = [disk_map(0.0, θ) for θ in θs],
+    spread = maximum(maximum(abs, p .- pts[1]) for p in pts)
+
+    check("the map degenerates at s = 0 — the whole circle is one point", spread < 1e-14,
+        @sprintf("spread of disk_map(0, θ) over 16 angles = %.3e — this is why C2's relaxation is deferred",
+            spread))
+end
+
+const disk_ns = [(8, 16), (12, 24), (16, 32), (24, 48), (32, 64), (48, 96), (64, 128)]
+const disk_λs = Float64[]
+
+for (n, m) in disk_ns
+    d = disk_eigenvalue(n, m)
+    push!(disk_λs, d.λ)
+    println(@sprintf("      %3d×%3d cells   dof = %5d   λ = %.10f   (λ − λ_∞)/λ_∞ = %+.3e",
+        n, m, d.dof, d.λ, (d.λ - GS_LAMBDA_DISK_CONTINUUM) / GS_LAMBDA_DISK_CONTINUUM))
+end
+
+let q = takeda_order(disk_λs, [n for (n, _) in disk_ns])
+    check(
+        "the P₁ eigenvalue converges at second order on the mapped domain", 1.6 < q < 2.4,
+        @sprintf("fitted order %.4f over %d refinements", q, length(disk_ns)))
+end
+
+let λ∞ = takeda_extrapolate(disk_λs[end - 1], disk_λs[end], 48, 64),
+    e = abs(λ∞ - GS_LAMBDA_DISK_CONTINUUM) / GS_LAMBDA_DISK_CONTINUUM
+
+    check("and extrapolates onto the recorded GS_LAMBDA_DISK_CONTINUUM", e < 1e-4,
+        @sprintf("extrapolated %.10f   recorded %.7f   relative %+.3e",
+            λ∞, GS_LAMBDA_DISK_CONTINUUM, e))
+end
+
+# The claim: 0.002599 is reproduced. As on the rectangle it is reproduced to its OWN
+# discretisation error and not exactly, and it lies above the continuum limit because a
+# conforming Galerkin eigenvalue does.
+let e = abs(disk_λs[end] - GS_LAMBDA_DISK) / GS_LAMBDA_DISK
+    check(
+        "the 64×128 P₁ eigenvalue reproduces the printed λ = 0.002599 to 0.1 %", e < 1e-3,
+        @sprintf("P₁ λ = %.10f   printed %.6f   relative %+.3e   continuum %.7f",
+            disk_λs[end], GS_LAMBDA_DISK,
+            (disk_λs[end] - GS_LAMBDA_DISK) / GS_LAMBDA_DISK,
+            GS_LAMBDA_DISK_CONTINUUM))
+    check("and the printed value lies above the continuum limit, from the right side",
+        GS_LAMBDA_DISK > GS_LAMBDA_DISK_CONTINUUM,
+        @sprintf("(printed − continuum)/continuum = %+.3e",
+            (GS_LAMBDA_DISK - GS_LAMBDA_DISK_CONTINUUM) / GS_LAMBDA_DISK_CONTINUUM))
+end
+
+# The measure controls again, on the mapped domain, and they come out DIFFERENTLY here — which
+# is a fact about the geometry and is reported rather than smoothed over. `disk_matrices` puts
+# `dμ` in both matrices, so the pencil is rebuilt by hand with each half switchable.
+function disk_variant(t, lhs::Bool, rhs::Bool)
+    N = length(t.r)
+    Is, Js, Ks, Bs = Int[], Int[], Float64[], Float64[]
+    for e in t.triangles
+        x = (t.r[e[1]], t.r[e[2]], t.r[e[3]])
+        y = (t.z[e[1]], t.z[e[2]], t.z[e[3]])
+        det = (x[2] - x[1]) * (y[3] - y[1]) - (x[3] - x[1]) * (y[2] - y[1])
+        area = abs(det) / 2
+        gx = (y[2] - y[3], y[3] - y[1], y[1] - y[2]) ./ det
+        gy = (x[3] - x[2], x[1] - x[3], x[2] - x[1]) ./ det
+        rc = (x[1] + x[2] + x[3]) / 3
+        wk = lhs ? area / rc : area
+        wb = rhs ? area * (C * rc^2 + D) / rc : area * (C * rc^2 + D)
+        for p in 1:3, q in 1:3
+
+            push!(Is, e[p])
+            push!(Js, e[q])
+            push!(Ks, wk * (gx[p] * gx[q] + gy[p] * gy[q]))
+            push!(Bs, wb * (p == q ? 1 / 6 : 1 / 12))
+        end
+    end
+    free = setdiff(1:N, t.boundary)
+    K = Matrix(sparse(Is, Js, Ks, N, N)[free, free])
+    B = Matrix(sparse(Is, Js, Bs, N, N)[free, free])
+    minimum(real, eigvals(Symmetric(K), Symmetric(B)))
+end
+
+let t = DiskTriangulation(24, 48), λμ = disk_variant(t, true, true)
+    for (name, lhs, rhs) in (("μ in Δ* only", true, false),
+        ("μ in the profile matrix only", false, true))
+        λv = disk_variant(t, lhs, rhs)
+        e = abs(λv - λμ) / λμ
+        check("CONTROL: on the mapped domain, $(name) is O(1) wrong", e > 0.1,
+            @sprintf("λ = %.8f against %.8f   relative %+.3f", λv, λμ, e))
+    end
+
+    # FINDING, not a control that failed: dropping the measure from BOTH matrices is only 1.9 %
+    # wrong here, against 13 % on the rectangle. The weight appears on both sides of the Rayleigh
+    # quotient and largely cancels, and how much survives is set by how far r varies — a factor
+    # of 2 on the disk (r ∈ [8,16]) against a factor of 7 on the rectangle (r ∈ [1,7]). So C1 is
+    # the geometry that discriminates between the readings and C2 is not, which is worth knowing
+    # before trusting a check run only on the disk.
+    let λp = disk_variant(t, false, false), e = abs(λp - λμ) / λμ
+        check(
+            "FINDING: dropping dμ from BOTH matrices nearly cancels on the disk", e < 0.05,
+            @sprintf("no measure: λ = %.8f   with it %.8f   relative %+.4f — against %+.3f on the rectangle, because r varies by 2 here and by 7 there",
+                λp, λμ, (λp - λμ) / λμ, -0.128))
+    end
 end
 
 summary("verify_takeda.jl")
