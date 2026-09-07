@@ -384,6 +384,21 @@ here than in a library:
 
 ### Fixed
 
+- **`reset_failures!`'s docstring described a runner that does not exist.** It said "Only
+  `run_all.jl` needs this, between scripts", but `run_all.jl` gives every script its own
+  subprocess, so each starts with an empty tally and nothing is ever reset. **Zero callers in
+  any of the three repositories that carry a copy of this harness** — here,
+  `PoissonBrackets/scripts/` and `Papers/Metriplectic Relaxation to Equilibria/scripts/` — by
+  grep in all three and by `trace_path(direction="inbound")` on the code graph in the two that
+  are indexed. `failures` is dead in all three as well.
+
+  Both are **left in place**, and the export list now says why: it is the shared harness's API
+  rather than this repository's usage, so that a converted script moves between the copies
+  unedited. The measured call-site counts are recorded there — `check_exact` (0 here, 53 in the
+  paper, 33 in PoissonBrackets), `fmt` (0, 0, 94) and `normerr` (0, 0, 4) have no local caller
+  and are **not** dead; dropping the two that are is one change across three repositories, not
+  a change to the downstream copy.
+
 - **Three of `verify_projector_factor.jl`'s rows could not fail, and are now reports plus one
   row that can.** The two "still dissipates entropy" rows asserted `dS/dt < 0` for `κ = 1` and
   `κ = 2`. With `H₀ = (φ,ω)/2` and `S₀ = (ω,ω)/2` the field gives
