@@ -403,6 +403,32 @@ here than in a library:
 
 ### Fixed
 
+- **`takeda_iterate`'s docstring cited the wrong scheme, having inherited the citation from the
+  manuscript.** It named Takeda & Tokuda Eqs. (2.111)–(2.112), pp. 22–23. Those equations are on
+  those pages, but p. 23 attributes them to **Kikuchi et al.** as a convergence proof for a model
+  problem — an `ε`-homotopy off the linear eigenpair `{λ₀, φ}`, with `λ` read off a Fredholm
+  solvability condition, a ratio of `L²` inner products against `φ`. The scheme this function
+  implements is **§3.2, Eqs. (3.22)–(3.25), p. 30**, whose step 3 reads "normalize the `ψ` values
+  by the value at the magnetic axis". The two differ in precisely the thing that defines them:
+  what normalisation produces `λ`.
+
+  Nothing numerical changes — the docstring's *prose* description was already of §3.2's scheme,
+  and the implementation matched the prose. Only the pointer was wrong, and the fixed point still
+  agrees with a dense generalised eigensolve to `1.0–2.0e-13`, which never depended on the
+  citation.
+
+  Established by reading the held source directly,
+  `Library/papers/Takeda_1991_ComputationMhdEquilibriumTokamakPlasma/paper.pdf` pp. 22–23 and
+  30–31 — which also retires the standing caveat that the reference was unavailable; it has been
+  in `Library/` all along, under `TakedaTokuda:1991`. Recorded as a manuscript finding in
+  `Knowledge/Metriplectic Relaxation/The manuscript's Takeda citation points at a different
+  scheme.md`.
+
+  One under-specified choice reclassified as a consequence: **`tol = 1e-13` is this
+  implementation's, not the paper's.** p. 31 gives no stopping criterion, saying only that
+  convergence "is very good and it is used widely for various applications". The docstring now
+  says so, so the number is not mistaken for a transcribed one.
+
 - **The review follow-ups of #1 and #2 were re-measured against the same dependency trees the
   §4 and §5 results were, and nothing moved.** `Manifest.toml` is gitignored and `[sources]`
   follows `main` on both remotes, so the resolved trees are recorded rather than committed;
@@ -500,12 +526,16 @@ here than in a library:
   grep in all three and by `trace_path(direction="inbound")` on the code graph in the two that
   are indexed. `failures` is dead in all three as well.
 
-  Both are **left in place**, and the export list now says why: it is the shared harness's API
-  rather than this repository's usage, so that a converted script moves between the copies
-  unedited. The measured call-site counts are recorded there — `check_exact` (0 here, 53 in the
-  paper, 33 in PoissonBrackets), `fmt` (0, 0, 94) and `normerr` (0, 0, 4) have no local caller
+  Both were **left in place by this change**, and the export list now says why: it is the shared
+  harness's API rather than this repository's usage, so that a converted script moves between the
+  copies unedited. The measured call-site counts are recorded there — `check_exact` (0 here, 53 in
+  the paper, 33 in PoissonBrackets), `fmt` (0, 0, 94) and `normerr` (0, 0, 4) have no local caller
   and are **not** dead; dropping the two that are is one change across three repositories, not
   a change to the downstream copy.
+
+  **That coordinated removal has since been made** — see *`scripts/check.jl` drops `failures` and
+  `reset_failures!`* above, which drops both from all three copies at once. So the deferral here
+  records why it was deferred, not the state of the file.
 
 - **Three of `verify_projector_factor.jl`'s rows could not fail, and are now reports plus one
   row that can.** The two "still dissipates entropy" rows asserted `dS/dt < 0` for `κ = 1` and
