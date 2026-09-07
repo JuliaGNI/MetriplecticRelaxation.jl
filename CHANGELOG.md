@@ -239,10 +239,10 @@ here than in a library:
   What *does* need resolution is the **narrow direction of the initial condition**, `w₁ = 0.1`,
   and **26 is that threshold, measured**: it is the coarsest mesh on which the `L²` projection of
   the printed Gaussian stops oscillating below zero, `min ω₀` running `-1.4e-2`, `-5.8e-4`,
-  `-3.9e-7`, `+6.0e-13` at 12, 16, 20 and 26 cells. A statement about the peak, not about the
+  `-4.2e-7`, `+6.0e-13` at 12, 16, 20 and 26 cells. A statement about the peak, not about the
   boundary: refining the *other* axis does not move it at all.
 
-- **`scripts/verify_euler.jl`** — **98 checks** on all of that, run before any B run was
+- **`scripts/verify_euler.jl`** — **101 checks** on all of that, run before any B run was
   believed, in six sections. `w²` and not `w` (below); the space (`|Ω| = 1`, `K` positive
   definite with `λ_min = 19.73925`, the discrete first eigenvalue converging **16×** on doubling
   from 8 to 16 cells, `φ = Λω` vanishing on `∂Ω` at **exactly** 0, `MΛ` symmetric at exactly 0);
@@ -276,6 +276,26 @@ here than in a library:
   before then.
 
 ### Changed
+
+- **`README.md` gained the `§5.5` section it was missing.** The file documented `§4` and `§5.4`
+  and stopped, though §5.5 is roughly half of #2 — `takeda.jl`, `gradshafranov.jl`, both their
+  verification scripts and `run_c1.jl`. It now carries C1's results table, the two findings, and
+  why C2's relaxation is deferred, in the shape the other two sections use. Its *Running* section
+  also stops recommending `Pkg.test()` without qualification: that defaults to
+  `--check-bounds=yes`, which inflates timings roughly fourfold and invalidates a precompile
+  image shared with a run driver.
+
+- **`run_b3.jl`'s sections are numbered consecutively.** They ran 0, 0b, 1, 2, 3, 5, 6 — there
+  was no section 4, and the preamble's cross-reference pointed at the gap. Now 0, 0b, 1, 2, 3, 4,
+  5.
+
+- **Two comments say what to do rather than what once happened.** `verify_gradshafranov.jl`'s
+  warning against perping `d` twice recorded that "it was made once and cost an 0.85 relative
+  disagreement" — project history, which belongs in this file; it now states the mechanism and
+  the size of the disagreement as a consequence instead. And the module file now records that
+  `field` is imported from PoissonBrackets' internals: it is neither exported nor `public` there,
+  nor in SimpleSplines, so a rename upstream breaks this package silently and the fix belongs
+  upstream rather than here.
 
 - **A1's spectral right-hand side hoists `X_h` out of the time loop.** `h` is prescribed and
   fixed there, but the nested-bracket form recomputes `∂₁h` and `∂₂h` on every evaluation —
@@ -355,6 +375,58 @@ here than in a library:
   hoist above recovers. They are now fields, built once in the constructor.
 
 ### Fixed
+
+- **Three numbers in the prose did not match what the code does, found in review of #2 and
+  re-measured rather than adjusted.** All three were quoted in docstrings or comments and none
+  was asserted anywhere, which is how they drifted:
+
+  - **B3's printed initial condition fails on the *first* step, not after five.** The prose said
+    "five implicit-midpoint steps at `Δt = 0.02` reach `-6.6e-5`". Re-measured: `min ω₀` starts
+    at `+5.959889e-13` and step 1 raises `DomainError` with `-6.554556141995815e-5` — so
+    `-6.6e-5` was right, but it is the argument the entropy raised on *inside* the first step and
+    no step ever completes. The finding is strengthened, not weakened: the margin is too thin to
+    survive one step.
+  - **The 20-cell undershoot is `-4.2e-7`, not `-3.9e-7`** — a 9 % drift. Re-measured at degree
+    2, `min ω₀` runs `-1.374746e-02`, `-5.830994e-04`, `-4.249944e-07`, `+5.959889e-13` at 12,
+    16, 20 and 26 cells. `verify_euler.jl` asserted only the *sign* of each row while printing
+    the value, so nothing caught it; it now asserts the three coarser magnitudes to
+    `rtol = 1e-3` as well, which takes it from **98 checks to 101**. Measured deviations are
+    `1.2e-07`, `1.7e-08` and `4.2e-08`, so the tolerance leaves four orders of platform margin.
+    The 26-cell entry stays sign-only, its value being a cancellation residual.
+  - **`run_b3.jl` quoted `~5e-12` and `-3.6e-5`** for the same two quantities, and wrote the
+    first into the generated `results/b3.md`. Both corrected to the measured `6e-13` and
+    `-6.6e-5`, which `README.md` and `B3_FLOOR` already had right.
+
+- **B1's control on the entropy plateau accepted the diagnostic's own failure sentinel.**
+  `entropy_plateau` returns `ib = 0` both when the total fall is non-positive and when no sample
+  crosses the threshold — "the entropy never fell" — and `run_b1.jl` asserted `ib <= 2`, which
+  `0` satisfies. A run that dissipated nothing would have passed the control that exists to show
+  B1 dissipates immediately, i.e. the exact opposite of the claim. Now `1 <= ib <= 2`. B2's two
+  uses of the same diagnostic were already safe: both bound quantities that are `NaN` in the
+  sentinel cases.
+
+- **`entropy_plateau`'s docstring prescribed a threshold the runs cannot meet.** It asked for
+  `t_break` to be "a substantial fraction of `T`"; B2 measures `t_break ≈ 8.5` against `T = 150`,
+  5.7 % of it, because `T` is set by how long the *decay* takes rather than the plateau. The
+  docstring overpromised and `run_b2.jl`'s `t_break >= 4Δt` was the honest statement, so the
+  docstring now says that and names the run that implements it.
+
+- **C1's section 4 was labelled as a statement about the relaxation when it is one about the
+  discretisations.** Its label read "the **relaxed** λ agrees with Takeda's iteration" while the
+  asserted quantity is `gs_eigenvalue(box)`, the spline space's eigenvalue, which does not depend
+  on the run — the whole block would pass if the relaxation had never been stepped. It is sound
+  because section 3 separately pins `gs_rayleigh(box, tr.final)` to `λ_h` at `1e-10`; the labels
+  and the CHANGELOG now say which check carries which claim.
+
+- **A test asserted a floating-point tautology.** `all(isapprox.(u .* (1 ./ u), 1.0; rtol=1e-15))`
+  is true of any nonzero float and so asserted nothing. Replaced with `all(>(0), u)`, the premise
+  that actually makes the Hessian's weight `1/u` finite. The testset's real claim was already
+  asserted on the line above, so no coverage was lost and the suite count is unchanged.
+
+- **`README.md`'s dependency section contradicted `Project.toml`.** It said `PoissonBrackets` "is
+  resolved from the local sibling checkout at `../../Packages/PoissonBrackets`"; both sources have
+  been git urls at `rev = "main"` since `066e6cc`, because a relative path escapes the repository
+  and fails in `buildpkg` on every CI runner. Pre-existing, but `README.md` is edited here.
 
 - **A rate fit could measure its own resolution floor.** `S − S_η` does not decay forever at a
   finite resolution: it settles on a floor set by how well the mesh represents the relaxed
@@ -553,9 +625,9 @@ here than in a library:
   a *function* — but with `w₁² = 0.01` it decays to `1.4e-11` of its peak at the far corner of
   the square, and a Galerkin scheme cannot tell that from zero. Measured on the `26²` space:
   `min ω₀ = +6.0e-13` at the outermost quadrature node — the Gaussian's own value there, not a
-  projection artefact — and **five implicit-midpoint steps at `Δt = 0.02` reach `-6.6e-5` and
-  raise a `DomainError`**. The admissible set has no interior around such a state, and no
-  tolerance fixes that.
+  projection artefact — and **the first implicit-midpoint step at `Δt = 0.02` drives the iterate
+  to `-6.6e-5` and raises a `DomainError`**, before any step completes. The admissible set has no
+  interior around such a state, and no tolerance fixes that.
 
   **The continuum does not have this problem, and the reason says what the discretisation is
   losing:** `M = ω` vanishes where `ω` does, so the flux vanishes with it and the equation is
@@ -874,7 +946,11 @@ is below.
   `0.030234799155`, `−1.70e-09` relative, and the ratio `|Δλ|/(λ_h · rel²) = **0.3463**` — a
   clean second-order law, the §5.5 counterpart of §5.4's measured `0.2474`.
 
-- **The relaxation and the classical solver agree.** `λ_h = 0.030234799207` against Takeda's
+- **The relaxation and the classical solver agree — by way of the previous point, and not
+  independently of it.** `λ_h` is the *spline space's* eigenvalue and does not depend on the run;
+  what ties the run to it is `S/H = λ_h` to `1.95e-15` above. The three comparisons below are
+  therefore statements about the two **discretisations**, and `run_c1.jl`'s section 4 would pass
+  identically if the relaxation had never been stepped. `λ_h = 0.030234799207` against Takeda's
   iteration on the manuscript's own 64×64 node grid, `0.0302248584`: **+3.29e-04** relative,
   which is the finite-volume grid's own error and the larger of the two. Against the continuum
   eigenvalue, **+5.73e-06**. Against the manuscript's printed `0.030302`, **+2.22e-03** — and

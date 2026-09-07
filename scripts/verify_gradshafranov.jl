@@ -232,8 +232,9 @@ function brute_operator(space, Λ, ĵ, inner_μ::Bool, outer_μ::Bool)
         c = Mmob[q] * Mmob[qq] * wo[q] * wi[qq] / 2
         iszero(c) && continue
         # `β` is ALREADY the perp of ∇ψ, so `d = β(x) − β(x')` is the perp of the argument of
-        # Q₂ and Q₂(z) = z^⊥ ⊗ z^⊥ = d ⊗ d. Perping `d` again here is the mistake this comment
-        # exists to prevent — it was made once and cost an 0.85 relative disagreement.
+        # Q₂ and Q₂(z) = z^⊥ ⊗ z^⊥ = d ⊗ d. Do NOT perp `d` again: a second perp rotates the
+        # rank-one factor by π/2 and the assembled bracket stops matching `CollisionBracket`
+        # altogether, at an 0.85 relative disagreement rather than a small one.
         d = (β[1][q] - β[1][qq], β[2][q] - β[2][qq])
         # (d ⊗ d) contracted with the two difference gradients: one scalar per basis index.
         v = [d[1] * (G[1][K, q] - G[1][K, qq]) + d[2] * (G[2][K, q] - G[2][K, qq])

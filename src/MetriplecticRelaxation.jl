@@ -9,6 +9,12 @@ using SparseArrays
 # `mass_matrix`, `stiffness_matrix`, `evaluate`, `project` and friends are exported by both
 # PoissonBrackets and SimpleSplines, which leaves every one of them ambiguous under a bare
 # `using` of the two. PoissonBrackets is the entry point, and what is needed is named.
+#
+# `field` is the one name here that PoissonBrackets neither exports nor declares public
+# (`Base.ispublic(PoissonBrackets, :field)` is `false`), so this reaches into its internals and
+# a rename upstream breaks this package silently. It is non-public in SimpleSplines too, so
+# there is nowhere public to take it from and the fix belongs upstream, not here — an `export`
+# or a `public` declaration on whichever of the two owns it.
 using PoissonBrackets
 using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
                        DoubleBracket, ProjectorBracket, CollisionBracket, MetriplecticFlow,

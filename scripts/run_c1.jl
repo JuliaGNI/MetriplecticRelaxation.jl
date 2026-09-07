@@ -201,9 +201,16 @@ header("4. against the classical Grad-Shafranov solver")
 # THE claim of §5.5: the relaxation and the classical iteration agree. They are two different
 # computations of the same eigenvalue on two different discretisations, so what they can agree to
 # is the larger of the two discretisation errors — which here is the finite-volume grid's.
+#
+# EVERY COMPARISON BELOW IS AGAINST λ_h = `gs_eigenvalue(box)`, the SPLINE SPACE's eigenvalue,
+# which does not depend on this run: these three checks would pass identically if the relaxation
+# had never been stepped. That is deliberate, and it is a division of labour rather than an
+# oversight — what ties the run to λ_h is section 3's Rayleigh-quotient check, `S/H = λ_h` to
+# 1e-10. This section is therefore a statement about the two DISCRETISATIONS, and it is only a
+# statement about the relaxation by way of that check.
 let e = abs(λh - takeda.λ) / takeda.λ
-    check("the relaxed λ agrees with Takeda's iteration to its own grid error", e < 1e-3,
-        @sprintf("relaxation λ_h = %.10f   Takeda 64×64 = %.10f   relative %+.3e",
+    check("the space's λ_h agrees with Takeda's iteration to its own grid error", e < 1e-3,
+        @sprintf("λ_h = %.10f   Takeda 64×64 = %.10f   relative %+.3e",
             λh, takeda.λ, e))
 end
 

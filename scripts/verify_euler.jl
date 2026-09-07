@@ -197,6 +197,12 @@ const b3 = SECTION5_RUNS["b3"]
 const b3printed = EulerSpec("b3-printed", b3.section, b3.entropy, b3.state, b3.gaussian,
     nothing, b3.Δt, b3.T)
 
+# The undershoot is asserted to a tolerance and not merely printed. It is quoted in `B3_FLOOR`'s
+# and `EulerSquare`'s docstrings, and a sign-only check let the 20-cell row drift 9 % away from
+# the value in the prose before anyone noticed. `rtol = 1e-3` is loose enough for the platform
+# spread across the CI matrix and tight enough to catch that.
+const B3_UNDERSHOOT = Dict(12 => -1.374746e-2, 16 => -5.830994e-4, 20 => -4.249944e-7)
+
 # (i) The mesh threshold, and it is about the NARROW direction rather than about the boundary:
 # w₁ = 0.1, and below 26 cells the L² projection oscillates below zero next to the peak. The
 # three coarser rows are the control that 26 is a threshold and not a preference.
@@ -208,6 +214,14 @@ for n in (12, 16, 20, 26)
             n >= 26 ? "positive" : "NOT positive"),
         (lo > 0) == (n >= 26),
         @sprintf("min = %+.4e   max = %.4f", lo, hi))
+    # At 26 cells min ω₀ is a cancellation residual, so only its sign is reproducible; the three
+    # coarser rows are real undershoots and carry the numbers the docstrings quote.
+    haskey(B3_UNDERSHOOT, n) && check(
+        @sprintf("n = %2d: and it is the undershoot the docstrings quote, %+.3e", n,
+            B3_UNDERSHOOT[n]),
+        isapprox(lo, B3_UNDERSHOOT[n]; rtol = 1e-3),
+        @sprintf("min = %+.6e   expected %+.6e   rel = %.2e", lo, B3_UNDERSHOOT[n],
+            abs(lo - B3_UNDERSHOOT[n]) / abs(B3_UNDERSHOOT[n])))
 end
 
 # (ii) Positive is not admissible. Even at 26 cells the printed condition sits at the Gaussian's

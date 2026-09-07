@@ -101,8 +101,13 @@ check("the mass drift is reported, not asserted  [REPORTED]", true,
 
 # B1 dissipates from the first step, and this number is the CONTROL for B2's plateau: the same
 # diagnostic on the same mesh, on a run that starts nowhere near an equilibrium.
+#
+# `1 <= ib` is load-bearing rather than decorative: `entropy_plateau` returns `ib = 0` for both
+# of its "the entropy never fell" sentinels — `total <= 0` and no sample crossing the threshold
+# — so `ib <= 2` alone is satisfied by a run that dissipated nothing at all, which is the exact
+# opposite of what this control claims.
 let (tb, ib, held) = entropy_plateau(tr)
-    check("S starts falling immediately — the control for B2's plateau", ib <= 2,
+    check("S starts falling immediately — the control for B2's plateau", 1 <= ib <= 2,
         @sprintf("1%% of the total fall reached at t = %.4g (sample %d); held = %.3e",
             tb, ib, held))
 end

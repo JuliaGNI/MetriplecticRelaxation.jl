@@ -218,8 +218,16 @@ fall over the trace, `t_break` its time, and `held` the largest ``|S(t) - S(0)| 
 This is what B2's claim needs and monotonicity cannot supply. A perturbed equilibrium
 dissipates nothing until the instability has grown, so its trace is flat and then falls, and a
 monotone trace that fell from the first step would satisfy "S decreases" just as well.
-Asserting the plateau means asserting `t_break` is a substantial fraction of ``T`` *and* that
-`held` is small — the second without the first passes for a run that never moved at all.
+Asserting the plateau means asserting `t_break` is many time steps in — not one — *and* that
+`held` is small; the second without the first passes for a run that never moved at all. It is
+deliberately **not** "a substantial fraction of ``T``": B2's plateau measures ``t_break \approx
+8.5`` against ``T = 150``, i.e. 5.7 % of it, because ``T`` is set by how long the *decay* takes
+and not by how long the plateau lasts. `run_b2.jl` therefore asserts `t_break >= 4\Delta t`.
+
+`ib = 0` is the sentinel for "the entropy never fell", returned both when the total fall is
+non-positive and when no sample crosses the threshold. A caller bounding `ib` from above — B1's
+control on this diagnostic does — has to exclude it explicitly, or it admits the very runs the
+bound is meant to reject.
 
 `fraction` is the threshold that separates "still flat" from "now falling", and it is a
 choice: at ``10^{-2}`` of the total fall it sits far above the round-off of ``S`` and far

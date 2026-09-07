@@ -615,7 +615,10 @@ end
         Φ = basis_values(s, (0, 0))
         @test hessian(GibbsEntropy(), s, ω̂) ≈
               Matrix(Φ * Diagonal(quadrature_weights(s) ./ u) * Φ') rtol=1e-14
-        @test all(isapprox.(u .* (1 ./ u), 1.0; rtol = 1e-15))
+        # And the premise that makes the weight 1/u finite in the first place: ω > 0 at every
+        # quadrature node. `u .* (1 ./ u) ≈ 1` stood here, which is true of any nonzero float
+        # and so asserted nothing.
+        @test all(>(0), u)
     end
 
     @testset "$(rpad("y log y REFUSES a state it does not admit", 76))" begin

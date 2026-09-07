@@ -80,7 +80,7 @@ until the instability has grown — the plateau-then-decay signature the run che
 perturbation_b2(x₁, x₂) = sin(6π * x₁) * sin(4π * x₂)
 
 @doc raw"""
-The positive background B3's initial condition is given, as a fraction of its own peak.
+The positive background B3's initial condition is given, as an absolute vorticity offset.
 
 **This is a departure from the printed initial condition, and it is forced.** ``s = y \log y``
 is undefined at ``y \le 0`` and `eq:M-condition` gives it the mobility ``M = y``, which the same
@@ -89,9 +89,10 @@ every step. The printed Gaussian is strictly positive as a *function*: with ``w_
 decays to ``1.4 \times 10^{-11}`` of its peak at the far corner of the square, which is not
 zero. It is, however, indistinguishable from zero for a Galerkin scheme, which is not
 positivity-preserving: measured on the ``26^2`` space the runs use, the projected state starts
-at ``\min\omega_0 = 6.0 \times 10^{-13}`` — the Gaussian's own value at that node — and five
-steps at ``\Delta t = 0.02`` drive it to ``-6.6 \times 10^{-5}``, at which point the entropy
-raises a `DomainError`. `run_b3.jl` performs exactly that, as the control on this constant.
+at ``\min\omega_0 = 6.0 \times 10^{-13}`` — the Gaussian's own value at that node — and the
+**first** step at ``\Delta t = 0.02`` drives the iterate to ``-6.6 \times 10^{-5}``, where the
+entropy raises a `DomainError`. No step completes: the margin is too thin to survive one.
+`run_b3.jl` performs exactly that, as the control on this constant.
 
 The continuum does not have this problem, and the reason is worth stating because it says what
 the discretisation is losing: the mobility ``M = \omega`` *vanishes* where ``\omega`` does, so
@@ -384,7 +385,7 @@ eigenmode and a smooth exponential of it, and the discrete first eigenvalue is a
 What *does* need resolution is the **narrow direction of the initial condition**, ``w_1 = 0.1``,
 and that is what fixes the number at 26: it is the coarsest mesh on which the ``L^2`` projection
 of the printed Gaussian stops oscillating below zero. Measured at degree 2, ``\min\omega_0`` runs
-``-1.4 \times 10^{-2}``, ``-5.8 \times 10^{-4}``, ``-3.9 \times 10^{-7}``,
+``-1.4 \times 10^{-2}``, ``-5.8 \times 10^{-4}``, ``-4.2 \times 10^{-7}``,
 ``+6.0 \times 10^{-13}`` at 12, 16, 20 and 26 cells — a resolution statement about the peak, not
 about the boundary, and unchanged by refining the other axis. `verify_euler.jl` asserts it with
 the three coarser rows as the control that 26 is a threshold rather than a preference.

@@ -106,7 +106,7 @@ available. `ImplicitMidpoint` **is** Crank–Nicolson for this field, so each st
 through PoissonBrackets' existing `NewtonSolver`; no solver code is written here.
 
 `scripts/verify_euler.jl` settles the problem, the space, the bracket and both references in
-**98 checks** before any run is believed — including that §5 states `w²` and not `w`, with the
+**101 checks** before any run is believed — including that §5 states `w²` and not `w`, with the
 `w`-reading control that must fail, and the mismatched-generator and indefinite-mobility controls
 that must break degeneracy and positivity respectively.
 
@@ -154,10 +154,72 @@ claims needs that: the discrete first Dirichlet eigenvalue is already within `3.
   undefined at `y ≤ 0` and `eq:M-condition` gives it the mobility `M = y`, which the same equation
   requires to be positive. The printed Gaussian is strictly positive as a *function* — but with
   `w₁² = 0.01` it decays to `1.4e-11` of its peak at the far corner, which a Galerkin scheme
-  cannot tell from zero: the projected state starts at `6e-13` and the relaxation drives it
-  negative within a few steps. B3 therefore carries a positive background of 1 % of its peak.
+  cannot tell from zero: the projected state starts at `6e-13` and the **first** step drives the
+  iterate to `-6.6e-5`, where the entropy raises a `DomainError` before any step completes. B3
+  therefore carries a positive background of 1 % of its peak.
   The continuum does not have this problem — `M = ω` vanishes with `ω`, so the equation is
   degenerate-parabolic and positivity-preserving, and it is the Galerkin projection that loses it.
+
+## §5.5 — what is implemented, and what it found
+
+Two files, because this section has a classical counterpart §5.4 lacks. `src/takeda.jl` holds the
+Grad–Shafranov problem itself and the **classical** solver — the finite-volume `−Δ*` and the
+iteration of Takeda & Tokuda Eqs. (2.111)–(2.112) — plus C2's geometry: `disk_map`, its
+triangulation, and `disk_eigenvalue`. `src/gradshafranov.jl` holds the **relaxation** on the
+rectangle: `GradShafranovBox`, the entropy and its references, `gs_rayleigh`, `gs_fit`, and
+`SECTION55_RUNS`. Both feed §4's and §5.4's diagnostics, so the numbers are comparable across
+sections by construction.
+
+`scripts/verify_takeda.jl` settles the classical side in **38 checks** across seven sections, ten
+of them controls; `scripts/verify_gradshafranov.jl` settles the relaxation in **42 checks** across
+ten sections, also ten controls. Between them they pin the measure, the profile, the mobility and
+both references before `run_c1.jl` is believed.
+
+C1 runs at **18 × 21 cells of degree 2** with `Δt = 0.0625` over 400 steps. `Δt` is not a
+preference: measured on the run's own space, `‖Δt − Δt/2‖ = 2.738e-04` against
+`‖Δt/2 − Δt/4‖ = 7.390e-05` is a ratio of **3.705**, implicit midpoint's second order. The first
+pass of this run used `Δt = 0.25`, passed every other check, and was still wrong about the
+trajectory — `H`, monotonicity and the equilibrium are all `Δt`-independent, so nothing else in
+the output would have caught it.
+
+| run | claim | measured |
+|:--|:--|--:|
+| C1 | `H` conserved | **5.324e-12** relative over 400 steps, `Δt`-independent by derivation |
+| C1 | `S → λ_h H₀` | `(S_T − λ_h H₀)/λ_h H₀ = **−5.3172e-12**` |
+| C1 | `u/(Cr²+D) → λψ` | **6.9980e-05**, from `6.3955e-01` at `t = 0` — the space's own floor |
+| C1 | `S/H = λ_h`, the sharp arrival | `0.03023479920660` vs `λ_h`, to **1.95e-15** |
+| C1 | ...and the fit's second-order law | `\|Δλ\|/(λ_h·rel²) = **0.3463**` |
+| C1 | against Takeda's `64²` iteration | `λ_h = 0.030234799207` vs `0.0302248584`, **+3.29e-04** |
+| C1 | against the continuum eigenvalue | **+5.73e-06** |
+| C1 | against the printed `0.030302` | **+2.22e-03** — the paper's own grid error, same side |
+| C1 | the two-space control (10 × 12, 240 steps) | `V` misses `eq:gs-ref` by **2.5171e-01** against `V_D`'s **4.2761e-04**, a factor **589** |
+| C2 | the reference eigenvalue, `P₁` disk | `λ = 0.0025990851` against the printed `0.002599` |
+
+### The findings, and both are again about the manuscript
+
+- **The manuscript prints two profiles, and mistaking them costs a factor 4.6**; and its printed
+  `λ` values encode its own mesh rather than physics — `0.030302` sits `+2.23e-03` above the
+  continuum eigenvalue, and the reproduction disagrees with the paper by essentially exactly
+  that, from the same side. Every measured `λ` here lies **above** its continuum limit, as a
+  conforming Galerkin discretisation requires.
+
+- **C1's mass drifts by +83.7 %, and that is the price of the exact reference.** The constant
+  function is not in `V_D`, which is the same absence that forces the equilibrium's multipliers
+  to zero and so makes `eq:gs-ref` exact. §5.4's B1 drifts +46 % for the same reason. The
+  cheaper eigen-based control reports nothing at all — the pencil `(MΛ, W)` carries no mass
+  constraint, so its lowest eigenvector is the `μ = 0` member in *both* spaces; what separates
+  them is the **flow**, not the fixed-point problem.
+
+### C2's relaxation is deferred, and nothing was regularised
+
+Two obstructions, either sufficient alone. The map of `eq:mapping` collapses the whole circle to
+one point at `s = 0` — measured, the spread of `disk_map(0, θ)` over sixteen angles is exactly
+`0.000e+00` — so a tensor-product spline space is not even `C⁰` there; imposing single-valuedness
+needs a **polar-spline** construction that SimpleSplines does not have. And PoissonBrackets'
+only two-dimensional space is `TensorSplineSpace`, while `CollisionBracket` reads `∇ψ` at *its*
+quadrature points, so the `P₁` triangulation that gives the reference eigenvalue cannot carry the
+flow. There is no `ε` floor on `s`, no puncture at the origin, and no modified basis: C2's
+reference eigenvalue is reproduced and its relaxation is simply not run.
 
 ## Layout
 
@@ -184,12 +246,23 @@ tree or a talk's figure directory without being edited.
 The test suite runs coarse, fast versions of the same claims:
 
 ```sh
-julia --project=. -e 'using Pkg; Pkg.test()'
+julia --project=. --check-bounds=auto test/runtests.jl
 ```
+
+`Pkg.test()` also works, but it defaults to `--check-bounds=yes`, which inflates the timings
+roughly fourfold and invalidates any precompile image shared with a run driver. Prefer the form
+above when the numbers or the wall-clock matter.
 
 ## Dependencies
 
 `PoissonBrackets` and `SimpleSplines` are unregistered, so `Project.toml` carries a `[sources]`
 table for both — a Julia 1.11 feature, which is why the `julia` floor here is 1.11 rather than the
-1.10 used elsewhere in this tree. `PoissonBrackets` is resolved from the local sibling checkout at
-`../../Packages/PoissonBrackets`.
+1.10 used elsewhere in this tree.
+
+Both are resolved from their **git remotes at `rev = "main"`**, not from the sibling checkouts in
+`../../Packages/`. A relative path escapes the repository and so does not exist on a CI runner:
+with the path form every job failed in `buildpkg` before a single test ran. The cost is that
+resolution follows `main` on the remote, so a local change to either package is invisible here
+until it is pushed — develop against a sibling with `Pkg.develop(path=...)` in a *local*
+environment, and do not put the path back into `Project.toml`. Its comments say the same thing
+at length, and they are load-bearing: `Pkg.instantiate` and `Pkg.develop` both strip them.

@@ -23,16 +23,16 @@
 # s = y log y is undefined at y <= 0 and eq:M-condition gives it the mobility M = y, which the
 # same equation requires to be positive.  The printed Gaussian is strictly positive as a
 # function -- but with w_1^2 = 0.01 it decays to 1.4e-11 of its peak at the far corner, which a
-# Galerkin scheme cannot tell from zero: measured, the projected state starts at 5e-12 and the
-# relaxation drives it to -3.6e-5 within a few steps, at which point the entropy raises a
-# DomainError.  B3 therefore carries a positive background of 1 % of its peak, `B3_FLOOR`, which
-# is four orders above the undershoot it has to absorb.  See `B3_FLOOR` for what that costs.
+# Galerkin scheme cannot tell from zero: measured, the projected state starts at 6e-13 and the
+# FIRST step drives the iterate to -6.6e-5, at which point the entropy raises a DomainError --
+# no step completes.  B3 therefore carries a positive background of 1 % of its peak, `B3_FLOOR`,
+# which is four orders above the undershoot it has to absorb.  See `B3_FLOOR` for what it costs.
 #
 # THE STATE SPACE IS THE SAME AS B1's AND B2's, and the free alternative runs here as a CONTROL.
 # Both spaces are viable once the floor makes the state admissible, and they disagree exactly as
 # the equilibrium condition predicts: in V_D the mass is not conserved, so the multiplier mu is
 # forced to zero and the manuscript's lambda = (M+S)/2H_0 is an identity; in V the mass IS a
-# discrete Casimir, mu is fixed by it, and the formula acquires an extra term.  Section 5 runs
+# discrete Casimir, mu is fixed by it, and the formula acquires an extra term.  Section 4 runs
 # both on a coarse mesh and reports the two mu's side by side.
 
 const CONTROL_CELLS = 16
@@ -289,7 +289,7 @@ check("the relaxation moved the state toward the reference",
         gibbs_residual(sq, tr.initial, λ; margin = 2h), residuals[3][2]))
 
 # =============================================================================================
-header("5. CONTROL: the same run in the free space, where the mass IS a Casimir")
+header("4. CONTROL: the same run in the free space, where the mass IS a Casimir")
 
 # The choice of space is a claim, so it gets a control rather than a paragraph. On a coarse mesh
 # and a short horizon — this is about which multiplier survives, not about the relaxed state —
@@ -339,7 +339,7 @@ let d = control[1], fr = control[2]
 end
 
 # =============================================================================================
-header("6. Δt is resolved, measured on this run's own state")
+header("5. Δt is resolved, measured on this run's own state")
 
 let n = 10
     function endpoint(Δt, steps)
@@ -426,8 +426,9 @@ let payload = (; run = "b3",
             "`ω > 0` and `eq:M-condition` gives it the mobility `M = y`, which the same equation",
             "requires to be positive. The printed Gaussian is strictly positive as a function,",
             "but with `w₁² = 0.01` it decays to 1.4e-11 of its peak at the far corner, which a",
-            "Galerkin scheme cannot tell from zero: the projected state starts at ~5e-12 and the",
-            @sprintf("relaxation drives it negative within a few steps. B3 therefore carries a %.3g",
+            "Galerkin scheme cannot tell from zero: the projected state starts at ~6e-13 and the",
+            "first step drives the iterate to -6.6e-5, where the entropy raises a `DomainError`",
+            @sprintf("before any step completes. B3 therefore carries a %.3g",
                 B3_FLOOR),
             "background — 1 % of its peak — and the run above measures the printed condition",
             "failing before it uses the floored one.", "",
