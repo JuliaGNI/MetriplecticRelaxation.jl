@@ -38,7 +38,7 @@ using MetriplecticRelaxation: SpectralTorus, torus_field, poisson_periodic,
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
-using .Checks: header, check, summary
+using .Checks: header, check, relerr, summary
 
 const g = SpectralTorus(48)
 
@@ -67,11 +67,15 @@ check("ω is not an eigenfunction of -Δ (so the test is not vacuous)",
 Π(v) = v .- (l2inner(g, Φ, v) / l2inner(g, Φ, Φ)) .* Φ
 
 let Πω = Π(Ω)
-    # `Π_H φ = 0` is checked by APPLYING the projector to φ, not by writing out the formula
-    # with v = φ: the latter is `φ - (φ,φ)/(φ,φ) φ`, identically zero for any φ whatever, and
-    # asserts nothing at all.
-    check("Π_H φ = 0", l2norm(g, Π(Φ)) / l2norm(g, Φ) < 1e-13,
-        @sprintf("‖Π_H φ‖/‖φ‖ = %.2e", l2norm(g, Π(Φ)) / l2norm(g, Φ)))
+    # `Π_H φ = 0` is REPORTED and not asserted. Applying the projector to `φ` does not escape
+    # the vacuity it was once claimed to escape: `Π`'s body is `v - (φ,v)/(φ,φ) φ`, so at
+    # `v = φ` the coefficient is `x/x`, exactly `1.0` in floating point, and `φ .- 1.0 .* φ`
+    # is exactly zero elementwise. Measured, `all(iszero, Π(ψ))` holds for `ψ = φ`, for a
+    # random field, and for `φ` scaled by `1e±9`: no field could have made this row fail.
+    # The content is in the two rows below -- only the right coefficient makes `Π_H ω`
+    # orthogonal to `φ`, and only a projector is idempotent.
+    println(@sprintf("      Π_H φ = 0 holds by the formula's own algebra   ‖Π_H φ‖/‖φ‖ = %.2e",
+        l2norm(g, Π(Φ)) / l2norm(g, Φ)))
     # The projected field is orthogonal to φ, which is what "projector onto the orthogonal
     # complement" means and is not true of an arbitrary v.
     check("Π_H ω ⊥ φ", abs(l2inner(g, Φ, Πω)) / (l2norm(g, Φ) * l2norm(g, Πω)) < 1e-13,
@@ -110,11 +114,29 @@ let SS = 2S₀ - 4H₀^2 / l2inner(g, Φ, Φ)
 end
 
 # Both fields dissipate entropy, which is why the error is not visible in an entropy trace.
+# That is REPORTED and not asserted, because as an assertion it could not fail. With
+# `H₀ = (φ,ω)/2` and `S₀ = (ω,ω)/2`, `field(κ)` gives the closed form
+#
+#     -dS/dt = 2S₀ - 2κH₀²/‖φ‖² ,
+#
+# and Cauchy-Schwarz bounds `4H₀² = (φ,ω)² ≤ ‖φ‖²·2S₀`, i.e. `H₀²/‖φ‖² ≤ S₀/2`, so
+# `-dS/dt ≥ (2-κ)S₀`. Both κ here satisfy `κ ≤ 2`, and section 1 has already shown `φ ∦ ω`,
+# which makes the inequality strict: no field could have made either row fail. Measured,
+# `H₀²/(‖φ‖²S₀) = 0.3967` against the bound `1/2`. The sign is not unconditional -- on this
+# same field `κ = 3` and `κ = 4` give `-dS/dt = -5.067` and `-15.638` -- it is unconditional
+# over the two κ the manuscript's discrepancy is between.
+#
+# What IS asserted is the closed form, which a sign or factor slip in `field` breaks at order
+# one and which is what makes the bound above a statement about this code rather than about
+# the algebra alone.
 for κ in (1.0, 2.0)
-    check(
-        @sprintf("κ = %g still dissipates entropy (so the defect is invisible in Fig. 4)",
-            κ),
-        l2inner(g, Ω, field(κ)) < 0, @sprintf("dS/dt = %.6e", l2inner(g, Ω, field(κ))))
+    dS = l2inner(g, Ω, field(κ))
+    closed = 2S₀ - 2κ * H₀^2 / l2inner(g, Φ, Φ)
+    check(@sprintf("κ = %g: -dS/dt = 2S₀ - 2κH₀²/‖φ‖²", κ), relerr(-dS, closed) < 1e-13,
+        @sprintf("-dS/dt = %+.10e   closed form %+.10e   rel %.2e", -dS, closed,
+            relerr(-dS, closed)))
+    println(@sprintf("      κ = %g dissipates, invisibly in Fig. 4   dS/dt = %+.6e   floor %+.6e",
+        κ, dS, (2 - κ) * S₀))
 end
 
 # =============================================================================================

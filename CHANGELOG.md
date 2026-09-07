@@ -384,6 +384,29 @@ here than in a library:
 
 ### Fixed
 
+- **Three of `verify_projector_factor.jl`'s rows could not fail, and are now reports plus one
+  row that can.** The two "still dissipates entropy" rows asserted `dS/dt < 0` for `κ = 1` and
+  `κ = 2`. With `H₀ = (φ,ω)/2` and `S₀ = (ω,ω)/2` the field gives
+  `-dS/dt = 2S₀ - 2κH₀²/‖φ‖²`, and Cauchy-Schwarz gives `H₀²/‖φ‖² ≤ S₀/2`, so
+  `-dS/dt ≥ (2-κ)S₀` — non-negative for every `κ ≤ 2`, and strict once section 1 has shown
+  `φ ∦ ω`. **The bound is `(2-κ)S₀` and not `2S₀ - κS₀/2`, so it covers `κ ≤ 2` and not
+  `κ ≤ 4`:** measured on this field, `κ = 3` and `κ = 4` give `-dS/dt = -5.067` and `-15.638`,
+  i.e. entropy *production*. Both κ the manuscript's discrepancy is between are inside the
+  bound, which is why the rows could not fail. Measured `H₀²/(‖φ‖²S₀) = 0.3967` against `1/2`.
+
+  The third was `Π_H φ = 0`, whose comment claimed that *applying* the projector escaped the
+  vacuity of writing the formula out at `v = φ`. It does not: `Π`'s body **is** that formula,
+  so the coefficient is `x/x`, exactly `1.0`, and `φ .- 1.0 .* φ` is exactly zero elementwise.
+  Measured, `all(iszero, Π(ψ))` holds for `ψ = φ`, for a random field and for `φ` scaled by
+  `1e±9`.
+
+  All three now print as report lines in the six-space form `verify_takeda.jl` and
+  `verify_gradshafranov.jl` already use, and the closed form itself is asserted per `κ` in
+  their place — **`rel 2.21e-16` and `8.07e-16`**. That row is the one with a must-fail
+  control: on a field whose projector term carries a sign slip it fails at **rel 5.68e-01 and
+  8.85e-01**, while the two rows it replaces still *pass* on that same broken field. Net
+  14 checks to 13.
+
 - **The `SimpleSplines` compat bound follows its 0.1.0 release. Compat only — no code changed
   and no number below moves.** SimpleSplines' `main` carried `version = "1.0.0-DEV"`, which the
   bound `"1"` satisfied; on 2026-09-07 it released `0.1.0`, a *downgrade* in numbering rather
