@@ -48,6 +48,11 @@ The lower panels of Figs. 2 and 4: the relative energy error and the entropy aga
 Both discretisations are drawn on the same axes. That is the point of the figure in this
 reproduction — the manuscript has one method and this has two, and the reader should be able to
 see whether they agree without comparing two pages.
+
+`Sη = nothing` omits the line. Section 5.4's B3 is the case that needs it: with
+``s = \omega\log\omega`` the constrained entropy minimum has no closed form, and drawing the
+run's own final entropy as if it were a reference would put a result on the axis where a
+prediction belongs.
 """
 function figure_traces(path, traces, Sη)
     fig = Figure(size = (900, 380))
@@ -60,7 +65,8 @@ function figure_traces(path, traces, Sη)
         lines!(ax1, tr.t, max.(e, 1e-18); label = label)
         lines!(ax2, tr.t, tr.S; label = label)
     end
-    hlines!(ax2, [Sη]; color = :black, linewidth = 2, linestyle = :dash, label = "S_η")
+    Sη === nothing ||
+        hlines!(ax2, [Sη]; color = :black, linewidth = 2, linestyle = :dash, label = "S_η")
     axislegend(ax1; position = :rb)
     axislegend(ax2; position = :rt)
     save(path, fig)

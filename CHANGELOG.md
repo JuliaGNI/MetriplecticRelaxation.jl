@@ -234,12 +234,15 @@ here than in a library:
   at `N = 1024`; the manuscript's `64²` is `N = 4096` and some 40 minutes *per step*. No §5.4
   claim needs that resolution — the relaxed states are the lowest Dirichlet eigenmode and a
   smooth exponential of it, and the discrete first eigenvalue is already within `3.4e-5` of
-  `2π²` at **8** cells. What does need resolution is B3's positivity, and **26 is that
-  threshold, measured**: the `L²` projection of B3's own Gaussian has `min ω₀` = `-1.4e-2`,
-  `-5.8e-4`, `-3.9e-7` and `+5.1e-12` at 12, 16, 20 and 26 cells. It is the *narrow* direction
-  that decides, `w₁ = 0.1`; the number is unchanged by refining the other axis.
+  `2π²` at **8** cells.
 
-- **`scripts/verify_euler.jl`** — **96 checks** on all of that, run before any B run was
+  What *does* need resolution is the **narrow direction of the initial condition**, `w₁ = 0.1`,
+  and **26 is that threshold, measured**: it is the coarsest mesh on which the `L²` projection of
+  the printed Gaussian stops oscillating below zero, `min ω₀` running `-1.4e-2`, `-5.8e-4`,
+  `-3.9e-7`, `+6.0e-13` at 12, 16, 20 and 26 cells. A statement about the peak, not about the
+  boundary: refining the *other* axis does not move it at all.
+
+- **`scripts/verify_euler.jl`** — **98 checks** on all of that, run before any B run was
   believed, in six sections. `w²` and not `w` (below); the space (`|Ω| = 1`, `K` positive
   definite with `λ_min = 19.73925`, the discrete first eigenvalue converging **16×** on doubling
   from 8 to 16 cells, `φ = Λω` vanishing on `∂Ω` at **exactly** 0, `MΛ` symmetric at exactly 0);
@@ -512,6 +515,61 @@ here than in a library:
   reproduction therefore reports the early rate rather than asserting a direction, and
   `run_a4.jl` says so at the check.
 
+- **§5.4's closed-form references are the `μ = 0`, `c = 0` case of a four-multiplier
+  equilibrium, and it is the *state* space — not the geometry — that forces it.** The sharpest
+  thing the §5 work turned up, and not a spline artefact: it is about which functions the space
+  contains.
+
+  The equilibrium condition of `eq:collision-bracket` is `∇(δS/δu) = λ ∇(δH/δu)`, hence
+  `δS/δu = λφ + c·x + μ`, with `μ` and `c` the multipliers of the bracket's **other** Casimirs:
+  the mass `∫u` and the momenta `∫x_k u`, each a Casimir because its variational derivative has
+  vanishing gradient and `Q₂` annihilates it identically. **Both** of §5.4's references are the
+  `μ = 0`, `c = 0` case — `ω = λ₁,₁φ` for `s = y²/2`, and `ω = e^{λφ−1}` with
+  `λ = (M+S)/2H₀` for `s = y log y`, the second following from the first by one substitution
+  into `S = ∫ω log ω`.
+
+  In a homogeneous-Dirichlet space that case is **forced**, because `1`, `x₁` and `x₂` are not
+  in the space: the discrete Casimirs are absent and nothing constrains the mass. In a space
+  that contains the constants the mass *is* conserved, `μ` is fixed by it, and both references
+  acquire an extra term. So all three runs use `V_D`, and the price is a mass that drifts —
+  B1's by **+46.0 %**.
+
+  **The `:free` alternative is implemented and B3 measures both**, because the claim deserves a
+  control rather than a paragraph. `EulerSquare(n, p; state = :free)` puts `ω` in the plain
+  clamped space and still solves for `φ` in `V_D ⊆ V` through the recombination matrix,
+  `Λ = E (EᵀKE)⁻¹ EᵀM`. Measured at 16 cells over the same 25 steps, the two spaces separate
+  exactly as the table predicts: `μ` shrinks through `-1.24, -0.85, -0.63, -0.47, -0.35` toward
+  zero in `V_D` while `V` holds it at **−1.46**, and the residual against the manuscript's
+  `μ = 0` reference falls to **0.147** in `V_D` and sticks at **0.41** in `V`. That is the mass
+  Casimir being present or absent, seen directly.
+
+  `verify_euler.jl` settles the algebra in both directions: `S = 2λH + (μ−1)M` closes to
+  **1e-12** for manufactured states at `(λ,μ) = (3,0)`, `(7.5,0)` and `(3,0.4)`, and
+  `gibbs_lambda` returns `λ` exactly at `μ = 0` and **15.374 instead of 3** at `μ = 0.4`.
+
+- **B3's printed initial condition is not admissible for its own entropy, in any space.**
+  `s = y log y` is undefined at `y ≤ 0` and `eq:M-condition` gives it the mobility `M = y`,
+  which the same equation requires to be positive. The printed Gaussian is strictly positive as
+  a *function* — but with `w₁² = 0.01` it decays to `1.4e-11` of its peak at the far corner of
+  the square, and a Galerkin scheme cannot tell that from zero. Measured on the `26²` space:
+  `min ω₀ = +6.0e-13` at the outermost quadrature node — the Gaussian's own value there, not a
+  projection artefact — and **five implicit-midpoint steps at `Δt = 0.02` reach `-6.6e-5` and
+  raise a `DomainError`**. The admissible set has no interior around such a state, and no
+  tolerance fixes that.
+
+  **The continuum does not have this problem, and the reason says what the discretisation is
+  losing:** `M = ω` vanishes where `ω` does, so the flux vanishes with it and the equation is
+  degenerate-parabolic and positivity-preserving. A Galerkin projection of it is not.
+
+  B3 therefore carries a positive background of **1 % of its peak** (`B3_FLOOR`), which is four
+  orders above the undershoot it has to absorb and leaves `min ω₀ = 9.3e-3` — a real margin
+  where the printed condition leaves `6e-13`. It costs 12 % of the mass, which §5.4 measures
+  nothing against: the reference and its multiplier are both read off the *relaxed* state.
+  `run_b3.jl` measures the printed condition failing before it uses the floored one, so the
+  departure is justified by the run rather than asserted in a comment. The alternative — a
+  positivity-preserving limiter, or evolving `log ω` — is a different scheme, and this
+  reproduction does not write one.
+
 ### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
 
 `Δt = 1e-4` (the manuscript's), `T = 10`, spectral `256²` (the manuscript's), spline `128²`
@@ -707,3 +765,189 @@ beside it, both normalised by the global field norm. Normalising a masked region
 *inside* it is ill-posed here — A1's Gaussian sits on the separatrix, so `u ≈ 0` in the island
 interiors, and the first version of the check reported `6.4e-2` for a region carrying 7 % of the
 error.
+
+### Results — §5.4, the dependency state every number below was measured against
+
+`Manifest.toml` is gitignored and `[sources]` follows `main` on both remotes, so the resolved
+tree is not committed and has to be recorded here instead. Every §5.4 number in the sections
+that follow was produced against
+
+- **PoissonBrackets `a13598b`**, tree `23dba270c9b1c10f9576a9a09043a0f4790d0cd8` — the merge of
+  `metriplectic-brackets`, which is where `CollisionBracket`, `TensorSplineSpace` and
+  `MetriplecticFlow` come from;
+- **SimpleSplines `c74e37d`**, tree `6c199ca136d88712bf7505129153538a324e5c03`.
+
+Both were confirmed against the manifest's `git-tree-sha1` before the runs, not assumed.
+
+### Results — B1, the single vortex (§5.4, figs `sv_*`)
+
+`Δt = 1`, `T = 200`, 200 steps, `26²` cells of degree 2 in the homogeneous-Dirichlet space,
+`N = 676`, **57 minutes** of wall clock on an otherwise idle machine. Every one of `Δt`, `T`,
+the mesh and the degree is a choice of this reproduction and not the manuscript's `64²` P2 —
+the reasons are in `SECTION5_RUNS` and `EulerSquare` and are repeated in the *Added* entry
+above.
+
+- **`ω` relaxes to `ω = λ₁,₁φ`, and the check is two-sided.** The fitted `λ` reaches
+  **19.7392146901** against the space's own eigenvalue `λ_h = 19.7392146644` — a relative
+  agreement of **1.30e-09** — and `2π² = 19.7392088022`, from which both differ by **5.9e-06**,
+  which is the discretisation error of the 26-cell space and not of the run. The residual
+  `‖ω − λφ‖/‖ω‖` falls from **6.267e-01** at `t = 0` to **7.254e-05** at `t = T`.
+
+  Both halves are needed. `λ` alone is a projection coefficient, `(ω,φ)/(φ,φ)`, and its error is
+  *second* order in the state's: at `t = 0`, when the state is nothing like the eigenmode, it
+  already reads **22.584**, within 14 % of the answer. A check on `λ` alone would pass for a run
+  that had barely moved. B2's section quantifies that second-order law.
+
+- **`S` decreases monotonically to `S_η = λ₁,₁H₀`.** Strictly: the worst increment over the 200
+  samples is **−3.310e-10** of `S₀`, i.e. every step decreased it. `S` goes
+  **2.0775801677e-02 → 1.1027476429e-02** against `λ_h H₀ = 1.1027476356e-02`, an excess of
+  **+6.56e-09** relative, and **99.999999 %** of the available reduction. The Poincaré floor
+  `S ≥ λ₁,₁H₀` holds at every sample with a minimum margin of **+3.35e-09**.
+
+- **`H` is conserved at the Newton residual tolerance, which is the right way to say it.**
+  `max |ΔH|/|H₀| = 2.449e-12` with `H₀ = 5.586583126006e-04` — an **absolute** drift of
+  **1.4e-15**. That is machine precision on a quantity of this size, and the relative number is
+  larger only because `default_f_abstol` is absolute: `4 max(8,N) eps ‖ω̂₀‖_∞ = 6.0e-13` at
+  `N = 676`, and it knows nothing about `H₀`. The first version of this check asserted
+  `< 1e-12` on the relative error and failed at `2.449e-12`; the threshold now follows the
+  measurement and the check reports both numbers.
+
+- **The mass drifts by +46.0 %**, from `0.0824356619` to `0.1203719455`, and that is not a
+  defect. `∫ω` is a Casimir of the continuous bracket, and the discretisation inherits it only
+  if the constant function is in the space — which in `V_D` it is not. That same absence is what
+  makes `ω = λ₁,₁φ` the exact relaxed state; see the *Found* entry above. The driver reports the
+  drift and does not assert on it.
+
+- **The entropy production stays strictly positive and spans nine orders**, from
+  `(S,S) = 2.879e-03` at the start to `6.57e-12` at `t = 200`, which is the run running out of
+  entropy to dissipate rather than the bracket losing definiteness.
+
+- **`Δt = 1` is a cost choice and this is the measurement that says so.** Five steps at `Δt = 1`
+  and ten at `Δt = 0.5` land on states differing by **9.53e-04** relative in `L²`. One step is
+  one Newton solve and one Newton matrix is `N` dense assemblies, so at `N = 676` a step costs
+  **27 s**; a step size chosen for accuracy rather than for cost would have bought nothing here.
+
+- **B1 is also the control for B2's plateau.** `entropy_plateau` on this trace puts the 1 %
+  break at the **first** sample, `t = 1`, with nothing held before it — a run that starts far
+  from any equilibrium dissipates from the first step.
+
+### Results — B2, the perturbed equilibrium (§5.4, figs `pe_*`)
+
+`Δt = 0.5`, `T = 150`, 300 steps, same `26²` degree-2 space, `N = 676`, just under two hours on a
+machine also running the other two. Half B1's step and three quarters of its horizon, and both
+halves of that are the plateau's doing — see `SECTION5_RUNS`.
+
+- **The entropy is flat first and then monotone, which is the two-phase claim, and both halves
+  are asserted.** `S` holds within **8.10e-03** of `S₀` — measured against its own total fall —
+  for the first **8.5** time units, 18 samples of 301, and then falls. Over the whole run it
+  never rises: worst increment **−5.751e-07**, `1.2500144159e-01 → 4.8108181391e-03`, which is
+  **99.997 %** of the reduction available to it.
+
+  Monotonicity alone would not say this. **B1, on the same mesh and with the same diagnostic,
+  breaks at the first sample with nothing held** — that is the control, and it is what makes
+  "flat first" a measurement rather than a description.
+
+- **The mechanism is measured, not asserted: the entropy production grows by a factor 1070**,
+  from `(S,S) = 1.214e-05` at `t = 0` to `1.302e-02` at its peak at `t = 18.5`. A plateau
+  produced by a bracket that simply dissipates slowly would show no such growth.
+
+- **The initial state really is near an equilibrium, and how near is a property of the mesh.**
+  `‖ω₀ − λφ₀‖/‖ω₀‖ = 6.89e-02` with `λ₀ = 510.84` against the exact `52π² = 513.219`. The
+  Gaussian is a 1 % perturbation by construction; the rest is the projection error of a mode
+  with three wavelengths across 26 cells, and it is the larger of the two. So what seeds the
+  instability here is partly the mesh, which is reported rather than hidden — the plateau's
+  *existence* does not depend on which, only its length does.
+
+- **It relaxes to the lowest eigenmode, not the one it started on**: `λ` falls from **510.84**
+  to **19.74213425** against `λ_h = 19.73921466`, and the state becomes single-signed
+  (`ω(T) ∈ [3.26e-05, 0.205]`) where `ω₀` was not (`[−0.999, 1.000]`). `H` is conserved at
+  **3.21e-14** relative, **7.81e-18** absolute.
+
+- **The tolerance on the fitted `λ` is `rel²`, and that is a measured law rather than a
+  loosened threshold.** `λ` is a projection coefficient, so its error is second order in the
+  state's. Measured on the two runs, three orders of magnitude apart in `rel`:
+
+  | run | `‖ω−λφ‖/‖ω‖` | `|Δλ|/λ_h` | ratio |
+  |:--|--:|--:|--:|
+  | B1 | 7.2545e-05 | 1.3020e-09 | **0.24739** |
+  | B2 | 2.4451e-02 | 1.4791e-04 | **0.24740** |
+
+  Five digits of agreement. The first version of B2's check asserted an absolute `1e-4` and
+  failed at `1.479e-04`; the check now asserts `|Δλ|/λ_h < rel²`, which both runs satisfy with a
+  factor of four to spare and which tightens on its own as a run relaxes.
+
+- **The mass drifts from `8.24e-04` to `7.84e-02`** — the same absence of the constants as in
+  B1, and reported the same way.
+
+### Results — B3, the Gibbs entropy (§5.4, figs `ge_*`)
+
+`Δt = 0.02`, `T = 3`, 150 steps, same `26²` degree-2 homogeneous-Dirichlet space, `N = 676`,
+plus the step-size sweep, the two-space control and the step-halving check on top. `Δt` is the
+one number in §5.4 that is *measured* rather than chosen, and B3's initial condition carries
+`B3_FLOOR` — see the two *Found* entries above for why.
+
+- **`Δt` is bounded by admissibility, not by accuracy, and the sweep locates the boundary.** Ten
+  steps at each of seven step sizes on the run's own mesh:
+
+  | `Δt` | worst `ΔS/S₀` | `max \|ΔH\|/\|H₀\|` | outcome |
+  |--:|--:|--:|:--|
+  | 0.005 | −9.179e-03 | 8.149e-15 | monotone |
+  | 0.01 | −8.006e-03 | 8.715e-15 | monotone |
+  | 0.02 | −7.623e-03 | 8.715e-15 | monotone |
+  | 0.04 | — | — | **left the admissible set** |
+  | 0.08 | — | — | **left the admissible set** |
+  | 0.16 | — | — | **left the admissible set** |
+  | 0.5 | — | — | **left the admissible set** |
+
+  The outcome is monotone in `Δt` — three `ok` then four failures, no interleaving — so there is
+  a single threshold rather than a scatter, and it lies between **0.02 and 0.04**. That is the
+  quantitative content of the manuscript's "sufficiently small time steps must be used", and it
+  **tightens with the mesh**: `0.08→0.16` at 12 cells, `0.05→0.1` at 16, `0.02→0.04` at 26. What
+  fails is not monotonicity but *admissibility* — `ω` goes negative and `y log y` raises.
+
+  The rows are printed as measurements rather than as checks. The first version asserted each
+  one and reported **four failures** for a sweep doing exactly what it exists to do; the claims
+  are now the three conclusions drawn from the table.
+
+- **It relaxes to the manuscript's `ω = e^{λφ−1}`.** With `λ = (M+S)/2H₀ = 15.03442967` from the
+  run's own final mass, entropy and initial energy, the residual `‖ω − e^{λφ−1}‖/‖ω‖` falls from
+  **4.556e-01** at `t = 0` to **4.238e-03** at `t = T`, measured over the interior at a margin of
+  two cells.
+
+- **The remaining disagreement is a one-cell boundary layer, and that is shown rather than
+  assumed.** `e^{λφ−1}` is `e^{-1} = 0.3679` on `∂Ω` while every state of `V_D` is zero there, so
+  no relaxed state in that space can match it in the last cell. The residual at margins
+  `0, h, 2h, 4h` is **3.565e-02, 9.333e-03, 4.238e-03, 9.121e-04** — monotone in the margin,
+  which is what identifies it as a layer.
+
+- **`μ` relaxes to zero, which is what makes the manuscript's `λ` formula an identity here.** The
+  independent two-parameter fit returns `λ_fit = 14.97322000` and **`μ = +0.00710146`**, i.e.
+  `μ/λ = 4.7e-04`, and the formula agrees with the fit to **4.09e-03**. The three-quantity
+  identity `S = 2λH₀ + (μ−1)M` closes to **2.05e-03** against a fit residual of `1.96e-02` — the
+  accuracy the state itself permits, which is what the check is tolerance to.
+
+  The fitted pair does **no better** than `μ = 0` (`3.588e-02, 9.764e-03, 4.545e-03, 2.154e-03`
+  at the four margins, against `μ = 0`'s numbers above). That is the sharpest single statement
+  that `μ` has genuinely vanished rather than been assumed away.
+
+- **The two-space control, and it separates cleanly.** 25 steps at `Δt = 0.02` on a `16²` mesh in
+  each space:
+
+  | space | `∫ω` | fitted `λ` | fitted `μ` | `(M+S)/2H₀` | `‖ω − e^{λφ−1}‖/‖ω‖` |
+  |:--|:--|--:|--:|--:|--:|
+  | `:dirichlet` | 0.92028530 → 1.15511611 | 17.54191 | **−0.35055** | 14.53294 | **1.473e-01** |
+  | `:free` | 0.92493151 → 0.92493151 | 25.12436 | **−1.45159** | 14.16493 | **3.913e-01** |
+
+  The mass is held to every digit in `V` and drifts 26 % in `V_D`, `μ` is four times smaller
+  where it drifts, and the manuscript's reference fits 2.7× better there. Over the full run in
+  `V_D`, `μ` continues to `+0.0071`.
+
+- **`H` is conserved at 1.392e-14 relative, 8.535e-16 absolute**, and `S` falls monotonically
+  from `1.0112986621` to `6.1014492682e-01` with a worst increment of **−8.559e-11** — every step
+  decreased it. `ω` stays admissible throughout, its minimum over the run being its initial
+  `9.324e-03`, i.e. the floor's margin is never eroded. The entropy production runs from
+  `12.854` to `4.04e-09`. The mass drifts **+33.75 %**.
+
+- **`Δt = 0.02` is resolved**: ten steps against twenty at `Δt/2` land on states differing by
+  **2.583e-04** relative in `L²`, so within the admissible range the step is not limiting the
+  accuracy either.

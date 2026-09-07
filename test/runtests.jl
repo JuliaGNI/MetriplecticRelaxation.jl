@@ -15,7 +15,8 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               potential_norm², best_fit_euler, fit_rate, record!,
                               entropy_monotone, cone_residual,
                               EllipticEnergy
-using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSquare, GibbsEntropy,
+using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSquare,
+                              GibbsEntropy, B3_FLOOR,
                               euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
                               dirichlet_eigenvalue, gibbs_lambda, gibbs_fit, gibbs_residual,
                               interior_weights, state_extrema, gaussian_w2, perturbation_b2,
@@ -392,6 +393,34 @@ end
         @test SECTION5_RUNS["b3"].gaussian(0.5, 0.5)≈10.0 rtol=1e-14
         @test all(isapprox.(gaussian_w2((0.25, 0.75), (0.04, 0.09), 2.0).w, (0.2, 0.3);
             rtol = 1e-14))
+    end
+
+    @testset "$(rpad("B3 carries a POSITIVE FLOOR, and it is not decoration", 76))" begin
+        # `s = y log y` is undefined at y ≤ 0 and eq:M-condition gives it the mobility M = y,
+        # which must be positive. The printed Gaussian decays to 1.4e-11 of its peak at the far
+        # corner — strictly positive as a function, indistinguishable from zero to a Galerkin
+        # scheme. The floor is what gives the admissible set an interior.
+        b3 = SECTION5_RUNS["b3"]
+        @test b3.entropy === :gibbs
+        @test b3.background !== nothing
+        @test b3.background(0.13, 0.87) == B3_FLOOR
+        @test B3_FLOOR / b3.gaussian(0.5, 0.5)≈0.01 rtol=1e-14
+        # The printed condition at the far corner, which is what the floor has to dominate.
+        @test b3.gaussian(0.0, 0.0) / b3.gaussian(0.5, 0.5) < 1e-10
+        # And the floored condition is admissible on a mesh where the printed one is not.
+        sq = EulerSquare(12, 2)
+        printed = EulerSpec("printed", b3.section, b3.entropy, b3.state, b3.gaussian,
+            nothing, b3.Δt, b3.T)
+        @test state_extrema(sq, euler_state(sq, printed))[1] < 0
+        @test state_extrema(sq, euler_state(sq, b3))[1] > 1e-3
+    end
+
+    @testset "$(rpad("Every run uses the homogeneous-Dirichlet state space", 76))" begin
+        # It is the absence of the constants that forces the equilibrium's mass multiplier to
+        # zero, and both of §5.4's closed-form references are the μ = 0 case.
+        for name in SECTION5_ORDER
+            @test SECTION5_RUNS[name].state === :dirichlet
+        end
     end
 
     @testset "$(rpad("B2's added mode IS an unstable equilibrium", 76))" begin

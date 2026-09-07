@@ -25,6 +25,7 @@ const SCRIPTS = String[
     "verify_diagnostics.jl",
     "verify_projector_factor.jl",
     "verify_projector_rates.jl",
+    "verify_euler.jl",
     # The refinement study behind the deliberate deviation: the spline discretisation must converge
     # to the manuscript's spectral one, at the order the spline space has.
     "converge.jl",
@@ -35,12 +36,16 @@ const SCRIPTS = String[
     "run_a2.jl",
     "run_a3.jl",
     "run_a4.jl",
+    # §5.4  reduced Euler on [0,1]^2 with homogeneous Dirichlet conditions: single vortex,
+    #       perturbed equilibrium, Gibbs entropy. Each step is a Newton solve on a NONLOCAL
+    #       bracket whose Jacobian is N dense assemblies -- 27 s per step at 26^2 cells -- so
+    #       these are by far the most expensive scripts here: an hour or more each, and B3 is a
+    #       step-size study and a two-space control on top of its own relaxation.
+    "run_b1.jl",
+    "run_b2.jl",
+    "run_b3.jl",
     # The figures, last, because they read what the runs wrote.
     "figures.jl"
-    # §5.4  reduced Euler on [0,1]^2: single vortex, perturbed equilibrium, Gibbs entropy
-    #   "run_b1.jl",
-    #   "run_b2.jl",
-    #   "run_b3.jl",
     # §5.5  Grad-Shafranov: the rectangle, then the mapped disk
     #   "run_c1.jl",
     #   "run_c2.jl",

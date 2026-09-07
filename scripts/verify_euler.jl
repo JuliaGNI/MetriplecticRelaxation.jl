@@ -12,7 +12,8 @@
 #      distance, with a control that a `w` reading must fail;
 #   2. the homogeneous-Dirichlet space: the domain it integrates, its first eigenvalue, and the
 #      fact that CONSTANTS ARE NOT IN IT, which is what makes both of Section 5.4's closed-form
-#      references exact;
+#      references exact -- and then, in 2b, the two separate things that decide whether B3's
+#      initial condition is admissible at all: the mesh, and the floor;
 #   3. the collision-like bracket on that space: symmetry, positive semi-definiteness, the
 #      degeneracy (F,H) = 0, and the two independent evaluations of the same operator -- plus
 #      two controls that MUST fail;
@@ -27,13 +28,14 @@
 # -- are the drivers' business.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSquare, GibbsEntropy,
+using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSquare,
+                              GibbsEntropy,
                               euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
                               gibbs_lambda, gibbs_fit, gibbs_residual, interior_weights,
                               state_extrema, dirichlet_eigenvalue, gaussian_w2,
                               perturbation_b2, Diagnostics, Trace, record!,
                               entropy_monotone, energy_error, l2inner, l2norm, integrate,
-                              DIRICHLET_EIGENVALUE, SQUARE_LENGTH
+                              DIRICHLET_EIGENVALUE, SQUARE_LENGTH, B3_FLOOR
 using PoissonBrackets
 using PoissonBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
                        Integrator, ImplicitMidpoint, integrate_step!,
@@ -187,33 +189,46 @@ let sq = sq16, λh = dirichlet_eigenvalue(sq)
         norm(A - A') / norm(A) < 1e-14, @sprintf("rel %.3e", norm(A - A') / norm(A)))
 end
 
-# B3's state space and B3's mesh are both fixed by one requirement: `y log y` needs ω > 0 at
-# every quadrature node. Two separate things stand in the way of that, and this section
-# separates them.
-header("2b. why B3 needs a different space, and a fine enough mesh")
+# The mesh and B3's floor are both fixed by one requirement: `y log y` needs ω > 0 at every
+# quadrature node, and so does its mobility M = y. Two separate things stand in the way of that
+# — resolution and amplitude — and this section separates them.
+header("2b. the mesh, B3's initial condition, and the floor")
 
-# (i) The Dirichlet space cannot carry this entropy AT ALL. ω = 0 on ∂Ω is the space's defining
-# property, so the outermost nodes sit at the Gaussian's own value there — 1e-13 — and the
-# entropy's admissible set has no interior around such a state.
-for n in (26, 32)
-    sqd = EulerSquare(n, 2; state = :dirichlet)
-    (lo, _) = state_extrema(sqd, euler_state(sqd, SECTION5_RUNS["b3"]))
-    check(@sprintf("n = %2d Dirichlet: ω₀ is positive only marginally", n),
-        0 < lo < 1e-9,
-        @sprintf("min ω₀ = %+.4e — the space forces ω = 0 on ∂Ω, so no margin exists", lo))
-end
+const b3 = SECTION5_RUNS["b3"]
+const b3printed = EulerSpec("b3-printed", b3.section, b3.entropy, b3.state, b3.gaussian,
+    nothing, b3.Δt, b3.T)
 
-# (ii) In the free space the boundary is no obstacle, but the NARROW direction still has to be
-# resolved or the L² projection oscillates below zero next to the peak. This is the measurement
-# that sets 26 cells, and the two coarser rows are the control that it is a threshold.
+# (i) The mesh threshold, and it is about the NARROW direction rather than about the boundary:
+# w₁ = 0.1, and below 26 cells the L² projection oscillates below zero next to the peak. The
+# three coarser rows are the control that 26 is a threshold and not a preference.
 for n in (12, 16, 20, 26)
-    sqf = EulerSquare(n, 2; state = :free)
-    (lo, hi) = state_extrema(sqf, euler_state(sqf, SECTION5_RUNS["b3"]))
+    sqn = EulerSquare(n, 2)
+    (lo, hi) = state_extrema(sqn, euler_state(sqn, b3printed))
     check(
-        @sprintf("n = %2d free: ω₀ is %s, as the 26-cell threshold says", n,
-            n >= 26 ? "admissible" : "NOT admissible"),
+        @sprintf("n = %2d: the printed ω₀ is %s, as the 26-cell threshold says", n,
+            n >= 26 ? "positive" : "NOT positive"),
         (lo > 0) == (n >= 26),
         @sprintf("min = %+.4e   max = %.4f", lo, hi))
+end
+
+# (ii) Positive is not admissible. Even at 26 cells the printed condition sits at the Gaussian's
+# own far-corner value, 1.4e-11 of its peak, and `s = y log y` has no admissible set around a
+# state a Galerkin scheme cannot hold away from zero.
+for n in (26, 32)
+    sqn = EulerSquare(n, 2)
+    (lo, _) = state_extrema(sqn, euler_state(sqn, b3printed))
+    check(@sprintf("n = %2d: the printed ω₀ has no MARGIN", n), 0 < lo < 1e-9,
+        @sprintf("min ω₀ = %+.4e against a peak of 10 — the Gaussian's own value there",
+            lo))
+end
+
+# (iii) The floor is what restores one, and this is the number that justifies its size.
+for n in (12, 26)
+    sqn = EulerSquare(n, 2)
+    (lo, hi) = state_extrema(sqn, euler_state(sqn, b3))
+    check(@sprintf("n = %2d: the floored ω₀ has a margin", n), lo > 1e-3,
+        @sprintf("min ω₀ = %+.4e — %.1f %% of the floor %.3g; max = %.4f",
+            lo, 100lo / B3_FLOOR, B3_FLOOR, hi))
 end
 
 # The free space's Λ still solves the Dirichlet problem: φ vanishes on ∂Ω while ω need not.
@@ -519,14 +534,10 @@ for name in SECTION5_ORDER
     sqc = EulerSquare(12, 2; state = spec.state)
     d = Diagnostics(sqc, spec)
     f = euler_flow(sqc, spec)
-    # B3's own initial state needs 26 cells to be admissible at all, which is 14 s per step
-    # here; the conservation laws do not, so B3 is stepped from an admissible state of its own.
-    # Section 2b is where the mesh threshold is settled.
-    ω̂ = name == "b3" ?
-        project(sqc.space,
-        x -> 6sin(π * x[1]) * sin(π * x[2]) * (1.5 + 0.4sin(2π * x[1])) + 0.4) :
-        euler_state(sqc, spec)
-    Δt = name == "b3" ? 1e-3 : 0.5
+    ω̂ = euler_state(sqc, spec)
+    # B3's step size is bounded by admissibility rather than by accuracy — see section 2b and
+    # the sweep in `run_b3.jl` — so it gets its own, well inside the boundary measured there.
+    Δt = name == "b3" ? 0.01 : 0.5
     integ = Integrator(f, ImplicitMidpoint(), Δt; û₀ = ω̂)
     tr = Trace(ω̂)
     record!(tr, d, 0.0, ω̂)

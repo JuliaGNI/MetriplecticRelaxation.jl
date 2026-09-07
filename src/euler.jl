@@ -13,7 +13,9 @@
 #     `spline.jl` is unnecessary, and CONSTANTS ARE NOT IN THE SPACE.  That last point is what
 #     makes both of the manuscript's closed-form references exact -- see `SECTION5_RUNS`;
 #   * the bracket is `CollisionBracket`, which is NONLOCAL: its operator is dense, and its
-#     analytic Jacobian costs N dense assemblies.  That, not accuracy, is what sets the mesh;
+#     analytic Jacobian costs N dense assemblies.  That is what CAPS the mesh; what fixes it at
+#     26 is resolving the initial condition's narrow direction.  Accuracy of the relaxed state
+#     constrains neither -- see `EulerSquare`;
 #   * the integrator is `ImplicitMidpoint`, which for this field IS Crank-Nicolson, so every
 #     step is a Newton solve rather than four function evaluations;
 #   * B3's entropy is `s = y log y` rather than `y^2/2`, which needs `omega > 0` pointwise and
@@ -77,6 +79,35 @@ until the instability has grown — the plateau-then-decay signature the run che
 """
 perturbation_b2(x₁, x₂) = sin(6π * x₁) * sin(4π * x₂)
 
+@doc raw"""
+The positive background B3's initial condition is given, as a fraction of its own peak.
+
+**This is a departure from the printed initial condition, and it is forced.** ``s = y \log y``
+is undefined at ``y \le 0`` and `eq:M-condition` gives it the mobility ``M = y``, which the same
+equation requires to be positive — so B3's state must be **strictly** positive, everywhere, at
+every step. The printed Gaussian is strictly positive as a *function*: with ``w_1^2 = 0.01`` it
+decays to ``1.4 \times 10^{-11}`` of its peak at the far corner of the square, which is not
+zero. It is, however, indistinguishable from zero for a Galerkin scheme, which is not
+positivity-preserving: measured on the ``26^2`` space the runs use, the projected state starts
+at ``\min\omega_0 = 6.0 \times 10^{-13}`` — the Gaussian's own value at that node — and five
+steps at ``\Delta t = 0.02`` drive it to ``-6.6 \times 10^{-5}``, at which point the entropy
+raises a `DomainError`. `run_b3.jl` performs exactly that, as the control on this constant.
+
+The continuum does not have this problem, and the reason is worth stating because it says what
+the discretisation is losing: the mobility ``M = \omega`` *vanishes* where ``\omega`` does, so
+the flux vanishes with it and the equation is degenerate-parabolic and positivity-preserving. A
+Galerkin projection of it is not.
+
+A floor is the smallest change that restores admissibility. At **1 % of the peak** it is four
+orders above the undershoot it has to absorb, and on the homogeneous-Dirichlet space it leaves
+``\min\omega_0 = 9.3 \times 10^{-3}`` — a real margin where the printed condition leaves
+``6 \times 10^{-13}``. It costs 12 % of the mass, which §5.4 measures nothing against: the
+reference ``\omega = e^{\lambda\phi-1}`` and its multiplier are both read off the *relaxed*
+state, not off the initial data. The alternative — a positivity-preserving limiter, or evolving
+``\log\omega`` — is a different scheme, and this reproduction does not write one.
+"""
+const B3_FLOOR = 0.1
+
 ## The runs
 
 @doc raw"""
@@ -127,17 +158,18 @@ The three runs of Section 5.4, keyed by name.
 |:--|:--|:--|:--|:--|
 | `b1` | `sv_*` | ``y^2/2`` | ``1`` | ``\omega_G``, ``x_0 = (\tfrac12,\tfrac12)``, ``w_1^2 = 0.01``, ``w_2^2 = 0.07``, ``N = 1`` |
 | `b2` | `pe_*` | ``y^2/2`` | ``1`` | ``\sin(6\pi x_1)\sin(4\pi x_2) + \omega_G``, ``N = 100`` |
-| `b3` | `ge_*` | ``y \log y`` | ``y`` | ``\omega_G``, ``1/N = 10`` |
+| `b3` | `ge_*` | ``y \log y`` | ``y`` | ``\omega_G``, ``1/N = 10``, **plus** [`B3_FLOOR`](@ref) |
 
-Everything in that table is the manuscript's. **Nothing in the two columns below is**, because
+Everything in that table is the manuscript's except B3's floor, which is forced and is explained
+where it is defined. **Nothing in the two columns below is the manuscript's either**, because
 §5 states no time step, no final time, no stopping criterion, no nonlinear-solver description
 and no tolerance. Each is a choice of this reproduction, recorded here with what it produced.
 
-| run | ``\Delta t`` | ``T`` |
-|:--|--:|--:|
-| `b1` | 1.0 | 200 |
-| `b2` | 0.5 | 200 |
-| `b3` | 0.005 | 20 |
+| run | ``\Delta t`` | ``T`` | steps |
+|:--|--:|--:|--:|
+| `b1` | 1.0 | 200 | 200 |
+| `b2` | 0.5 | 150 | 300 |
+| `b3` | 0.02 | 3 | 150 |
 
 **``\Delta t = 1`` is not a typo, and it is not a licence Crank-Nicolson's A-stability alone
 would give.** It was measured: on B1 the whole entropy trace at ``\Delta t = 1`` agrees with the
@@ -152,20 +184,39 @@ than trusting this paragraph.
 entropy approaches ``S_\eta = \lambda_{1,1} H_0`` at a rate near ``0.09``, so ``T = 200``
 leaves it ``10^{-8}`` of the way above the floor and the state ``10^{-4}`` from
 ``\lambda_{1,1}\phi`` in ``L^2``; ``T = 30`` would leave 3 % and 17 %, which draws the figure
-and cannot settle the reference. B2 relaxes about four times more slowly and gets **half** the
-step instead of more time, because what its claim needs resolved is the *plateau*: measured, its
-entropy production grows by four orders of magnitude between ``t = 0`` and ``t \approx 20``, and
-at ``\Delta t = 1`` that transition spans twenty samples rather than forty. B3 is a different
-regime again and its ``T`` and ``\Delta t`` come from the step-size study `run_b3.jl` performs —
-they are the one pair in this table that is *measured* rather than chosen, because for
-``s = y \log y`` Crank-Nicolson no longer guarantees monotone dissipation.
+and cannot settle the reference.
 
-# Which space the vorticity lives in is not one choice for all three runs
+B2 spends **half** the step on a **shorter** horizon, and both halves of that are the plateau's
+doing. What its claim needs resolved is the transition: measured, its entropy production grows
+by nearly three orders of magnitude between ``t = 0`` and ``t \approx 18``, and at
+``\Delta t = 1`` that span is nine samples rather than eighteen. The horizon then has to come
+back down to keep the step count affordable, and it can: B2's own late relaxation is about four
+times slower than B1's, so ``T = 150`` leaves the state 2 % from ``\lambda_{1,1}\phi`` where
+``T = 200`` would leave 1 % — a difference that changes no claim, against an hour of wall clock
+that it does.
 
-``\phi`` is always the homogeneous-Dirichlet solve; the question is ``\omega``, and the two
-possible answers each make one of the manuscript's two references exact and the other
-impossible. This is the sharpest thing §5.4 turned up and it is a statement about the
-manuscript, not about splines.
+B3 is a different regime again and its ``\Delta t`` is the one number in this table that is
+*measured* rather than chosen, because for ``s = y \log y`` Crank-Nicolson no longer guarantees
+monotone dissipation and the manuscript says only that "sufficiently small time steps must be
+used". The step-size study `run_b3.jl` performs locates the boundary, and it is **admissibility
+rather than accuracy** that sets it: measured at 12 cells, ``\Delta t`` up to ``0.08`` is
+monotone and ``0.16`` leaves the admissible set within ten steps; at 16 cells the boundary sits
+between ``0.05`` and ``0.1``, and ``\Delta t = 0.05`` reproduces ``0.02``'s entropy at
+``t = 0.5`` to six digits. It tightens with the mesh, so the run takes ``0.02`` — a factor of
+four inside the coarse-mesh boundary and re-measured on the run's own mesh by the sweep. B3 also
+relaxes two orders of magnitude faster than B1, its entropy having fallen 38 % by ``t = 0.5``,
+so ``T = 3`` is six relaxation times.
+
+**All three step counts are set by the same wall clock.** One step is one Newton solve and one
+Newton matrix is ``N`` dense assemblies, so at ``N = 676`` a step costs **27 s** measured on
+this machine at ``\Delta t = 1`` — the Newton iteration is what varies with the step size, and
+a larger step buys fewer but more expensive steps rather than a proportional saving.
+
+# The homogeneous-Dirichlet space is what makes both references exact
+
+Not a boundary condition inherited from the geometry — a *modelling* choice, and both of §5.4's
+closed-form limits depend on it. ``\phi`` is the Dirichlet solve either way; the question is
+whether ``\omega`` is constrained too.
 
 At equilibrium the flow satisfies ``\nabla(\delta S/\delta u) = \lambda \nabla(\delta H/\delta
 u)``, hence
@@ -187,30 +238,25 @@ gives ``\lambda = (M+S)/2H_0`` by one substitution.
 | mass and momenta conserved | no | yes |
 | ``\mu`` and ``c`` | forced to zero | fixed by ``M_0`` and ``P_0`` |
 | the manuscript's references | **exact** | carry an extra ``\mu`` |
-| ``\omega > 0``, which ``s = y\log y`` needs | **impossible** | available |
 
-The last row is what splits the runs. ``y \log y`` is undefined at ``y \le 0`` and
-`eq:M-condition` gives it the mobility ``M = y``, which must be positive; a
-homogeneous-Dirichlet ``\omega`` is *zero* on ``\partial\Omega`` by construction, so the
-outermost quadrature nodes sit at ``10^{-13}`` and the first implicit step pushes them negative.
-Measured: at 26 cells B3's initial state has ``\min\omega = +6.0 \times 10^{-13}``, and one step
-at ``\Delta t = 10^{-3}`` reaches ``-5.4 \times 10^{-10}`` and raises a `DomainError`. This is
-not a tolerance to widen — it is the space and the entropy being incompatible.
+All three runs therefore use ``V_D``, and the price is that the mass drifts — B1's by 46 % over
+its run — which the drivers report rather than assert on.
 
-So **B1 and B2 run in ``V_D`` and B3 runs in ``V``**, and B3's ``\lambda = (M+S)/2H_0`` is
-therefore a *prediction to test* rather than an identity: `run_b3.jl` reports it against an
-independent two-parameter fit of ``(\lambda, \mu)`` and says how far ``\mu`` is from zero.
-
-In ``V_D`` the price of the exact references is that the mass drifts, which the drivers report
-rather than assert on. In ``V`` the price is the extra multiplier.
+**The `:free` alternative is implemented, and B3 runs it as a control rather than as its
+formulation.** Both spaces are viable for B3 once [`B3_FLOOR`](@ref) makes the state admissible,
+and they disagree exactly as the table predicts: measured at 16 cells over the same 25 steps,
+``V_D`` has ``\mu`` shrinking through ``-1.24, -0.85, -0.63, -0.47, -0.35`` toward zero while
+``V`` holds it at ``-1.46``, and the residual against the manuscript's ``\mu = 0`` reference
+falls to 0.147 in ``V_D`` and sticks at 0.41 in ``V``. That is the mass Casimir being present or
+absent, seen directly, and it is why `run_b3.jl` measures both.
 """
 const SECTION5_RUNS = Dict(
     "b1" => EulerSpec("b1", "5.4", :quadratic, :dirichlet,
         gaussian_w2((0.5, 0.5), (0.01, 0.07), 1.0), nothing, 1.0, 200.0),
     "b2" => EulerSpec("b2", "5.4", :quadratic, :dirichlet,
-        gaussian_w2((0.5, 0.5), (0.01, 0.07), 100.0), perturbation_b2, 0.5, 200.0),
-    "b3" => EulerSpec("b3", "5.4", :gibbs, :free,
-        gaussian_w2((0.5, 0.5), (0.01, 0.07), 0.1), nothing, 0.005, 20.0))
+        gaussian_w2((0.5, 0.5), (0.01, 0.07), 100.0), perturbation_b2, 0.5, 150.0),
+    "b3" => EulerSpec("b3", "5.4", :gibbs, :dirichlet,
+        gaussian_w2((0.5, 0.5), (0.01, 0.07), 0.1), (x₁, x₂) -> B3_FLOOR, 0.02, 3.0))
 
 "The three runs in the order Section 5.4 presents them."
 const SECTION5_ORDER = ("b1", "b2", "b3")
@@ -322,7 +368,7 @@ discarded with the constructor.
 The Dirichlet stiffness matrix is nonsingular, unlike the periodic case: constants are not in
 ``V_D``, so there is no kernel to border out as `spline.jl` has to.
 
-# The mesh is set by the Jacobian, not by accuracy
+# The mesh is capped by the Jacobian and fixed by the initial condition, not by accuracy
 
 The manuscript uses ``64^2`` P2 elements. This reproduction does not, and the reason is
 measurable rather than a matter of taste: the collision bracket is nonlocal, so its operator is
@@ -333,8 +379,15 @@ would be ``N = 4096`` and some 40 minutes *per step*.
 
 None of the §5.4 claims needs that resolution. The relaxed states are the lowest Dirichlet
 eigenmode and a smooth exponential of it, and the discrete first eigenvalue is already within
-``3 \times 10^{-5}`` of ``2\pi^2`` at 8 cells. What does need resolution is B3's positivity,
-above, and that is what fixes the number at 26.
+``3.4 \times 10^{-5}`` of ``2\pi^2`` at 8 cells.
+
+What *does* need resolution is the **narrow direction of the initial condition**, ``w_1 = 0.1``,
+and that is what fixes the number at 26: it is the coarsest mesh on which the ``L^2`` projection
+of the printed Gaussian stops oscillating below zero. Measured at degree 2, ``\min\omega_0`` runs
+``-1.4 \times 10^{-2}``, ``-5.8 \times 10^{-4}``, ``-3.9 \times 10^{-7}``,
+``+6.0 \times 10^{-13}`` at 12, 16, 20 and 26 cells — a resolution statement about the peak, not
+about the boundary, and unchanged by refining the other axis. `verify_euler.jl` asserts it with
+the three coarser rows as the control that 26 is a threshold rather than a preference.
 """
 struct EulerSquare{T, ST <: TensorSplineSpace{T, 2}, MT}
     space::ST
@@ -489,8 +542,16 @@ is needed. `residual` is ``\|\omega - \lambda\phi\|_{L^2}`` and `relative` that 
 ``\|\omega\|_{L^2}``.
 
 For a relaxed B1 or B2 state ``\lambda`` must approach [`dirichlet_eigenvalue`](@ref) and
-`relative` must approach zero **together**: ``\lambda`` alone is a Rayleigh quotient and is
-already within a per cent of the eigenvalue for states that are nothing like the eigenmode.
+`relative` must approach zero **together**, and ``\lambda`` is the weaker of the two: its error
+is **second** order in `relative`. Measured on B1 and B2 alike,
+
+```math
+\frac{|\lambda - \lambda_h|}{\lambda_h} = 0.2474 \, \mathrm{relative}^2 ,
+```
+
+to five digits and three orders of magnitude apart in `relative` — which is why ``\lambda`` is
+already within a per cent of the eigenvalue for states that are nothing like the eigenmode, and
+why the drivers put their tolerance on ``\lambda`` at `relative^2` rather than at a constant.
 """
 function eigenmode_fit(sq::EulerSquare, ω̂::AbstractVector)
     φ̂ = sq.Λ * ω̂
