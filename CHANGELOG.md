@@ -388,12 +388,20 @@ here than in a library:
   ```
 
   The bound is now `"0.1"`. **None of the recorded results is affected**, and that is measured
-  rather than assumed: SimpleSplines' release commit `c8b6432` changes only its version string —
-  its tree differs from its parent's in that one line — so the code now resolved is
-  byte-identical to what every number in the *Results* sections below was produced against.
+  rather than assumed: SimpleSplines' release commit `c8b6432` touches only its `Project.toml`
+  version string and its own changelog, so the *source* tree that resolves now is identical to
+  `d77a472` — and therefore to what every number in the *Results* sections below was produced
+  against. The dependency-state section further down still records the tree-SHA that was
+  actually resolved for those runs, and is deliberately left as it was.
 
-  This also needed the same one-line bound in **PoissonBrackets** (`JuliaGNI/PoissonBrackets.jl`
-  compat `SimpleSplines = "0.1"`). A dependency's `[compat]` takes part in resolution, and
+  That release is a version on `main`, **not** a registration: SimpleSplines is still absent
+  from General, with no tags. So this changes nothing about why `[sources]` is needed here and
+  in `scripts/Project.toml`, nor about the `julia = "1.11"` floor those tables force — the
+  `Project.toml` comment explaining both remains correct as written.
+
+  This also needed the same one-line bound in **PoissonBrackets**
+  ([`JuliaGNI/PoissonBrackets.jl#7`](https://github.com/JuliaGNI/PoissonBrackets.jl/pull/7)).
+  A dependency's `[compat]` takes part in resolution, and
   PoissonBrackets is itself resolved here from `rev = "main"`, so its stale `"1"` kept
   resolution unsatisfiable no matter what this file said. That is the standing cost of tracking
   `main` on two unregistered remotes: an upstream release can turn this repository's CI red with
