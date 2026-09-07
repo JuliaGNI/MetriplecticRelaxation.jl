@@ -376,6 +376,29 @@ here than in a library:
 
 ### Fixed
 
+- **The `SimpleSplines` compat bound follows its 0.1.0 release. Compat only — no code changed
+  and no number below moves.** SimpleSplines' `main` carried `version = "1.0.0-DEV"`, which the
+  bound `"1"` satisfied; on 2026-09-07 it released `0.1.0`, a *downgrade* in numbering rather
+  than the `1.0.0` the bound anticipated. Because `[sources]` resolves it from `rev = "main"`,
+  the release propagated on the next resolve and every Julia job in #2's CI matrix then died in
+  `buildpkg`, before a single test ran, with
+
+  ```
+  ERROR: LoadError: empty intersection between SimpleSplines@0.1.0 and project compatibility 1
+  ```
+
+  The bound is now `"0.1"`. **None of the recorded results is affected**, and that is measured
+  rather than assumed: SimpleSplines' release commit `c8b6432` changes only its version string —
+  its tree differs from its parent's in that one line — so the code now resolved is
+  byte-identical to what every number in the *Results* sections below was produced against.
+
+  This also needed the same one-line bound in **PoissonBrackets** (`JuliaGNI/PoissonBrackets.jl`
+  compat `SimpleSplines = "0.1"`). A dependency's `[compat]` takes part in resolution, and
+  PoissonBrackets is itself resolved here from `rev = "main"`, so its stale `"1"` kept
+  resolution unsatisfiable no matter what this file said. That is the standing cost of tracking
+  `main` on two unregistered remotes: an upstream release can turn this repository's CI red with
+  no change here at all, as it did in a pull request that does not touch `Project.toml`.
+
 - **Three numbers in the prose did not match what the code does, found in review of #2 and
   re-measured rather than adjusted.** All three were quoted in docstrings or comments and none
   was asserted anywhere, which is how they drifted:
