@@ -277,6 +277,14 @@ here than in a library:
 
 ### Changed
 
+- **`SpectralTorus` no longer stores the bare wavenumber grids.** `k₁` and `k₂` were written by
+  the constructor and read by nothing: every operator applies one of `ik₁`, `ik₂` or `negk²`,
+  and `Δ⁻¹` is built from the locals. They are now locals. Measured,
+  `Base.summarysize(SpectralTorus(256))` falls from **5 243 472 to 4 194 896 bytes** — the
+  1.0 MiB two `256²` `Float64` grids cost — on every grid the manuscript's own resolution
+  builds. **No number moves:** `verify_spectral.jl` is 29/29 against PoissonBrackets'
+  independent differentiation matrix and the suite is 401/401, unchanged.
+
 - **`README.md` gained the `§5.5` section it was missing.** The file documented `§4` and `§5.4`
   and stopped, though §5.5 is roughly half of #2 — `takeda.jl`, `gradshafranov.jl`, both their
   verification scripts and `run_c1.jl`. It now carries C1's results table, the two findings, and
