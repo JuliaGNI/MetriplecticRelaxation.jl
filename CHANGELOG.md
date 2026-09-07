@@ -384,6 +384,19 @@ here than in a library:
 
 ### Fixed
 
+- **`verify_spline.jl`'s vector-field agreement tolerance switches on the run, as its
+  initial-condition row above it already did.** One `1e-1`, set by A4, left A1–A3 asserted
+  **20× to 280×** loose: measured, A1 gives `4.80e-03`, A2 `2.69e-03`, A3 `3.51e-04` and A4
+  `8.54e-02`. A1–A3 now carry `1e-2`, twice A1's measured worst, and A4 keeps `1e-1` because
+  its printed initial condition is discontinuous on `T²` by 8.5 % of its own peak — which
+  section 7 of the same script isolates as the cause rather than assuming it.
+
+  **The tightening is a bound and not a record, and that is measured.** Degrading only the
+  spline space — degree 1 instead of 3 at the same 64 cells, or 16 cells instead of 64 at the
+  same degree 3 — takes A3's row to `2.86e-02` and `4.33e-02`. Both **pass** the old `1e-1`
+  and **fail** the new `1e-2`, so the row now rejects a discretisation the old one waved
+  through. 52/52, unchanged, and no reproduced number moves.
+
 - **`reset_failures!`'s docstring described a runner that does not exist.** It said "Only
   `run_all.jl` needs this, between scripts", but `run_all.jl` gives every script its own
   subprocess, so each starts with an empty tally and nothing is ever reset. **Zero callers in
