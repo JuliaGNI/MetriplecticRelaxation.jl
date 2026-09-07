@@ -277,6 +277,25 @@ here than in a library:
 
 ### Changed
 
+- **`scripts/check.jl` drops `failures` and `reset_failures!`.** The follow-up the export-list
+  comment in that file deferred, now made in all three repositories that carry a copy of the
+  harness — `PoissonBrackets/scripts/`, `Papers/Metriplectic Relaxation to Equilibria/scripts/`
+  and here — so that the copies stay diffable rather than differing by two names.
+
+  **Zero callers, re-measured, and by a second method.** The call-site table in the file
+  reproduces row for row, `fmt`'s 94 in PoissonBrackets included. Beyond that count, none of the
+  60 `using .Checks: …` lines that import the harness names either name — 19 here, 10 in the
+  paper, 31 in PoissonBrackets, and none anywhere else. That is the position a `name(` count
+  cannot see, and the one place an unused export could still have been in real use.
+
+  The pair only ever made sense for an in-process runner that reads the tally between suites and
+  then clears it, and `run_all.jl` is not that: it gives every script its own subprocess.
+  `summary` stays the only read path, and `_failures` stays private with no accessor and a comment
+  saying why, so it is not reinstated on the assumption that the state was left unreachable by
+  oversight. **No number and no count moves**, and the failure path is checked directly rather
+  than assumed: with a deliberate failing check, all three copies still record the label and still
+  exit 1.
+
 - **`SpectralTorus` no longer stores the bare wavenumber grids.** `k₁` and `k₂` were written by
   the constructor and read by nothing: every operator applies one of `ik₁`, `ik₂` or `negk²`,
   and `Δ⁻¹` is built from the locals. They are now locals. Measured,
@@ -401,6 +420,19 @@ here than in a library:
   `λ = 0.0025990851` and the continuum `0.0302346260` all to every digit already recorded.
   A1–A4 were re-run in full at the manuscript's own `256²` and reproduce every number in the
   *Results* sections below, again to every digit.
+
+- **`run_a1.jl`'s contour-average row goes from `2e-3` to `5e-5`.** Re-measured over both
+  central islands and all four contours: **9.21e-08, 1.26e-07, 2.46e-07, 3.91e-07, 1.51e-06,
+  1.53e-06, 2.06e-06, 4.71e-06** of the initial peak. The old constant was **425×** the worst
+  of them. `5e-5` is eleven times it. There is no law to set this against — the average is
+  conserved exactly in the continuum and *not* by the semi-discrete flow, so the residual is
+  truncation error — which is why the comment now says what the number is a multiple of.
+
+  **Must-fail control:** the same run on 48 cells instead of 128, same degree 3, gives
+  **9.92e-05, 1.32e-04, 1.79e-04, 2.29e-04, 2.74e-04, 4.05e-04, 5.90e-04** on seven of the
+  eight rows — every one **passes** the old `2e-3` and **fails** the new `5e-5`. (The eighth,
+  `h = 0.20` on the upper island, lands at 3.30e-05 and still passes; the row was tightened to
+  the worst measurement, not to the best.)
 
 - **`run_a2.jl`'s cross-discretisation row goes from `5e-2` to `5e-4`.** Re-measured,
   **6.978e-05** — the old constant was **716×** it. `5e-4` is seven times the measurement.
