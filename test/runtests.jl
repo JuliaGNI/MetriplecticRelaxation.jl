@@ -18,9 +18,9 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
 using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSquare,
                               GibbsEntropy, B3_FLOOR,
                               euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
-                              dirichlet_eigenvalue, gibbs_lambda, gibbs_fit, gibbs_residual,
+                              dirichlet_eigenvalue, gibbs_lambda,
                               interior_weights, state_extrema, gaussian_w2, perturbation_b2,
-                              entropy_plateau, DIRICHLET_EIGENVALUE, SQUARE_LENGTH
+                              entropy_plateau, DIRICHLET_EIGENVALUE
 using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flow, gs_fit,
                               gs_rayleigh, gs_current, gs_density, gs_stiffness,
                               gs_eigenvalue, separable_eigenvalue, TakedaGrid,

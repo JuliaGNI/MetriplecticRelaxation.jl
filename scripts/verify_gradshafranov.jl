@@ -18,21 +18,20 @@
 # the dx reading does not, and misses it by a factor of 4.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: TensorSplineSpace, GradShafranovBox, GSSpec, SECTION55_RUNS,
+using MetriplecticRelaxation: GradShafranovBox, SECTION55_RUNS,
                               GS_RADIAL, GS_AXIAL, GS_LAMBDA_CONTINUUM,
-                              HERRNEGGER_C, HERRNEGGER_D, gs_density, gs_entropy_weight,
+                              HERRNEGGER_C, HERRNEGGER_D, gs_density,
                               herrnegger_mobility, gs_stiffness, gs_eigenvalue, gs_state,
                               gs_flow, gs_fit, gs_rayleigh, gs_current, gs_ordinate,
-                              gaussian_w2, initial_condition, l2norm, l2inner, integrate,
+                              initial_condition, integrate,
                               Diagnostics, scatter_data
 using PoissonBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian, Integrator,
                        ImplicitMidpoint, integrate_step!, metric_operator, metric_matrix,
                        metric_apply, degeneracy_residual, ispositive_semidefinite,
-                       issymmetric, entropy_production, entropy, entropy_gradient,
-                       hamiltonian, gradient, vectorfield, mass_matrix, weighted_matrix,
-                       quadrature_nodes, quadrature_weights, basis_values, field, project,
+                       issymmetric, entropy_production, entropy,
+                       hamiltonian, vectorfield, mass_matrix, weighted_matrix,
+                       quadrature_nodes, quadrature_weights, basis_values, field,
                        nbasis, default_f_abstol
-using SimpleSplines: UniformMesh, Dirichlet
 using LinearAlgebra
 using Random
 using SparseArrays
@@ -458,7 +457,7 @@ end
 
 # The scatter data is what the figure and the reference check are drawn from, so its two columns
 # have to be ψ and u/(Cr²+D) and not the state.
-let d = Diagnostics(box, spec), (ψ, y) = scatter_data(d, ĵ₀),
+let d = Diagnostics(box, spec), (_, y) = scatter_data(d, ĵ₀),
     e = maximum(abs, y - gs_ordinate(box, ĵ₀))
 
     check("scatter_data returns (ψ, u/(Cr²+D)) and not (ψ, j)",

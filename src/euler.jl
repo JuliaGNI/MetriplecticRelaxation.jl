@@ -580,16 +580,19 @@ gibbs_lambda(mass, S, H₀) = (mass + S) / (2H₀)
 
 The quadrature weights of `sq`, zeroed at every node within `margin` of ``\partial\Omega``.
 
-Only B3 uses it, and only to say that its residual is **not** a boundary artefact. The
-manuscript's reference ``e^{\lambda\phi - 1}`` does not vanish on ``\partial\Omega``:
-``\phi|_{\partial\Omega} = 0`` leaves it at ``e^{-1} \approx 0.368``. In a
-homogeneous-Dirichlet space that would put the whole disagreement into the outermost cell and
-make an unweighted fit of ``\log\omega = \lambda\phi + \mu - 1`` a fit of that cell — which is
-one of the two reasons B3 does not run in that space ([`SECTION5_RUNS`](@ref)). In the `:free`
-space the reference *is* representable, so the residual should be flat in `margin`, and
-`run_b3.jl` reports it at four margins for exactly that reason: a residual that collapses when
-the boundary is excluded is a boundary defect, and one that does not is a statement about the
-interior.
+Only B3 uses it, and only to separate the boundary layer from the interior. The manuscript's
+reference ``e^{\lambda\phi - 1}`` does not vanish on ``\partial\Omega``:
+``\phi|_{\partial\Omega} = 0`` leaves it at ``e^{-1} \approx 0.368``, while every
+``\omega_h \in V_D`` is zero there. B3 runs in ``V_D`` all the same — that is what forces
+``\mu = 0`` and makes the ``\lambda`` formula an identity ([`SECTION5_RUNS`](@ref)) — so the
+outermost cell is where no state of the space can match the reference, and an unweighted fit of
+``\log\omega = \lambda\phi + \mu - 1`` would be a fit of that cell. `margin = 2h` is what
+[`gibbs_fit`](@ref) is called with for that reason.
+
+`run_b3.jl` reports the residual at four margins on top of that, and asserts it **falls** with
+the margin: a residual that collapses when the boundary is excluded localises the disagreement
+to the boundary layer, which is what B3 claims, and one that does not would be a disagreement
+in the interior.
 
 B1's and B2's reference ``\omega = \lambda_{1,1}\phi`` vanishes on ``\partial\Omega`` together
 with ``\phi``, so nothing needs excluding there at all.

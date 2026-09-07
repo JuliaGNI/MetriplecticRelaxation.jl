@@ -763,7 +763,7 @@ Everything else is A3's. **Both readings of the ambiguous initial condition were
   The price is recorded: `u_h = r j_h` is a spline times `r` and not itself a spline, so the
   trial space is `rV` where the manuscript's is `V`. Same order, different discretisation.
 
-- **`scripts/verify_gradshafranov.jl`** — 42 checks in ten sections, **fourteen of them
+- **`scripts/verify_gradshafranov.jl`** — 42 checks in ten sections, **ten of them
   controls**, run before the relaxation. **`scripts/run_c1.jl`** and `run_gs` in `scripts/runner.jl`; a
   §5.5 block in `scripts/figures.jl`, whose scatter ordinate is `u/(Cr²+D)` and not the state,
   because `eq:gs-ref` is a statement about that field.

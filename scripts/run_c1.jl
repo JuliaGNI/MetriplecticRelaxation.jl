@@ -37,7 +37,7 @@
 # 18x21 cells).  The run is asked to REACH that floor, not to beat it.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flow, gs_fit,
+using MetriplecticRelaxation: SECTION55_RUNS, gs_state, gs_flow, gs_fit,
                               gs_rayleigh, gs_eigenvalue,
                               GS_LAMBDA_RECTANGLE, GS_LAMBDA_CONTINUUM, TakedaGrid,
                               takeda_iterate, energy_error, entropy_monotone, l2norm,
@@ -143,7 +143,7 @@ end
 # not in the homogeneous-Dirichlet space — and that absence is exactly what forces the
 # equilibrium multipliers μ and c to zero, which is what makes eq:gs-ref exact. Reported, not
 # asserted on.
-check("the mass drift is reported, not asserted", true,
+check("the mass drift is reported, not asserted  [REPORTED]", true,
     @sprintf("∫u dμ: %.10f → %.10f   relative change %+.3e",
         tr.M[1], tr.M[end], (tr.M[end] - tr.M[1]) / tr.M[1]))
 
@@ -265,7 +265,7 @@ end
 # =============================================================================================
 section("writing")
 
-let (λ, res, rel) = gs_fit(box, tr.final),
+let (λ, _, rel) = gs_fit(box, tr.final),
     payload = (; run = "c1",
         spec = (; Δt = spec.Δt, T = spec.T, cells = spec.cells,
             degree = spec.degree),

@@ -20,7 +20,7 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               spline_state, spline_rhs, spline_step, record!,
                               EulerSquare, euler_state, euler_flow, state_extrema,
                               GradShafranovBox, gs_state, gs_flow, gs_fit
-using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production
+using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!
 using Printf
 using Serialization
 

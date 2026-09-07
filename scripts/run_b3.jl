@@ -43,7 +43,7 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION5_RUNS, EulerSpec, EulerSquare, euler_state,
                               euler_flow,
                               state_extrema, energy_error, entropy_monotone, l2norm,
-                              gibbs_lambda, gibbs_fit, gibbs_residual, interior_weights,
+                              gibbs_lambda, gibbs_fit, gibbs_residual,
                               scatter_data, entropy, energy, vorticity_mass, Diagnostics,
                               B3_FLOOR
 using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
@@ -139,9 +139,11 @@ for Δt in SWEEP
     push!(sweep, (; Δt, worst, drift, admissible, S = Sprev, S₀))
     # A row is a MEASUREMENT, not a claim, and a row that fails is the point of the sweep rather
     # than a defect — so it is printed with `true` and the outcome in the detail, the same way
-    # `run_a2.jl` reports its scatter widths. The claims are the three assertions below.
+    # `run_a2.jl` reports its scatter widths. It carries `[REPORTED]` because without it a row
+    # reading `[PASS] Δt = 0.16  LEFT THE ADMISSIBLE SET` inverts the harness's own marker. The
+    # claims are the three assertions below.
     check(
-        @sprintf("Δt = %-7.4g  %s", Δt,
+        @sprintf("Δt = %-7.4g  %s  [REPORTED]", Δt,
             admissible && worst <= 0 ? "monotone" : "LEFT THE ADMISSIBLE SET"),
         true,
         @sprintf("worst ΔS/S₀ = %+.3e   max |ΔH|/|H₀| = %.3e   over %d steps",
@@ -213,7 +215,7 @@ check("(S,S) > 0 at every sample", all(p -> p[2] > 0, production),
 # The constants are NOT in this space, so the mass is not a discrete Casimir and drifts — the
 # same absence that forces μ = 0 and makes the manuscript's λ formula an identity. Reported, as
 # in B1 and B2.
-check("the mass drift is reported, not asserted", true,
+check("the mass drift is reported, not asserted  [REPORTED]", true,
     @sprintf("∫ω: %.10f → %.10f   relative change %+.3e",
         tr.M[1], tr.M[end], (tr.M[end] - tr.M[1]) / tr.M[1]))
 
@@ -251,7 +253,7 @@ check("λ from the formula agrees with λ from the fit", abs(λfit - λ) / abs(�
     @sprintf("(M+S)/2H₀ = %.8f   fitted λ = %.8f   rel %.3e", λ, λfit,
         abs(λfit - λ) / abs(λfit)))
 
-check("λ is reported with the quantities it was built from", true,
+check("λ is reported with the quantities it was built from  [REPORTED]", true,
     @sprintf("M(ω) = %.10f   S(ω) = %.10f   H₀ = %.10f   →   λ = %.8f",
         Mfinal, Sfinal, H₀, λ))
 

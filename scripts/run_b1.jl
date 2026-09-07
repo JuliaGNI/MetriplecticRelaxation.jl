@@ -26,13 +26,13 @@
 # only that would pass for a run that had barely moved.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION5_RUNS, EulerSquare, euler_entropy_floor,
+using MetriplecticRelaxation: SECTION5_RUNS, euler_entropy_floor,
                               eigenmode_fit,
                               dirichlet_eigenvalue, euler_state, euler_flow, state_extrema,
                               energy_error, entropy_monotone, entropy_plateau, l2norm,
-                              l2inner, integrate, scatter_data, DIRICHLET_EIGENVALUE
+                              scatter_data, DIRICHLET_EIGENVALUE
 using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
-                       default_f_abstol, nbasis, degree, ncells
+                       default_f_abstol, nbasis
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
@@ -95,7 +95,7 @@ check("(S,S) > 0 at every sample", all(p -> p[2] > 0, production),
 # The mass is a Casimir of the continuous bracket and is NOT conserved discretely, because the
 # constant function is not in the homogeneous-Dirichlet space. That absence is exactly what makes
 # the closed-form reference below exact, so the drift is reported and not asserted on.
-check("the mass drift is reported, not asserted", true,
+check("the mass drift is reported, not asserted  [REPORTED]", true,
     @sprintf("∫ω: %.10f → %.10f   relative change %+.3e",
         tr.M[1], tr.M[end], (tr.M[end] - tr.M[1]) / tr.M[1]))
 

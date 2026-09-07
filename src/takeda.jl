@@ -413,7 +413,7 @@ the ``64 \times 64`` one.
 """
 function takeda_eigenvalue(g::TakedaGrid{T}) where {T}
     B = Diagonal(g.b .* herrnegger_mobility.(g.rint))
-    minimum(real, eigvals(Symmetric(Matrix(g.K)), Matrix(B)))
+    minimum(real, eigvals(Symmetric(Matrix(g.K)), Symmetric(Matrix(B))))
 end
 
 @doc raw"""

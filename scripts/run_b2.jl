@@ -24,7 +24,7 @@
 # how flat it was before that, and that it never rises anywhere.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION5_RUNS, EulerSquare, euler_entropy_floor,
+using MetriplecticRelaxation: SECTION5_RUNS, euler_entropy_floor,
                               eigenmode_fit,
                               dirichlet_eigenvalue, euler_state, euler_flow, state_extrema,
                               energy_error, entropy_monotone, entropy_plateau, l2norm,

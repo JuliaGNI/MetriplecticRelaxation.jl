@@ -32,28 +32,27 @@ using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSqu
                               GibbsEntropy,
                               euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
                               gibbs_lambda, gibbs_fit, gibbs_residual, interior_weights,
-                              state_extrema, dirichlet_eigenvalue, gaussian_w2,
+                              state_extrema, dirichlet_eigenvalue,
                               perturbation_b2, Diagnostics, Trace, record!,
                               entropy_monotone, energy_error, l2inner, l2norm, integrate,
                               DIRICHLET_EIGENVALUE, SQUARE_LENGTH, B3_FLOOR
 using PoissonBrackets
 using PoissonBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
                        Integrator, ImplicitMidpoint, integrate_step!,
-                       TensorSplineSpace, nbasis, project, evaluate, field,
-                       mass_matrix, stiffness_matrix, basis_integrals, domainvolume,
-                       quadrature_nodes, quadrature_weights,
+                       nbasis, project, evaluate, field,
+                       mass_matrix, stiffness_matrix, domainvolume,
+                       quadrature_weights,
                        hamiltonian, gradient, hessian, vectorfield,
                        entropy_gradient, entropy_production,
                        issymmetric, ispositive_semidefinite, degeneracy_residual,
                        metric_matrix, metric_apply
-using SimpleSplines: Dirichlet
 using LinearAlgebra
 using Printf
 using Random
 using SparseArrays
 
 include(joinpath(@__DIR__, "check.jl"))
-using .Checks: header, check, check_exact, check_refined, summary
+using .Checks: header, check, check_refined, summary
 
 Random.seed!(0x5eb1a704)
 
@@ -397,12 +396,20 @@ let s = sqe.space,
             worst_h < 1e-5, @sprintf("worst rel %.3e", worst_h))
     end
 
-    # eq:M-condition, M ∂²_y s = 1, is what ties the mobility to the entropy. For the Gibbs
-    # entropy ∂²_y s = 1/y, so M = y: the Hessian above IS the reciprocal mobility, weighted.
-    u = field(s, ω̂, (0, 0))
-    check("eq:M-condition: M ∂²_y s = 1 for both entropies",
-        all(isapprox.(u .* (1 ./ u), 1.0; rtol = 1e-15)) &&
-            all(isapprox.(1.0 .* 1.0, 1.0)), "M = y with ∂²_y s = 1/y, and M = 1 with ∂²_y s = 1")
+    # eq:M-condition, M ∂²_y s = 1, ties the mobility to the entropy through its SECOND
+    # derivative, and the Gibbs entropy is where that has content: ∂²_y s = 1/y, so the
+    # Hessian's weight is 1/ω and the mobility that inverts it is M = ω. On a constant state
+    # ω ≡ c the condition is readable straight off the assembled Hessian — c ∇²S must be the
+    # plain mass matrix — and a Hessian weighted by ω rather than by 1/ω misses it by c².
+    # The quadratic entropy needs no such row: its Hessian IS the mass matrix by construction,
+    # with M = 1, so comparing the two would assert nothing.
+    let Mm = Matrix(mass_matrix(s)), c = 2.5, ĉ = project(s, x -> c),
+        e = maximum(abs, c .* hessian(GibbsEntropy(), s, ĉ) .- Mm) / maximum(abs, Mm)
+
+        check("eq:M-condition: M ∂²_y s = 1, with M = ω for s = ω log ω", e < 1e-10,
+            @sprintf("at ω ≡ %.1f: max |c ∇²S − 𝕄| / max|𝕄| = %.3e   (M = 1 for ω²/2 is 𝕄 itself)",
+                c, e))
+    end
 end
 
 # =============================================================================================
@@ -423,7 +430,7 @@ let sq = sq16, λh = dirichlet_eigenvalue(sq)
             abs(Sη - euler_entropy_floor(Hη; λ = λh)) / Sη))
 
     # `eigenmode_fit` returns λ_h and a vanishing residual on the eigenmode exactly.
-    (λ, res, rel) = eigenmode_fit(sq, ê)
+    (λ, _, rel) = eigenmode_fit(sq, ê)
     check("eigenmode_fit recovers λ_h with no residual",
         isapprox(λ, λh; rtol = 1e-10) && rel < 1e-10,
         @sprintf("λ = %.10f   λ_h = %.10f   rel residual %.3e", λ, λh, rel))
@@ -551,9 +558,18 @@ for name in SECTION5_ORDER
     (ok, worst) = entropy_monotone(tr)
     check(@sprintf("%-3s S monotone over 6 steps", name), ok,
         @sprintf("worst increment %+.3e   S: %.10e → %.10e", worst, tr.S[1], tr.S[end]))
+    # Only B3 has an admissible set to stay inside: `y log y` and its mobility M = y are
+    # undefined at ω ≤ 0. For the quadratic entropy the sign is unconstrained — B2's own ω₀ is
+    # deliberately sign-indefinite — so the extrema are REPORTED there rather than asserted. A
+    # row reading `[PASS] b2 ω stays admissible   min ω = -9.6e-01` is a verdict no run earned.
     (lo, _) = state_extrema(sqc, ω̂)
-    check(@sprintf("%-3s ω stays admissible", name), name == "b3" ? lo > 0 : true,
-        @sprintf("min ω = %+.4e", lo))
+    if name == "b3"
+        check(@sprintf("%-3s ω stays admissible", name), lo > 0,
+            @sprintf("min ω = %+.4e", lo))
+    else
+        check(@sprintf("%-3s ω sign is unconstrained  [REPORTED]", name), true,
+            @sprintf("min ω = %+.4e", lo))
+    end
 end
 
 # The step-halving difference: Δt is a COST choice here and not an accuracy one, and this is the

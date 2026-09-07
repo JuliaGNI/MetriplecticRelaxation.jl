@@ -18,7 +18,7 @@ using MetriplecticRelaxation: SECTION4_RUNS, SECTION4_ORDER, islands_h, relaxati
                               DOMAIN_LENGTH, figure_fields, figure_traces, figure_scatter,
                               figure_cone, figure_rates, figure_tau, fit_rate,
                               initial_condition,
-                              SECTION5_RUNS, SECTION5_ORDER, DIRICHLET_EIGENVALUE,
+                              SECTION5_RUNS, SECTION5_ORDER,
                               euler_entropy_floor, SECTION55_ORDER
 using Printf
 using Serialization
