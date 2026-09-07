@@ -384,6 +384,37 @@ here than in a library:
 
 ### Fixed
 
+- **The review follow-ups of #1 and #2 were re-measured against the same dependency trees the
+  §4 and §5 results were, and nothing moved.** `Manifest.toml` is gitignored and `[sources]`
+  follows `main` on both remotes, so the resolved trees are recorded rather than committed;
+  verified from the manifest's own `git-tree-sha1` before any of the work below, in both the
+  root and the `scripts` project:
+
+  - **PoissonBrackets**, tree `23dba270c9b1c10f9576a9a09043a0f4790d0cd8`;
+  - **SimpleSplines**, tree `6c199ca136d88712bf7505129153538a324e5c03`.
+
+  Both upstream tips have since moved — PoissonBrackets to `2fc0221`, SimpleSplines to
+  `c8b6432`/v0.1.0 — and the manifests did not, so **the loaded code is still the measured
+  code.** The three cheap verification scripts reproduce unchanged: `verify_euler.jl` 101/101,
+  `verify_takeda.jl` 38/38, `verify_gradshafranov.jl` 42/42, all exit 0, with
+  `λ_takeda = 0.030224858357` after 65 sweeps, `λ_h = 0.030234799207`, C2's
+  `λ = 0.0025990851` and the continuum `0.0302346260` all to every digit already recorded.
+  A1–A4 were re-run in full at the manuscript's own `256²` and reproduce every number in the
+  *Results* sections below, again to every digit.
+
+- **`run_a2.jl`'s cross-discretisation row goes from `5e-2` to `5e-4`.** Re-measured,
+  **6.978e-05** — the old constant was **716×** it. `5e-4` is seven times the measurement.
+  It stays deliberately looser than A3's new `1e-6`: A2's double bracket relaxes
+  *incompletely*, so its final state is not the one member of `eq:u-eta_Euler_periodic` that
+  A3's conserved energy fixes, and the two discretisations are left disagreeing at their own
+  truncation error rather than at their agreement on `H₀` — measured, A2's final state is
+  **0.9132** of its own norm away from that family where A3's is 3.33e-05.
+
+  **Must-fail control, isolating exactly the row that changed:** halving only the spline
+  resolution — 32 cells instead of 64, same degree 3, same `64²` spectral reference — gives
+  **4.300e-03**, which **passes** the old `5e-2` and **fails** the new `5e-4`, while the
+  `H₀`/`S(0)`/`S(T)` rows beside it still pass at 6.80e-06, 3.39e-05 and 9.24e-05.
+
 - **`projector_run.jl`'s three numeric bounds now bound something.** All three were constants
   read off one run, and two of them by three to five orders.
 
