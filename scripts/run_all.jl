@@ -26,6 +26,7 @@ const SCRIPTS = String[
     "verify_projector_factor.jl",
     "verify_projector_rates.jl",
     "verify_euler.jl",
+    "verify_euler_grid.jl",
     # §5.5's reference eigenvalue, before anything that compares a run against it: the whole
     # point of `takeda.jl` is that λ = 0.030302 comes from a computation the relaxation has no
     # part in, so its verification runs before the relaxation is built. `verify_gradshafranov.jl`

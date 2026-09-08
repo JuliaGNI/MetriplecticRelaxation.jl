@@ -340,8 +340,15 @@ end
     takeda_iterate(g::TakedaGrid; profile = herrnegger_profile, axis = 1.0,
                    tol = 1e-13, maxiter = 2000)
 
-The classical Grad-Shafranov iteration of Takeda and Tokuda, Eqs. (2.111)-(2.112), on the grid
-`g`, returning `(; λ, ψ, iterations, λ_rayleigh, increment, converged)`.
+The classical Grad-Shafranov iteration of Takeda and Tokuda, Section 3.2, Eqs. (3.22)-(3.25),
+on the grid `g`, returning `(; λ, ψ, iterations, λ_rayleigh, increment, converged)`.
+
+The manuscript cites pp. 22-23, Eqs. (2.111)-(2.112) for this scheme. Those equations are on
+those pages, but p. 23 attributes them to Kikuchi et al. as a convergence proof for a model
+problem: an ``\varepsilon``-homotopy off the linear eigenpair, with ``\lambda`` read off a
+Fredholm solvability condition rather than off a normalisation. What is implemented here is the
+scheme the manuscript *describes*, which is Section 3.2's — step 3 there reads "normalize the
+``\psi`` values by the value at the magnetic axis".
 
 Two steps per sweep, and the second is what determines ``\lambda``:
 
@@ -371,6 +378,10 @@ restatement of it.
 `increment` is the last ``|\lambda^{k+1} - \lambda^{k}|/\lambda^{k+1}``, and `converged` says
 whether `tol` was reached. A run that hit `maxiter` returns rather than raising, because the
 number it returns is still the honest answer to "where did the iteration get to".
+
+`tol` is this implementation's choice, not the paper's: p. 31 gives no stopping criterion, saying
+only that the iteration's convergence "is very good and it is used widely for various
+applications" and deferring the analysis to its own references.
 """
 function takeda_iterate(g::TakedaGrid{T}; profile = herrnegger_profile, axis::T = one(T),
         tol::T = T(1e-13), maxiter::Int = 2000) where {T}

@@ -20,7 +20,8 @@ using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSqu
                               euler_state, euler_flow, euler_entropy_floor, eigenmode_fit,
                               dirichlet_eigenvalue, gibbs_lambda,
                               interior_weights, state_extrema, gaussian_w2, perturbation_b2,
-                              entropy_plateau, DIRICHLET_EIGENVALUE
+                              entropy_plateau, DIRICHLET_EIGENVALUE,
+                              euler_axis, euler_grid
 using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flow, gs_fit,
                               gs_rayleigh, gs_current, gs_density, gs_stiffness,
                               gs_eigenvalue, separable_eigenvalue, TakedaGrid,
@@ -485,6 +486,28 @@ end
             @test abs(evaluate(sq.space, φ̂, p)) < 1e-15
         end
         @test norm(sq.MΛ - sq.MΛ') / norm(sq.MΛ) < 1e-14
+    end
+
+    @testset "$(rpad("euler_grid SAMPLES x_i along the FIRST index, endpoints included", 76))" begin
+        xs = euler_axis(21)
+        @test length(xs) == 21
+        @test xs[1] == 0.0
+        @test xs[end] == 1.0
+
+        # Every function in V_D vanishes on ∂Ω, for RANDOM degrees of freedom and not merely
+        # for the projection of something that vanished there already.
+        Z = euler_grid(sq, randn(N), 21)
+        @test maximum(abs, vcat(Z[1, :], Z[end, :], Z[:, 1], Z[:, end])) < 1e-13
+
+        # An asymmetric polynomial the degree-3 space contains exactly: reproduced to round-off,
+        # and wrong by order one read the other way round. Degree 3 rather than the runs' own
+        # degree 2 because the boundary-vanishing bi-degree-(2,2) polynomials are
+        # span{x(1-x)y(1-y)}, which is symmetric and would pass a transposed implementation.
+        f(x, y) = x * (1 - x) * y^2 * (1 - y)
+        sq3 = EulerSquare(5, 3)
+        W = euler_grid(sq3, project(sq3.space, x -> f(x[1], x[2])), 21)
+        @test maximum(abs(W[i, j] - f(xs[i], xs[j])) for i in 1:21, j in 1:21) < 1e-14
+        @test maximum(abs(W[i, j] - f(xs[j], xs[i])) for i in 1:21, j in 1:21) > 1e-3
     end
 end
 

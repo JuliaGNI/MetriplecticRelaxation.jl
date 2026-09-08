@@ -164,7 +164,7 @@ claims needs that: the discrete first Dirichlet eigenvalue is already within `3.
 
 Two files, because this section has a classical counterpart §5.4 lacks. `src/takeda.jl` holds the
 Grad–Shafranov problem itself and the **classical** solver — the finite-volume `−Δ*` and the
-iteration of Takeda & Tokuda Eqs. (2.111)–(2.112) — plus C2's geometry: `disk_map`, its
+iteration of Takeda & Tokuda §3.2, Eqs. (3.22)–(3.25) — plus C2's geometry: `disk_map`, its
 triangulation, and `disk_eigenvalue`. `src/gradshafranov.jl` holds the **relaxation** on the
 rectangle: `GradShafranovBox`, the entropy and its references, `gs_rayleigh`, `gs_fit`, and
 `SECTION55_RUNS`. Both feed §4's and §5.4's diagnostics, so the numbers are comparable across

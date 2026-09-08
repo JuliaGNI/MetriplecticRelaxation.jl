@@ -681,3 +681,53 @@ The minimum is the quantity B3 depends on: ``y \log y`` and the mobility ``M = y
 only for ``\omega > 0``, and the grid is where they are evaluated. See [`GibbsEntropy`](@ref).
 """
 state_extrema(sq::EulerSquare, ω̂::AbstractVector) = extrema(field(sq.space, ω̂, (0, 0)))
+
+## The uniform sample grid the field maps are drawn on
+
+@doc raw"""
+    euler_axis(N)
+
+The `N` sample coordinates of [`euler_grid`](@ref) along one axis, ``x_i = (i-1)/(N-1)``,
+**including both endpoints**.
+
+[`spline_grid`](@ref)'s torus axis omits its right endpoint, because on a periodic domain
+``x = 0`` and ``x = L`` are the same point. Here they are not, and the endpoints carry the one
+part of a §5.4 field map that is a statement about the space rather than about the run: every
+function in ``V_D`` vanishes on ``\partial\Omega``, so a grid that stopped short of the boundary
+would drop it. `verify_euler_grid.jl` asserts all four edges come out zero.
+
+One definition with two callers — [`euler_grid`](@ref) and the figure script's axes — because
+an axis defined twice is an axis that can disagree with itself by one node while both copies
+still look right.
+"""
+euler_axis(N::Int) = collect(range(0, SQUARE_LENGTH; length = N))
+
+@doc raw"""
+    euler_grid(sq, ω̂, N)
+
+The field with coefficient vector `ω̂` resampled off the quadrature grid onto the uniform
+``N``-by-``N`` grid of [`euler_axis`](@ref), as a matrix with ``Z_{ij} = \omega_h(x_i, x_j)``
+— **first index the first coordinate**.
+
+That convention is load-bearing rather than a formality: `EulerSquare`'s flat coefficient index
+runs the first axis fastest, `basis_values` builds its tables as a `kron` over the axes in
+reverse order for that reason, and a field map drawn from the transposed matrix of a §5.4 run is
+not obviously wrong to look at — B1's initial condition is a Gaussian on the centre of a square,
+and only its **widths** distinguish the two axes (``w_1^2 = 0.01`` against ``w_2^2 = 0.07``).
+`verify_euler_grid.jl` therefore measures the transposed comparison and requires it to be wrong
+by order one.
+
+The field maps are the only place resampling is needed. Everything else §5.4 measures — the two
+entropies, the mobility, the ``(\phi,\omega)`` cloud of [`scatter_data`](@ref) and every
+reference residual — is evaluated on the space's own quadrature grid, which is where the
+Gauss-Legendre nodes are and hence not uniform. A colour map on those nodes would put its
+samples in clusters of ``p+1`` per cell and show the quadrature rule as much as the state, which
+is why this exists and why it is a solver operation: it goes through the space's own `evaluate`,
+so it is the same field the checks were computed from and not a second interpolation of it.
+
+``\phi`` needs no separate method — pass `sq.Λ * ω̂`.
+"""
+function euler_grid(sq::EulerSquare, ω̂::AbstractVector, N::Int)
+    xs = euler_axis(N)
+    return [evaluate(sq.space, ω̂, (xs[i], xs[j])) for i in 1:N, j in 1:N]
+end

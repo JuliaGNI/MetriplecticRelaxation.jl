@@ -237,9 +237,12 @@ function projector_checks(res, spec, opts; label = "")
         # predicted exactly (0.045 at t = 15). The rate therefore RISES between them — 0.507 to
         # 0.548 — and the check below asserts that rise rather than a fall.
         #
-        # The lower bound is 0.47 rather than 0.5 because the least-squares fit over a finite
+        # The lower bound is 0.495 rather than 0.5 because the least-squares fit over a finite
         # window carries a curvature term of either sign, worth a few times 1e-3 here; it is
-        # slack for that, not an admission that the underlying rate may be below 1/2.
+        # slack for that, not an admission that the underlying rate may be below 1/2. Slack
+        # beyond what that reason supports would make the row a record rather than a bound.
+        # Measured, the smallest rate in this window over all three runs is A3's 0.50679, so
+        # 0.495 still clears it by 2.3 %.
         d = distances(r)
         T = spec_T(r)
         (rω, r²ω, nω) = fit_rate(r.snap_t[1:(end - 1)], d[1:(end - 1)];
@@ -252,7 +255,7 @@ function projector_checks(res, spec, opts; label = "")
         # slower" -- so a tolerance tight enough for A3 would be measuring A4's initial
         # condition rather than its rate. The number is reported either way.
         check(@sprintf("%s%-8s ‖ω(t)-ω(T)‖ decays at rate ≈ 1/2", tag, nm),
-            0.47 < rω < 0.62 && r²ω > 0.999,
+            0.495 < rω < 0.62 && r²ω > 0.999,
             @sprintf("rate %.5f   r² = %.7f   n = %d   (exact asymptote: 1/2)",
                 rω, r²ω, nω))
 
@@ -310,17 +313,38 @@ function projector_checks(res, spec, opts; label = "")
 
     # -----------------------------------------------------------------------------------------
     header("$(tag)7. the spline and spectral runs agree")
-    let ω̂g = spline_grid(res.spline.solver, res.spline.trace.final, opts.spectral)
+    # BOTH TOLERANCES SWITCH ON THE RUN, and they have to: A4 as printed is the only run whose
+    # two discretisations are handed different initial data. `eq:initial_gaussian` is written
+    # unmodified on T² and A4's Gaussian sits π/2 from the boundary with w₂ = 1 and amplitude
+    # 1.8, so it is discontinuous by 8.5 % of its own peak and the two methods resolve the jump
+    # differently -- section 9 of `run_a4.jl` isolates that by periodising, which is the same
+    # split `verify_spline.jl` makes on the vector field. Measured on this manifest:
+    #
+    #                    final state      H₀         S(0)       S(T)
+    #     a3               1.419e-07   5.31e-08   2.78e-08   5.31e-08
+    #     a4 (printed)     5.367e-04   1.29e-04   9.73e-05   1.29e-04
+    #     a4-periodic      1.264e-07   5.94e-09   1.90e-09   5.91e-09
+    #
+    # A single constant set by A4 leaves the other two asserted three to four orders loose,
+    # which bounds nothing. Each constant below is a small multiple of the worst measurement it
+    # has to admit -- 9.3x and 7.8x for A4, 7.0x and 9.4x for the rest -- and the quantities
+    # are deterministic, so the margin only has to absorb the float arithmetic.
+    literal_a4 = spec.name == "a4"
+    let ω̂g = spline_grid(res.spline.solver, res.spline.trace.final, opts.spectral),
+        etol = literal_a4 ? 5e-3 : 1e-6
+
         e = maximum(abs, ω̂g .- res.spectral.trace.final) /
             maximum(abs, res.spectral.trace.final)
-        check("$(tag)the two final states agree", e < 1e-1, @sprintf("max rel %.3e", e))
+        check("$(tag)the two final states agree", e < etol,
+            @sprintf("max rel %.3e   (tol %.0e)", e, etol))
     end
+    rtol = literal_a4 ? 1e-3 : 5e-7
     for (nm, a, b) in (("H₀", res.spline.trace.H[1], res.spectral.trace.H[1]),
         ("S(0)", res.spline.trace.S[1], res.spectral.trace.S[1]),
         ("S(T)", res.spline.trace.S[end], res.spectral.trace.S[end]))
         rel = abs(a - b) / abs(b)
-        check(@sprintf("%s%-6s agrees", tag, nm), rel < 5e-2,
-            @sprintf("%.12e vs %.12e   rel %.2e", a, b, rel))
+        check(@sprintf("%s%-6s agrees", tag, nm), rel < rtol,
+            @sprintf("%.12e vs %.12e   rel %.2e   (tol %.0e)", a, b, rel, rtol))
     end
     return nothing
 end

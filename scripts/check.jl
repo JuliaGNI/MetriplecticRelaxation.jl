@@ -34,9 +34,30 @@ module Checks
 
 using Printf
 
-export header, check, check_exact, check_refined, summary, fmt, relerr, normerr,
-       failures, reset_failures!
+# THE EXPORT LIST IS THE SHARED HARNESS'S API, NOT THIS REPOSITORY'S USAGE, and that is why
+# names with no local caller are still exported.  Three repositories carry a near-identical
+# copy of this file -- `PoissonBrackets/scripts/`, where the format was settled,
+# `Papers/Metriplectic Relaxation to Equilibria/scripts/`, and here -- so that a converted
+# script can move between them unedited.  Call sites, counted as `name(` outside `check.jl`:
+#
+#     name             here   paper     PB
+#     header            102      64    186
+#     check             364     192    694
+#     check_exact         0      53     33
+#     check_refined       6       0     17
+#     summary            19       9     30
+#     fmt                 0       0     94
+#     relerr              2      61     14
+#     normerr             0       0      4
+#
+# So `check_exact`, `fmt` and `normerr` have no caller here and are not dead: removing them
+# from this copy alone would only make the three copies differ.  A name with no caller in
+# *any* column is a different matter, and comes out of all three copies at once.
+export header, check, check_exact, check_refined, summary, fmt, relerr, normerr
 
+# The tally.  `check` pushes and `summary` reads; nothing else touches it.  There is
+# no accessor because nothing needs the labels programmatically, and no reset because
+# `run_all.jl` gives every script its own subprocess, so each one starts empty.
 const _failures = String[]
 
 """
@@ -154,11 +175,5 @@ integrand as `scale`: it is the size of the terms that were actually formed and 
 which is the quantity the residual has to be small compared with.
 """
 normerr(a, b, scale) = abs(a - b) / max(abs(scale), 1e-300)
-
-"The labels of the checks that have failed so far."
-failures() = copy(_failures)
-
-"Forget the recorded failures.  Only `run_all.jl` needs this, between scripts."
-reset_failures!() = (empty!(_failures); nothing)
 
 end # module

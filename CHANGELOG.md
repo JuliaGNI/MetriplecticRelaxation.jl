@@ -275,7 +275,114 @@ here than in a library:
   cannot supply: the time at which `S` has fallen by 1 % of its total fall, and how flat it was
   before then.
 
+- **`src/euler.jl` — `euler_axis` and `euler_grid`, and with them §5.4's field maps.** The
+  `sv_*`, `pe_*` and `ge_*` colour maps were the one §5.4 panel that had never been drawn, and
+  the reason was real: everything else §5.4 measures — both entropies, the mobility, the
+  `(φ, ω)` cloud, every reference residual — lives on the space's own **quadrature** grid, whose
+  nodes sit in Gauss–Legendre clusters of `p+1` per cell. A colour map on those would show the
+  quadrature rule as much as the state. `euler_grid` resamples through the space's own
+  `evaluate`, so the map shows the same field the checks were computed from and not a second
+  interpolation of it; `φ` needs no separate method, being `sq.Λ * ω̂`. This is the
+  homogeneous-Dirichlet counterpart of `spline_grid` and differs from it in one deliberate way:
+  the torus axis omits its right endpoint because `x = 0` and `x = L` are the same point there,
+  and here they are not.
+
+  **Recorded choices, none of them the manuscript's.** 129 samples per axis, over `[0,1]`
+  with **both endpoints included**; odd on purpose, so that the initial condition's peak at
+  `(½,½)` falls on a node rather than straddling two — `figure_fields` shares one colour range
+  between its panels, and a peak sampled off-centre under-reports it. The contours drawn over
+  both panels are those of the **final** stream function, which is §4's own convention for the
+  reduced Euler runs and is the visual form of the equilibrium claim. The colour map is taken
+  from the data rather than fixed per run: `:balance` diverges about its own midpoint and is
+  therefore only honest where the shared range straddles zero. Measured over both panels,
+  `min/max` is **−0.999** for B2, whose added mode makes the vorticity genuinely signed, and
+  exactly **0** for B1 and B3, whose minimum *is* the Dirichlet edge — so B2 gets `:balance` and
+  the other two `:viridis`, with no threshold needed to separate the cases. Field-map ranges:
+  B1 `[0, 0.9987]`, B2 `[−1.0011, 1.0024]`, B3 `[0, 10.0871]`.
+
+  **The three runs were not re-run for this.** The space `euler_grid` resamples through is fixed
+  by `(cells, degree, state)`. The payload records the **first two** — `run_b1.jl:178`,
+  `run_b2.jl:160` and `run_b3.jl:365` all write `opts = (; cells, degree, N = nbasis(sq.space))` —
+  and the third comes from `SECTION5_RUNS[name].state` (`figures.jl:194`), with the `nbasis`-vs-`N`
+  assertion as the guard that catches a mismatch. So `scripts/figures.jl` rebuilds the
+  `EulerSquare` — one sparse Cholesky at `N = 676` — instead of the grids being carried in
+  `runs/*.jls`. That is seconds per figure revision against the 57
+  minutes, two hours and step-size study the *Results* sections below cost. `nbasis` is asserted
+  against the recorded `N`, so a payload written on a different space stops the script rather
+  than producing a picture of the wrong state.
+
+- **`scripts/verify_euler_grid.jl`** — 16 checks on that resampling, because a four-line
+  interpolation is exactly the kind of code that looks right and is silently wrong. The axis
+  carries 129 nodes over `[0,1]` at `h = 0.0078125` with `x₁ = 0` and `x_N = 1` exactly; a
+  trapezoidal integral of a resampled B1 state agrees with the space's own `∫ω` at
+  **6.323e-05** relative (`8.2430449243e-02` against `8.2435661894e-02`), which settles *which*
+  domain the grid covers by a route sharing no code with `euler_axis`. A polynomial the space
+  contains is reproduced to round-off at both degrees — **1.041e-16** for bi-degree `(2,2)` on
+  amplitude `6.25e-02`, **1.318e-16** for bi-degree `(3,3)` on `3.70e-02`. Every one of the four
+  edges is **exactly** `0.000e+00` for *random* degrees of freedom, not merely for a projection
+  of something that already vanished there.
+
+  **Three controls that must fail, and do.** The bi-degree-`(3,3)` polynomial on the degree-2
+  space is off by **5.556e-05**, relative **1.501e-03** — so "reproduced to round-off" is a
+  statement about the space and the two rows above are not vacuous. On the `:free` space the same
+  edge measurement reads **2.2802** against an interior range of `[−1.6735, 1.3830]`, which is
+  what a resampler that clamped, wrapped or dropped its boundary samples would hide. And the
+  index convention is measured rather than asserted: read the other way round, the asymmetric
+  test field is wrong by **5.564e-01** against **3.457e-05** read correctly, a ratio of
+  **16094×** on a field of peak 1.
+
+  **The transposition check needs an asymmetric test function or it proves nothing** — a radially
+  symmetric bump centred in the square passes a transposed implementation exactly. It therefore
+  carries B1's own widths, `w₁² = 0.01` against `w₂² = 0.07`, times `sin(πx₁)sin(πx₂)`. The
+  factor is not decoration; see *Found*. The other side of the same check is a rate rather than a
+  threshold: the direct error is projection error and must fall at `O(h^{p+1})`, so **8× per
+  halving of `h` at degree 2 is the tolerance, with no margin added**. Measured **1.38e-02 →
+  1.13e-03 → 3.46e-05**, i.e. **12×** and **33×** — both above the law, because `w₁ = 0.1`
+  against `h = 1/16` leaves the coarsest mesh still shedding a pre-asymptotic term. A rate
+  *below* 8 would say the resampling and not the projection was setting the floor.
+
+  **Dependency state.** Measured against the same tree as every other §5.4 number here —
+  PoissonBrackets `23dba270c9b1c10f9576a9a09043a0f4790d0cd8` and SimpleSplines
+  `6c199ca136d88712bf7505129153538a324e5c03`, both read out of `Manifest.toml` rather than
+  assumed. See *Results — §5.4, the dependency state* below.
+
+  **The suite is 407 tests, up from 401, green, and 97 s of testset time.** The six new ones are
+  the coarse `21²`-grid form of the same claims, in `Euler Square Tests`: the endpoints, the four
+  edges for random degrees of freedom, and an asymmetric polynomial the degree-3 space contains,
+  reproduced to round-off and wrong by order one read transposed. Degree 3 rather than the runs'
+  own degree 2, because the boundary-vanishing bi-degree-`(2,2)` polynomials are
+  `span{x(1−x)y(1−y)}` — one-dimensional, symmetric, and therefore blind to a transposition.
+  Earlier entries in this file quoting **401** record the count at the time they were written and
+  are left as they stand.
+
 ### Changed
+
+- **`scripts/check.jl` drops `failures` and `reset_failures!`.** The follow-up the export-list
+  comment in that file deferred, now made in all three repositories that carry a copy of the
+  harness — `PoissonBrackets/scripts/`, `Papers/Metriplectic Relaxation to Equilibria/scripts/`
+  and here — so that the copies stay diffable rather than differing by two names.
+
+  **Zero callers, re-measured, and by a second method.** The call-site table in the file
+  reproduces row for row, `fmt`'s 94 in PoissonBrackets included. Beyond that count, none of the
+  60 `using .Checks: …` lines that import the harness names either name — 19 here, 10 in the
+  paper, 31 in PoissonBrackets, and none anywhere else. That is the position a `name(` count
+  cannot see, and the one place an unused export could still have been in real use.
+
+  The pair only ever made sense for an in-process runner that reads the tally between suites and
+  then clears it, and `run_all.jl` is not that: it gives every script its own subprocess.
+  `summary` stays the only read path, and `_failures` stays private with no accessor and a comment
+  saying why, so it is not reinstated on the assumption that the state was left unreachable by
+  oversight. **No number and no count moves**, and the failure path is checked directly rather
+  than assumed: with a deliberate failing check, all three copies still record the label and still
+  exit 1.
+
+- **`SpectralTorus` no longer stores the bare wavenumber grids.** `k₁` and `k₂` were written by
+  the constructor and read by nothing: every operator applies one of `ik₁`, `ik₂` or `negk²`,
+  and `Δ⁻¹` is built from the locals. They are now locals. Measured,
+  `Base.summarysize(SpectralTorus(256))` falls from **5 243 472 to 4 194 896 bytes** — the
+  1.0 MiB two `256²` `Float64` grids cost — on every grid the manuscript's own resolution
+  builds. **No number moves:** `verify_spectral.jl` is 29/29 against PoissonBrackets'
+  independent differentiation matrix and the suite is 401/401, unchanged.
 
 - **`README.md` gained the `§5.5` section it was missing.** The file documented `§4` and `§5.4`
   and stopped, though §5.5 is roughly half of #2 — `takeda.jl`, `gradshafranov.jl`, both their
@@ -375,6 +482,180 @@ here than in a library:
   hoist above recovers. They are now fields, built once in the constructor.
 
 ### Fixed
+
+- **`takeda_iterate`'s docstring cited the wrong scheme, having inherited the citation from the
+  manuscript.** It named Takeda & Tokuda Eqs. (2.111)–(2.112), pp. 22–23. Those equations are on
+  those pages, but p. 23 attributes them to **Kikuchi et al.** as a convergence proof for a model
+  problem — an `ε`-homotopy off the linear eigenpair `{λ₀, φ}`, with `λ` read off a Fredholm
+  solvability condition, a ratio of `L²` inner products against `φ`. The scheme this function
+  implements is **§3.2, Eqs. (3.22)–(3.25), p. 30**, whose step 3 reads "normalize the `ψ` values
+  by the value at the magnetic axis". The two differ in precisely the thing that defines them:
+  what normalisation produces `λ`.
+
+  Nothing numerical changes — the docstring's *prose* description was already of §3.2's scheme,
+  and the implementation matched the prose. Only the pointer was wrong, and the fixed point still
+  agrees with a dense generalised eigensolve to `1.0–2.0e-13`, which never depended on the
+  citation.
+
+  Established by reading the held source directly,
+  `Library/papers/Takeda_1991_ComputationMhdEquilibriumTokamakPlasma/paper.pdf` pp. 22–23 and
+  30–31 — which also retires the standing caveat that the reference was unavailable; it has been
+  in `Library/` all along, under `TakedaTokuda:1991`. Recorded as a manuscript finding in
+  `Knowledge/Metriplectic Relaxation/The manuscript's Takeda citation points at a different
+  scheme.md`.
+
+  One under-specified choice reclassified as a consequence: **`tol = 1e-13` is this
+  implementation's, not the paper's.** p. 31 gives no stopping criterion, saying only that
+  convergence "is very good and it is used widely for various applications". The docstring now
+  says so, so the number is not mistaken for a transcribed one.
+
+  **`README.md:167` carried the same wrong citation and was missed the first time.** It described
+  the classical solver as "the iteration of Takeda & Tokuda Eqs. (2.111)–(2.112)", so for the
+  length of one review the repository cited two different equation numbers for one function —
+  and the README's was the one the correction above rejects. It now reads §3.2, Eqs. (3.22)–(3.25),
+  matching `src/takeda.jl:343`. Found in the review of #4; documentation only, nothing numerical.
+
+- **`verify_spline.jl`'s a4 vector-field row now records the margin it actually has.** Tightening
+  a1–a3 from `1e-1` to `1e-2` left a4 at `1e-1` against a measured **8.54e-02** — a **1.17×
+  margin**, *tighter* than the 1.44× a4 initial-condition row earlier in the same loop (`:200`)
+  that was flagged as fragile and deferred. The comment claimed only that a4 "keeps `1e-1`" and gave the physical
+  reason, which is true and not the whole truth: it did not say how little room that leaves.
+
+  **The tolerance is unchanged and deliberately so.** It is the identical constant, run and cause
+  as the deferred row, so moving one and not the other would split a single decision in two. Both
+  are now boxed together in `Tasks/Close the MetriplecticRelaxation follow-ups.md` §1, to redden
+  and be reasoned about together. Found in the review of #4; comment only, no assertion changed.
+
+- **The review follow-ups of #1 and #2 were re-measured against the same dependency trees the
+  §4 and §5 results were, and nothing moved.** `Manifest.toml` is gitignored and `[sources]`
+  follows `main` on both remotes, so the resolved trees are recorded rather than committed;
+  verified from the manifest's own `git-tree-sha1` before any of the work below, in both the
+  root and the `scripts` project:
+
+  - **PoissonBrackets**, tree `23dba270c9b1c10f9576a9a09043a0f4790d0cd8`;
+  - **SimpleSplines**, tree `6c199ca136d88712bf7505129153538a324e5c03`.
+
+  Both upstream tips have since moved — PoissonBrackets to `2fc0221`, SimpleSplines to
+  `c8b6432`/v0.1.0 — and the manifests did not, so **the loaded code is still the measured
+  code.** The three cheap verification scripts reproduce unchanged: `verify_euler.jl` 101/101,
+  `verify_takeda.jl` 38/38, `verify_gradshafranov.jl` 42/42, all exit 0, with
+  `λ_takeda = 0.030224858357` after 65 sweeps, `λ_h = 0.030234799207`, C2's
+  `λ = 0.0025990851` and the continuum `0.0302346260` all to every digit already recorded.
+  A1–A4 were re-run in full at the manuscript's own `256²` and reproduce every number in the
+  *Results* sections below, again to every digit.
+
+- **`run_a1.jl`'s contour-average row goes from `2e-3` to `5e-5`.** Re-measured over both
+  central islands and all four contours: **9.21e-08, 1.26e-07, 2.46e-07, 3.91e-07, 1.51e-06,
+  1.53e-06, 2.06e-06, 4.71e-06** of the initial peak. The old constant was **425×** the worst
+  of them. `5e-5` is eleven times it. There is no law to set this against — the average is
+  conserved exactly in the continuum and *not* by the semi-discrete flow, so the residual is
+  truncation error — which is why the comment now says what the number is a multiple of.
+
+  **Must-fail control:** the same run on 48 cells instead of 128, same degree 3, gives
+  **9.92e-05, 1.32e-04, 1.79e-04, 2.29e-04, 2.74e-04, 4.05e-04, 5.90e-04** on seven of the
+  eight rows — every one **passes** the old `2e-3` and **fails** the new `5e-5`. (The eighth,
+  `h = 0.20` on the upper island, lands at 3.30e-05 and still passes; the row was tightened to
+  the worst measurement, not to the best.)
+
+- **`run_a2.jl`'s cross-discretisation row goes from `5e-2` to `5e-4`.** Re-measured,
+  **6.978e-05** — the old constant was **716×** it. `5e-4` is seven times the measurement.
+  It stays deliberately looser than A3's new `1e-6`: A2's double bracket relaxes
+  *incompletely*, so its final state is not the one member of `eq:u-eta_Euler_periodic` that
+  A3's conserved energy fixes, and the two discretisations are left disagreeing at their own
+  truncation error rather than at their agreement on `H₀` — measured, A2's final state is
+  **0.9132** of its own norm away from that family where A3's is 3.33e-05.
+
+  **Must-fail control, isolating exactly the row that changed:** halving only the spline
+  resolution — 32 cells instead of 64, same degree 3, same `64²` spectral reference — gives
+  **4.300e-03**, which **passes** the old `5e-2` and **fails** the new `5e-4`, while the
+  `H₀`/`S(0)`/`S(T)` rows beside it still pass at 6.80e-06, 3.39e-05 and 9.24e-05.
+
+- **`projector_run.jl`'s three numeric bounds now bound something.** All three were constants
+  read off one run, and two of them by three to five orders.
+
+  The cross-discretisation rows switch on the run, for the reason `verify_spline.jl` already
+  switches: A4 as printed is the only run whose two discretisations are handed *different*
+  initial data, because `eq:initial_gaussian` is discontinuous on `T²` by 8.5 % of A4's own
+  peak. Re-measured on this manifest, and identical to what #2 recorded:
+
+  | run | final state | `H₀` | `S(0)` | `S(T)` |
+  |:--|--:|--:|--:|--:|
+  | `a3` | 1.419e-07 | 5.31e-08 | 2.78e-08 | 5.31e-08 |
+  | `a4` as printed | 5.367e-04 | 1.29e-04 | 9.73e-05 | 1.29e-04 |
+  | `a4-periodic` | 1.264e-07 | 5.94e-09 | 1.90e-09 | 5.91e-09 |
+
+  So `1e-1` and `5e-2` become `5e-3`/`1e-3` for A4 as printed and `1e-6`/`5e-7` for the other
+  two — 7.0× to 9.4× the worst measurement each has to admit, on quantities that are
+  deterministic.
+
+  **Measured, the old constants admitted a badly degraded discretisation and the new ones
+  reject it.** `run_a3.jl --spectral 64 --cells 16 --degree 1` — two spline degrees and a
+  factor 4 in cells below the run's own space — gives final state **1.284e-02**, `H₀`
+  **2.57e-02**, `S(0)` **2.78e-02**, `S(T)` **1.31e-02**. Every one of those **passes** the old
+  `1e-1`/`5e-2` and **fails** the new bounds.
+
+  The vorticity-rate row's lower bound goes from `0.47` to **0.495**. Its own comment gives the
+  reason as a finite-window curvature term "worth a few times 1e-3", which supports about
+  0.495, not 0.47 — an order of magnitude more slack than the stated reason, so the two are
+  reconciled in favour of the reason. Measured, the smallest rate in this window is A3's
+  **0.50679** (both discretisations), A4's is 0.59607/0.59605 and A4-periodic's 0.59678, so
+  0.495 clears the smallest by 2.3 %. Not fragile: even the degraded control run above still
+  measures **0.50635**.
+
+- **`verify_spline.jl`'s vector-field agreement tolerance switches on the run, as its
+  initial-condition row above it already did.** One `1e-1`, set by A4, left A1–A3 asserted
+  **20× to 280×** loose: measured, A1 gives `4.80e-03`, A2 `2.69e-03`, A3 `3.51e-04` and A4
+  `8.54e-02`. A1–A3 now carry `1e-2`, twice A1's measured worst, and A4 keeps `1e-1` because
+  its printed initial condition is discontinuous on `T²` by 8.5 % of its own peak — which
+  section 7 of the same script isolates as the cause rather than assuming it.
+
+  **The tightening is a bound and not a record, and that is measured.** Degrading only the
+  spline space — degree 1 instead of 3 at the same 64 cells, or 16 cells instead of 64 at the
+  same degree 3 — takes A3's row to `2.86e-02` and `4.33e-02`. Both **pass** the old `1e-1`
+  and **fail** the new `1e-2`, so the row now rejects a discretisation the old one waved
+  through. 52/52, unchanged, and no reproduced number moves.
+
+- **`reset_failures!`'s docstring described a runner that does not exist.** It said "Only
+  `run_all.jl` needs this, between scripts", but `run_all.jl` gives every script its own
+  subprocess, so each starts with an empty tally and nothing is ever reset. **Zero callers in
+  any of the three repositories that carry a copy of this harness** — here,
+  `PoissonBrackets/scripts/` and `Papers/Metriplectic Relaxation to Equilibria/scripts/` — by
+  grep in all three and by `trace_path(direction="inbound")` on the code graph in the two that
+  are indexed. `failures` is dead in all three as well.
+
+  Both were **left in place by this change**, and the export list now says why: it is the shared
+  harness's API rather than this repository's usage, so that a converted script moves between the
+  copies unedited. The measured call-site counts are recorded there — `check_exact` (0 here, 53 in
+  the paper, 33 in PoissonBrackets), `fmt` (0, 0, 94) and `normerr` (0, 0, 4) have no local caller
+  and are **not** dead; dropping the two that are is one change across three repositories, not
+  a change to the downstream copy.
+
+  **That coordinated removal has since been made** — see *`scripts/check.jl` drops `failures` and
+  `reset_failures!`* above, which drops both from all three copies at once. So the deferral here
+  records why it was deferred, not the state of the file.
+
+- **Three of `verify_projector_factor.jl`'s rows could not fail, and are now reports plus one
+  row that can.** The two "still dissipates entropy" rows asserted `dS/dt < 0` for `κ = 1` and
+  `κ = 2`. With `H₀ = (φ,ω)/2` and `S₀ = (ω,ω)/2` the field gives
+  `-dS/dt = 2S₀ - 2κH₀²/‖φ‖²`, and Cauchy-Schwarz gives `H₀²/‖φ‖² ≤ S₀/2`, so
+  `-dS/dt ≥ (2-κ)S₀` — non-negative for every `κ ≤ 2`, and strict once section 1 has shown
+  `φ ∦ ω`. **The bound is `(2-κ)S₀` and not `2S₀ - κS₀/2`, so it covers `κ ≤ 2` and not
+  `κ ≤ 4`:** measured on this field, `κ = 3` and `κ = 4` give `-dS/dt = -5.067` and `-15.638`,
+  i.e. entropy *production*. Both κ the manuscript's discrepancy is between are inside the
+  bound, which is why the rows could not fail. Measured `H₀²/(‖φ‖²S₀) = 0.3967` against `1/2`.
+
+  The third was `Π_H φ = 0`, whose comment claimed that *applying* the projector escaped the
+  vacuity of writing the formula out at `v = φ`. It does not: `Π`'s body **is** that formula,
+  so the coefficient is `x/x`, exactly `1.0`, and `φ .- 1.0 .* φ` is exactly zero elementwise.
+  Measured, `all(iszero, Π(ψ))` holds for `ψ = φ`, for a random field and for `φ` scaled by
+  `1e±9`.
+
+  All three now print as report lines in the six-space form `verify_takeda.jl` and
+  `verify_gradshafranov.jl` already use, and the closed form itself is asserted per `κ` in
+  their place — **`rel 2.21e-16` and `8.07e-16`**. That row is the one with a must-fail
+  control: on a field whose projector term carries a sign slip it fails at **rel 5.68e-01 and
+  8.85e-01**, while the two rows it replaces still *pass* on that same broken field. Net
+  14 checks to 13.
 
 - **The `SimpleSplines` compat bound follows its 0.1.0 release. Compat only — no code changed
   and no number below moves.** SimpleSplines' `main` carried `version = "1.0.0-DEV"`, which the
@@ -672,6 +953,25 @@ here than in a library:
   departure is justified by the run rather than asserted in a comment. The alternative — a
   positivity-preserving limiter, or evolving `log ω` — is a different scheme, and this
   reproduction does not write one.
+
+- **§5.4's initial condition does not vanish on `∂Ω`, by 2.8 % of its peak along two of the four
+  edges** — and the field maps are where that becomes visible. The Gaussian's two widths are very
+  different: `w₁² = 0.01` leaves `ω₀(0, ½) = 1.39e-11` on the `x₁` edges, negligible, but
+  `w₂² = 0.07` is wide enough to reach the others and leaves **`ω₀(½, 0) = 2.81e-02`** against a
+  peak of 1. Every `ω_h ∈ V_D` is exactly zero there, so the initial panel of each `sv_*`,
+  `pe_*` and `ge_*` map shows the bump pinched to zero along the `x₂ = 0` and `x₂ = 1` edges.
+
+  This is §5.4's own setup and not a choice of this reproduction — the homogeneous-Dirichlet
+  space is what makes both of its closed-form references exact, per the entry above — and it is
+  the same mismatch `interior_weights` already exists to exclude from B3's reference fit. It is
+  recorded because it *looks* like a resampling defect and is not, and `verify_euler_grid.jl`
+  archives the measurement that tells the two apart: the max-norm error of the projected Gaussian
+  is **2.8116e-02 at 16, 32 and 64 cells alike**, located at `(½, 0)` every time. It is
+  mesh-*independent* because `ω_h` is exactly zero there, so the error simply *is* `ω₀(½,0)`; an
+  interpolation defect would converge and this cannot. The convergence check in the same section
+  therefore multiplies its test function by
+  `sin(πx₁)sin(πx₂)` — which makes it admissible while leaving the asymmetry that the
+  transposition control depends on — and the boundary values are reported on their own row.
 
 ### Results — A1, parallel diffusion under the metric double bracket (§4.1, Fig. 1)
 

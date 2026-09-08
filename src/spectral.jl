@@ -40,8 +40,6 @@ struct SpectralTorus{T, P, IP}
     N::Int
     x₁::Matrix{T}
     x₂::Matrix{T}
-    k₁::Matrix{T}
-    k₂::Matrix{T}
     ik₁::Matrix{Complex{T}}
     ik₂::Matrix{Complex{T}}
     negk²::Matrix{T}
@@ -57,6 +55,9 @@ function SpectralTorus(N::Int)
     ks = float.(vcat(collect(0:(N ÷ 2)), collect((-N ÷ 2 + 1):-1)))
     x₁ = [xs[i] for i in 1:N, j in 1:N]
     x₂ = [xs[j] for i in 1:N, j in 1:N]
+    # `k₁` and `k₂` are locals, not fields: nothing outside this constructor reads a bare
+    # wavenumber. Every operator applies one of the three multipliers below, so keeping the
+    # raw grids as fields would cost a megabyte each at the manuscript's 256² for nothing.
     k₁ = [ks[i] for i in 1:N, j in 1:N]
     k₂ = [ks[j] for i in 1:N, j in 1:N]
     # The inverse of -Δ, with the zero mode annihilated rather than treated as an error: on the
@@ -74,7 +75,7 @@ function SpectralTorus(N::Int)
     buf = zeros(ComplexF64, N, N)
     plan = plan_fft(buf)
     iplan = plan_ifft(buf)
-    SpectralTorus(N, x₁, x₂, k₁, k₂, ik₁, ik₂, negk², Δ⁻¹, plan, iplan)
+    SpectralTorus(N, x₁, x₂, ik₁, ik₂, negk², Δ⁻¹, plan, iplan)
 end
 
 Base.size(g::SpectralTorus) = (g.N, g.N)

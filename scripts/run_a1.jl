@@ -125,13 +125,20 @@ const PEAK = spec.gaussian(spec.gaussian.x₀...)
 
 # (a) The contour average is a constant of the motion: parallel diffusion moves nothing across
 #     contours. This must hold from the first step, and is what makes u_∞ well defined.
+#
+# `5e-5` is eleven times the worst of the eight rows below, which is the h = 0.20 contour of the
+# lower island at 4.71e-06; the smallest is 9.21e-08. The conservation is exact in the continuum
+# but not in the discretisation -- the semi-discrete flow does not carry it -- so the residual is
+# truncation error and there is no law to set the constant against; it is a multiple of what a
+# 128²-cell degree-3 space actually delivers, and refining the space is what moves it.
 for c in ISLANDS, h in CONTOURS
 
     a₀ = contour_average(u_initial, h, c; n = 400)
     a₁ = contour_average(u_final, h, c; n = 400)
     check(@sprintf("island x₂=%.2f  h = %.2f   the contour average is conserved", c[2], h),
-        abs(a₁ - a₀) / PEAK < 2e-3,
-        @sprintf("u_∞ = %.8f -> %.8f   |Δ|/peak %.2e", a₀, a₁, abs(a₁ - a₀) / PEAK))
+        abs(a₁ - a₀) / PEAK < 5e-5,
+        @sprintf("u_∞ = %.8f -> %.8f   |Δ|/peak %.2e   (tol 5e-05)",
+            a₀, a₁, abs(a₁ - a₀) / PEAK))
 end
 
 # (b) And the field has equalised ONTO it: the along-contour deviation has collapsed.
