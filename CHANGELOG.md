@@ -509,6 +509,23 @@ here than in a library:
   convergence "is very good and it is used widely for various applications". The docstring now
   says so, so the number is not mistaken for a transcribed one.
 
+  **`README.md:167` carried the same wrong citation and was missed the first time.** It described
+  the classical solver as "the iteration of Takeda & Tokuda Eqs. (2.111)–(2.112)", so for the
+  length of one review the repository cited two different equation numbers for one function —
+  and the README's was the one the correction above rejects. It now reads §3.2, Eqs. (3.22)–(3.25),
+  matching `src/takeda.jl:343`. Found in the review of #4; documentation only, nothing numerical.
+
+- **`verify_spline.jl`'s a4 vector-field row now records the margin it actually has.** Tightening
+  a1–a3 from `1e-1` to `1e-2` left a4 at `1e-1` against a measured **8.54e-02** — a **1.17×
+  margin**, *tighter* than the 1.44× a4 initial-condition row earlier in the same loop (`:200`)
+  that was flagged as fragile and deferred. The comment claimed only that a4 "keeps `1e-1`" and gave the physical
+  reason, which is true and not the whole truth: it did not say how little room that leaves.
+
+  **The tolerance is unchanged and deliberately so.** It is the identical constant, run and cause
+  as the deferred row, so moving one and not the other would split a single decision in two. Both
+  are now boxed together in `Tasks/Close the MetriplecticRelaxation follow-ups.md` §1, to redden
+  and be reasoned about together. Found in the review of #4; comment only, no assertion changed.
+
 - **The review follow-ups of #1 and #2 were re-measured against the same dependency trees the
   §4 and §5 results were, and nothing moved.** `Manifest.toml` is gitignored and `[sources]`
   follows `main` on both remotes, so the resolved trees are recorded rather than committed;

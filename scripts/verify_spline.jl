@@ -214,6 +214,11 @@ let Ns = 64, tf = SplineTorus(64, 3), g = SpectralTorus(Ns)
         # loose, which is not a bound on anything. `1e-2` is twice A1's measured worst; A4
         # keeps `1e-1` because its printed initial condition is discontinuous on T² by 8.5 %
         # of its own peak, which section 7 below isolates as the cause rather than assumes.
+        #
+        # That leaves A4 asserted at a 1.17x margin over its own 8.54e-02 — fragile in exactly
+        # the way the initial-condition row above is, and kept by the same deferral rather than
+        # because `1e-1` has been established as correct. When this row reddens, read
+        # `Tasks/Close the MetriplecticRelaxation follow-ups.md` §1 before touching the number.
         vg = spline_grid(tf, rhs(ω̂), Ns)
         e = maximum(abs, vg .- vs) / maximum(abs, vs)
         vtol = name == "a4" ? 1e-1 : 1e-2
