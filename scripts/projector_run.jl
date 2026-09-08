@@ -239,11 +239,10 @@ function projector_checks(res, spec, opts; label = "")
         #
         # The lower bound is 0.495 rather than 0.5 because the least-squares fit over a finite
         # window carries a curvature term of either sign, worth a few times 1e-3 here; it is
-        # slack for that, not an admission that the underlying rate may be below 1/2. It was
-        # 0.47, which is an order of magnitude more slack than that reason supports — the two
-        # have been reconciled in favour of the reason, since the reason is what makes the row
-        # a bound rather than a record. Measured, the smallest rate in this window over all
-        # three runs is A3's 0.50679, so 0.495 still clears it by 2.3 %.
+        # slack for that, not an admission that the underlying rate may be below 1/2. Slack
+        # beyond what that reason supports would make the row a record rather than a bound.
+        # Measured, the smallest rate in this window over all three runs is A3's 0.50679, so
+        # 0.495 still clears it by 2.3 %.
         d = distances(r)
         T = spec_T(r)
         (rω, r²ω, nω) = fit_rate(r.snap_t[1:(end - 1)], d[1:(end - 1)];

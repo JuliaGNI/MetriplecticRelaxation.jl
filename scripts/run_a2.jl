@@ -140,8 +140,7 @@ header("4. the spline and spectral runs agree")
 # `1e-6` in `projector_run.jl` rather than inconsistent with it: A2's double bracket relaxes
 # INCOMPLETELY, so its final state is an arbitrary member of a large set rather than the one
 # member of `eq:u-eta_Euler_periodic` that A3's energy fixes, and the two discretisations are
-# left disagreeing at their own truncation error instead of at their agreement on `H₀`. The
-# previous `5e-2` was 716x the measurement and bounded nothing.
+# left disagreeing at their own truncation error instead of at their agreement on `H₀`.
 let ω̂g = spline_grid(ts, trt.final, opts.spectral)
     e = maximum(abs, ω̂g .- trg.final) / maximum(abs, trg.final)
     check("the two final states agree", e < 5e-4, @sprintf("max rel %.3e   (tol 5e-04)", e))

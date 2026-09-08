@@ -67,11 +67,11 @@ check("ω is not an eigenfunction of -Δ (so the test is not vacuous)",
 Π(v) = v .- (l2inner(g, Φ, v) / l2inner(g, Φ, Φ)) .* Φ
 
 let Πω = Π(Ω)
-    # `Π_H φ = 0` is REPORTED and not asserted. Applying the projector to `φ` does not escape
-    # the vacuity it was once claimed to escape: `Π`'s body is `v - (φ,v)/(φ,φ) φ`, so at
-    # `v = φ` the coefficient is `x/x`, exactly `1.0` in floating point, and `φ .- 1.0 .* φ`
-    # is exactly zero elementwise. Measured, `all(iszero, Π(ψ))` holds for `ψ = φ`, for a
-    # random field, and for `φ` scaled by `1e±9`: no field could have made this row fail.
+    # `Π_H φ = 0` is REPORTED and not asserted, and APPLYING the projector to `φ` rather than
+    # writing the formula out at `v = φ` does not make it assertable: `Π`'s body IS that
+    # formula, so at `v = φ` the coefficient is `x/x`, exactly `1.0` in floating point, and
+    # `φ .- 1.0 .* φ` is exactly zero elementwise. Measured, `all(iszero, Π(ψ))` holds for
+    # `ψ = φ`, for a random field, and for `φ` scaled by `1e±9`: no field could make this fail.
     # The content is in the two rows below -- only the right coefficient makes `Π_H ω`
     # orthogonal to `φ`, and only a projector is idempotent.
     println(@sprintf("      Π_H φ = 0 holds by the formula's own algebra   ‖Π_H φ‖/‖φ‖ = %.2e",

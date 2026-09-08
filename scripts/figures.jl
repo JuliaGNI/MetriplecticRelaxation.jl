@@ -165,11 +165,11 @@ end
 # The field maps need the state resampled off the quadrature grid onto a uniform one, which is a
 # solver operation rather than a plotting one — so it is `euler_grid` in `src/euler.jl`, checked
 # in `verify_euler_grid.jl`, and only called from here. The space it resamples through is fixed
-# by `(cells, degree, state)`, all three of which the payload records, so the square is REBUILT
-# here rather than the grids being carried in the payload: one sparse Cholesky against re-running
-# an hour of Newton solves per figure revision. `nbasis` is checked against the recorded `N` so
-# that a payload written against a different space stops the script instead of drawing a figure
-# of the wrong state.
+# by `(cells, degree, state)`: the payload records the first two, `SECTION5_RUNS` carries the
+# third, so the square is REBUILT here rather than the grids being carried in the payload — one
+# sparse Cholesky against re-running an hour of Newton solves per figure revision. `nbasis` is
+# checked against the recorded `N`, which is what catches the third, so that a payload written
+# against a different space stops the script instead of drawing a figure of the wrong state.
 
 # Samples per axis for the §5.4 field maps. Odd on purpose: all three runs share an initial
 # condition centred at (½,½), and an odd node count puts a sample exactly on the peak rather than

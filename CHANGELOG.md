@@ -301,9 +301,12 @@ here than in a library:
   B1 `[0, 0.9987]`, B2 `[−1.0011, 1.0024]`, B3 `[0, 10.0871]`.
 
   **The three runs were not re-run for this.** The space `euler_grid` resamples through is fixed
-  by `(cells, degree, state)`, all three of which the payload already records, so
-  `scripts/figures.jl` rebuilds the `EulerSquare` — one sparse Cholesky at `N = 676` — instead of
-  the grids being carried in `runs/*.jls`. That is seconds per figure revision against the 57
+  by `(cells, degree, state)`. The payload records the **first two** — `run_b1.jl:178`,
+  `run_b2.jl:160` and `run_b3.jl:365` all write `opts = (; cells, degree, N = nbasis(sq.space))` —
+  and the third comes from `SECTION5_RUNS[name].state` (`figures.jl:194`), with the `nbasis`-vs-`N`
+  assertion as the guard that catches a mismatch. So `scripts/figures.jl` rebuilds the
+  `EulerSquare` — one sparse Cholesky at `N = 676` — instead of the grids being carried in
+  `runs/*.jls`. That is seconds per figure revision against the 57
   minutes, two hours and step-size study the *Results* sections below cost. `nbasis` is asserted
   against the recorded `N`, so a payload written on a different space stops the script rather
   than producing a picture of the wrong state.

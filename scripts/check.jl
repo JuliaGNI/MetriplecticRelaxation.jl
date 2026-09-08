@@ -41,11 +41,11 @@ using Printf
 # script can move between them unedited.  Call sites, counted as `name(` outside `check.jl`:
 #
 #     name             here   paper     PB
-#     header             98      64    186
-#     check             350     192    694
+#     header            102      64    186
+#     check             364     192    694
 #     check_exact         0      53     33
-#     check_refined       4       0     17
-#     summary            18       9     30
+#     check_refined       6       0     17
+#     summary            19       9     30
 #     fmt                 0       0     94
 #     relerr              2      61     14
 #     normerr             0       0      4

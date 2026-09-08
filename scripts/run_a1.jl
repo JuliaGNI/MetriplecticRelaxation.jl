@@ -127,11 +127,10 @@ const PEAK = spec.gaussian(spec.gaussian.x₀...)
 #     contours. This must hold from the first step, and is what makes u_∞ well defined.
 #
 # `5e-5` is eleven times the worst of the eight rows below, which is the h = 0.20 contour of the
-# lower island at 4.71e-06; the smallest is 9.21e-08. It was `2e-3`, 425x the worst, which
-# bounded nothing. The conservation is exact in the continuum but not in the discretisation --
-# the semi-discrete flow does not carry it -- so the residual is truncation error and there is
-# no law to set the constant against; it is a multiple of what a 128²-cell degree-3 space
-# actually delivers, and refining the space is what moves it.
+# lower island at 4.71e-06; the smallest is 9.21e-08. The conservation is exact in the continuum
+# but not in the discretisation -- the semi-discrete flow does not carry it -- so the residual is
+# truncation error and there is no law to set the constant against; it is a multiple of what a
+# 128²-cell degree-3 space actually delivers, and refining the space is what moves it.
 for c in ISLANDS, h in CONTOURS
 
     a₀ = contour_average(u_initial, h, c; n = 400)
