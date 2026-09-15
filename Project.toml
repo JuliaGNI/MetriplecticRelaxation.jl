@@ -5,10 +5,6 @@ authors = ["Michael Kraus"]
 
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-# The §4 spectral solver, which is the manuscript's own discretisation and the control the
-# spline runs are checked against. Already in the manifest transitively — SimpleSplines'
-# `CirculantMass` plans a real FFT for the periodic mass solve — but named here because this
-# package calls it directly.
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PoissonBrackets = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
@@ -18,28 +14,13 @@ SimpleSolvers = "36b790f5-6434-4fbe-b711-1f64a1e2f6a2"
 SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-# Neither PoissonBrackets nor SimpleSplines is registered, so both need an explicit source, and
-# both need it *here*: a `[sources]` table is honoured only for the active project, never
-# inherited from a dependency, so PoissonBrackets' own entry for SimpleSplines does not carry
-# over.
-#
-# These are urls rather than the relative sibling paths they used to be, because a path escapes
-# the repository and therefore does not exist on a CI runner: every job failed in `buildpkg`
-# with "expected package PoissonBrackets [2a9ffa85] to exist at path
-# /home/runner/work/Packages/PoissonBrackets", before a single test ran. That is the whole
-# matrix gated on a checkout layout only this machine has.
-#
-# The cost is the one the path form was chosen to avoid: resolution now follows `main` on the
-# remote rather than the sibling working tree, so a local change to either package is invisible
-# here until it is pushed. Develop against a sibling with `Pkg.develop(path=...)` in a local
-# environment; do not put the path back in this file.
-#
-# `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored and resolution fails outright with
-# "expected package PoissonBrackets to be registered". That is why the `julia` floor below is
-# 1.11 and not the tree's usual 1.10 — the `min` row of the CI matrix has to resolve.
-[sources]
-PoissonBrackets = {rev = "main", url = "https://github.com/JuliaGNI/PoissonBrackets.jl"}
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
+[sources.PoissonBrackets]
+rev = "main"
+url = "https://github.com/JuliaGNI/PoissonBrackets.jl"
+
+[sources.SimpleSplines]
+rev = "main"
+url = "https://github.com/JuliaDEC/SimpleSplines.jl"
 
 [compat]
 CairoMakie = "0.15"
@@ -48,7 +29,7 @@ LinearAlgebra = "1"
 PoissonBrackets = "0.1"
 Printf = "1"
 Random = "1"
-SimpleSolvers = "0.13"
+SimpleSolvers = "0.13, 0.14"
 SimpleSplines = "0.1"
 SparseArrays = "1"
 Test = "1"
