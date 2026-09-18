@@ -250,13 +250,18 @@ end
 @doc raw"""
     run_gs(spec, opts; Δt = spec.Δt, T = spec.T, cells = spec.cells,
            degree = spec.degree, state = :dirichlet, observer = nothing)
+    run_gs(solver, spec, opts; Δt = spec.Δt, T = spec.T, observer = nothing)
 
-Integrate a Section 5.5 Grad-Shafranov run on a [`GradShafranovBox`](@ref) with
-`ImplicitMidpoint`, returning `(box, diagnostics, flow, trace)`.
+Integrate a Section 5.5 Grad-Shafranov run with `ImplicitMidpoint`, returning
+`(solver, diagnostics, flow, trace)`.
+
+The first form builds a [`GradShafranovBox`](@ref) from `spec`; the second takes an already
+built solver, which is how C2 runs, because a [`GradShafranovDisk`](@ref) takes no `state`
+argument and is expensive enough to be worth reusing across a driver's several studies.
 
 Same integrator, same nonlinear solve and same reasoning about the dense Jacobian as
 [`run_euler`](@ref); what differs is the geometry, the measure and the state variable
-``j = u/r``, all of which are the box's business rather than the loop's.
+``j = u/r``, all of which are the solver's business rather than the loop's.
 
 The resolution comes from `spec` rather than from `opts` — §5.5's mesh is **anisotropic**, so a
 single `--cells` would have to pick one of the two axes, and the ratio is a recorded choice
@@ -265,33 +270,36 @@ convergence and control studies the driver runs.
 """
 function run_gs(spec, opts::Options; Δt = spec.Δt, T = spec.T, cells = spec.cells,
         degree::Int = spec.degree, state::Symbol = :dirichlet, observer = nothing)
-    box = GradShafranovBox(cells, degree; state = state)
-    d = Diagnostics(box, spec)
-    ĵ = gs_state(box, spec)
-    f = gs_flow(box)
+    run_gs(GradShafranovBox(cells, degree; state = state), spec, opts; Δt, T, observer)
+end
+
+function run_gs(solver, spec, opts::Options; Δt = spec.Δt, T = spec.T, observer = nothing)
+    d = Diagnostics(solver, spec)
+    ĵ = gs_state(solver, spec)
+    f = gs_flow(solver)
     integ = Integrator(f, ImplicitMidpoint(), Δt; û₀ = ĵ)
 
     nsteps = round(Int, T / Δt)
     stride = max(1, nsteps ÷ opts.samples)
     tr = Trace(ĵ)
     record!(tr, d, 0.0, ĵ)
-    observer === nothing || observer(box, f, 0.0, ĵ)
+    observer === nothing || observer(solver, f, 0.0, ĵ)
 
     t0 = time()
     for k in 1:nsteps
         integrate_step!(ĵ, integ)
         if k % stride == 0 || k == nsteps
             record!(tr, d, k * Δt, ĵ)
-            observer === nothing || observer(box, f, k * Δt, ĵ)
+            observer === nothing || observer(solver, f, k * Δt, ĵ)
             if !opts.quiet && (k % (10stride) == 0 || k == nsteps)
-                (λ, _, rel) = gs_fit(box, ĵ)
+                (λ, _, rel) = gs_fit(solver, ĵ)
                 @printf("    gs %6.1f%%   t = %7.3f   H = %+.10e   S = %.10e   λ = %.8f   rel = %.3e   [%.0f s]\n",
                     100k / nsteps, k * Δt, tr.H[end], tr.S[end], λ, rel, time() - t0)
                 flush(stdout)
             end
         end
     end
-    return (box, d, f, tr)
+    return (solver, d, f, tr)
 end
 
 @doc raw"""

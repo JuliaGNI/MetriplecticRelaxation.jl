@@ -57,10 +57,13 @@ const SCRIPTS = String[
     #       280-step study of the step size itself -- some twenty minutes in all. Δt is small
     #       because it is set by ACCURACY here, unlike §5.4's, where it was set by cost.
     #
-    #       C2, the mapped disk, has no driver: its relaxation is deferred, and the reason is in
-    #       `disk_eigenvalue` and in `CHANGELOG.md`. Its reference eigenvalue is not deferred and
-    #       is checked in `verify_takeda.jl`.
+    #       C2, the mapped disk, is cheaper: 400 steps at Δt = 0.0125 on 8×16 cubic cells run in
+    #       306 s -- ~2.1 s per step in the transient and well under one at the fixed point --
+    #       plus a 1400-step study of the step size, some half an hour in all. It does NOT
+    #       reproduce `eq:gs-ref`, and its own header says why; the number it is asserted
+    #       against is the equilibrium its state space has.
     "run_c1.jl",
+    "run_c2.jl",
     # The figures, last, because they read what the runs wrote.
     "figures.jl"
 ]

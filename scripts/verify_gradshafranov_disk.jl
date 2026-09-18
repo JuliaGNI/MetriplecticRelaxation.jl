@@ -1,17 +1,18 @@
-# C2, the mapped disk: what the polar space delivers, and the one thing it does not.
+# C2, the mapped disk: what the polar space and the pulled-back bracket deliver.
 #
 # Section 5.5's second geometry is the image of the unit disk under `eq:mapping`. Its
-# discretisation is `GradShafranovDisk`, and this script establishes three things and refutes a
-# fourth:
+# discretisation is `GradShafranovDisk`, and this script establishes four things about the
+# operators the relaxation is built from:
 #
 #   1. λ_h, the space's own Grad-Shafranov eigenvalue, against the continuum value and against
 #      the two measure-swap controls that must be wrong by an order of magnitude;
 #   2. the discrete equilibrium satisfies `eq:gs-ref`, u/(Cr²+D) = λψ, with λ = λ_h, confirmed
 #      by three independent estimates that must agree;
 #   3. the Poincaré floor, S/H ≥ λ_h, at the initial state and off the flow;
-#   4. **the relaxation run itself cannot be done yet.** `CollisionBracket` reads the gradient
-#      in the space's own coordinates, which on a mapped domain are not the physical ones. The
-#      last section measures that, and it is why `gs_flow(::GradShafranovDisk)` raises.
+#   4. the bracket reads the PHYSICAL frame — and the linear-stretch measurement that shows it
+#      cannot see the frame's direction, which is why that check lives elsewhere.
+#
+# The relaxation run itself is `run_c2.jl`.
 #
 # Run: julia --project=. --startup-file=no scripts/verify_gradshafranov_disk.jl
 
@@ -132,20 +133,23 @@ record("the floor holds on 50 random states",
 say("")
 
 ## ---------------------------------------------------------------------------------------
-say("4. WHY THE RELAXATION RUN IS BLOCKED: the bracket is not frame-covariant")
+say("4. the bracket reads the physical frame — and what this measurement cannot see")
 say("")
 
-# `CollisionBracket` forms β = (−∂₂φ, ∂₁φ) from the space's own derivative tables. On an
-# unmapped domain those are the physical derivatives and it is right. On a mapped domain they
-# are the *parameter* derivatives, and the physical gradient is ∇_x = J⁻ᵀ∇̂ — a different
-# object wherever J is not a multiple of a rotation.
+# The keyword form `CollisionBracket(s, Λ; density = ρ)` forms β = (−∂₂φ, ∂₁φ) from the space's
+# own derivative tables. On an unmapped domain those are the physical derivatives and it is
+# right — C1 and every §5.4 run. On a mapped domain they are the *parameter* derivatives, and
+# the physical gradient is ∇_x = J⁻ᵀ∇̂, a different object wherever J is not a multiple of a
+# rotation. The pullback form `CollisionBracket(s, Λ, pb)` reads the frame from the map, and is
+# what `gs_flow(::GradShafranovDisk)` uses.
 #
-# Measured below on the same PHYSICAL problem written in three parametrisations that differ
-# only by a linear stretch. `∫u dx` confirms the three are the same problem; the bracket is not.
+# Below: the same PHYSICAL problem written in three parametrisations that differ only by a
+# linear stretch. `∫u dx` confirms the three are the same problem. The keyword form is the
+# CONTROL and must not be invariant; the pullback form must be.
 
 physical(x) = sin(π * (x[1] - 1)) * sin(π * x[2]) * (1 + 0.3 * cos(3π * x[1]))
 
-function stretched(scale)
+function stretched(scale; framed::Bool)
     s = TensorSplineSpace((UniformMesh(6, 1.0 .. 2.0), UniformMesh(6, 0.0 .. 1.0 / scale)),
         2, (Dirichlet(), Dirichlet()))
     pb = PulledBack(s, x -> (x[1], scale * x[2]), _ -> [1.0 0.0; 0.0 scale])
@@ -153,37 +157,89 @@ function stretched(scale)
     M = weighted_matrix(s, measure(pb), (0, 0), (0, 0))
     Λ = Matrix(cholesky(Symmetric(Matrix(K))) \ Matrix(M))
     û = project(s, [physical(x) for x in nodes(pb)])
-    G = metric_matrix(CollisionBracket(s, Λ; density = measure(pb)), û)
+    b = framed ? CollisionBracket(s, Λ, pb) : CollisionBracket(s, Λ; density = measure(pb))
+    G = metric_matrix(b, û)
     mass = dot(quadrature_weights(s) .* measure(pb), basis_values(s, (0, 0))' * û)
     return (mass = mass, norm = maximum(abs, G), trace = tr(G))
 end
 
-base = stretched(1.0)
+# Each case is built once and both the table and the assertions read the same six objects.
+scales = (1.0, 2.0, 4.0)
+keyword = [stretched(σ; framed = false) for σ in scales]
+pullback = [stretched(σ; framed = true) for σ in scales]
+
 say("  the same physical problem, three parametrisations differing by a linear stretch")
-for scale in (1.0, 2.0, 4.0)
-    r = stretched(scale)
-    @printf("    scale %.1f   ∫u dx = %.10f   ‖G‖ = %.4e   ratio to scale 1 = %8.2f\n",
-        scale, r.mass, r.norm, r.norm / base.norm)
+say("    scale      ∫u dx        ‖G‖ keyword form   ratio      ‖G‖ pullback form   ratio")
+for i in eachindex(scales)
+    @printf("    %.1f    %.10f      %.4e   %8.2f        %.4e   %8.4f\n",
+        scales[i], keyword[i].mass, keyword[i].norm, keyword[i].norm / keyword[1].norm,
+        pullback[i].norm, pullback[i].norm / pullback[1].norm)
 end
 
-r2, r4 = stretched(2.0), stretched(4.0)
-record("the three are the same physical problem (∫u dx identical)",
-    abs(r2.mass - base.mass) < 1e-12 && abs(r4.mass - base.mass) < 1e-12)
-record("CONTROL the bracket is NOT invariant — it scales as the fourth power",
-    abs(r2.norm / base.norm - 16) < 1 && abs(r4.norm / r2.norm - 16) < 1)
+let (k1, k2, k4) = keyword, (f1, f2, f4) = pullback
+    record("the three are the same physical problem (∫u dx identical)",
+        abs(k2.mass - k1.mass) < 1e-12 && abs(k4.mass - k1.mass) < 1e-12)
+    record("CONTROL the keyword form is NOT invariant — it scales as the fourth power",
+        abs(k2.norm / k1.norm - 16) < 1 && abs(k4.norm / k2.norm - 16) < 1)
+    record("the pullback form is invariant to round-off",
+        abs(f2.norm / f1.norm - 1) < 1e-12 && abs(f4.norm / f1.norm - 1) < 1e-12)
+end
 
 say("")
 say("""  The fourth power is the signature: the bracket is quadratic in ∇φ and the assembly
   contracts two further derivatives, so a gradient scaled by `scale` scales it by `scale⁴`.
-  Symmetry, positive semi-definiteness and the degeneracy (F,H) = 0 hold in ALL THREE — those
-  properties are algebraic and cannot see the frame. So the §2 structural checks pass on a
-  mapped domain while the operator is the wrong one.
 
-  What this needs is `CollisionBracket` reading ∇_x = J⁻ᵀ∇̂ throughout: the perp in the physical
-  frame, and the assembly's derivative tables replaced by their node-dependent combinations
-  Φ_k^phys = Σ_l (J⁻ᵀ)_kl Φ̂_l. That is an extension to the bracket, not to the space, and it is
-  why `gs_flow(::GradShafranovDisk)` raises rather than returning a flow whose numbers would be
-  about the parametrisation.""")
+  WHAT THIS MEASUREMENT CANNOT SEE. Any reparametrisation that maps a spline space onto a
+  spline space is affine, so J is CONSTANT, and for a constant J the bracket collapses to
+  (det J⁻ᵀ)² times the parameter-frame one — because (Ba)·((Bc)⊥) = det(B)(a·c⊥) and one B
+  serves every node. So the table above pins |det J| and the pairing and says NOTHING about
+  the DIRECTION the frame points: a TRANSPOSED frame passes it exactly, measured 2.3e-16 in
+  `PoissonBrackets/scripts/verify_frame_covariance.jl`, which records it as a control that
+  cannot fail. The check that does reach the direction is `metric_operator` against the O(Nq²)
+  double sum with the physical gradient written out by hand; it lives in that script, on an
+  annulus and on a `PolarSplineSpace` through the pole.
+
+  Symmetry, positive semi-definiteness and the degeneracy (F,H) = 0 hold for the framed
+  bracket, for the frameless one and for the transposed one. Those properties are algebraic and
+  cannot see the frame, so the §2 structural checks pass on a mapped domain while the operator
+  is the wrong one.""")
+say("")
+
+# ON C2's OWN MAP: what the frame costs the run. `degeneracy_residual(b, ĵ, g)` is asked against
+# the flow's actual energy gradient ∂H/∂ĵ = 𝕄Λĵ, which carries the PHYSICAL mass. The framed
+# bracket pairs with exactly that matrix; the frameless one pairs with the space's
+# parameter-measure mass, and the two differ wherever |det J| ≠ 1. This is the SECOND defect, and
+# it is the one that would break energy conservation in the run even if the gradients were right.
+say("  on C2's own map: the degeneracy against the flow's own ∂H/∂ĵ")
+let ĵ = gs_state(disk, spec),
+    framed = CollisionBracket(disk.space, disk.Λ, disk.pb;
+        mobility = (x, u) -> herrnegger_mobility(x[1]), mobility_derivative = 0),
+    frameless = CollisionBracket(disk.space, disk.Λ;
+        mobility = (x, u) -> herrnegger_mobility(x[1]), mobility_derivative = 0,
+        density = measure(disk.pb)),
+    # The control above differs from the framed bracket in TWO ways, not one: the frame, and
+    # where the mobility is sampled. The pullback form hands the mobility a PHYSICAL point; the
+    # keyword form hands it a PARAMETER point, so `herrnegger_mobility(x[1])` reads a radius in
+    # the wrong coordinates. Composing the mobility with the map removes that second difference
+    # and leaves the frame as the only one, which is what this line isolates.
+    frameless_phys = CollisionBracket(disk.space, disk.Λ;
+        mobility = (x̂, u) -> herrnegger_mobility(disk_map(x̂[1], x̂[2])[1]),
+        mobility_derivative = 0, density = measure(disk.pb)), g = disk.MΛ * ĵ
+
+    rf = degeneracy_residual(framed, ĵ, g)
+    rp = degeneracy_residual(frameless, ĵ, g)
+    rm = degeneracy_residual(frameless_phys, ĵ, g)
+    @printf("    pullback form   𝔾 ∂H/∂ĵ = %.3e\n", rf)
+    @printf("    CONTROL frameless        %.3e   (%.1e× larger)\n", rp, rp / rf)
+    @printf("    CONTROL frame only       %.3e   (%.1e× larger)\n", rm, rm / rf)
+    record("the framed bracket is degenerate on the flow's own energy gradient", rf < 1e-12)
+    record("CONTROL the frameless one is not", rp > 1e-6)
+    record("CONTROL the frame alone accounts for it", rm > 1e-6)
+end
+say("")
+
+say("""  That degeneracy is energy conservation. `run_c2.jl` is the relaxation run itself; this
+  script establishes the operators it is built from.""")
 say("")
 
 ## ---------------------------------------------------------------------------------------

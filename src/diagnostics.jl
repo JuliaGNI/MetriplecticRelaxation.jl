@@ -41,14 +41,14 @@ function Diagnostics(sq::EulerSquare, spec::EulerSpec)
 end
 
 @doc raw"""
-    Diagnostics(box::GradShafranovBox, spec::GSSpec)
+    Diagnostics(solver::GradShafranovSolver, spec::GSSpec)
 
-The Section 5.5 case. As for §5.4 there is no prescribed generating field —
-``\delta H/\delta u`` is the flux function ``\psi`` of the ``\Delta^*`` solve — so `hz` is
-`nothing` and [`potential`](@ref) reads ``\Lambda\hat{j}``.
+The Section 5.5 case, the rectangle and the mapped disk alike. As for §5.4 there is no
+prescribed generating field — ``\delta H/\delta u`` is the flux function ``\psi`` of the
+``\Delta^*`` solve — so `hz` is `nothing` and [`potential`](@ref) reads ``\Lambda\hat{j}``.
 """
-function Diagnostics(box::GradShafranovBox, spec::GSSpec)
-    Diagnostics{typeof(box), Nothing, typeof(spec)}(box, spec, nothing)
+function Diagnostics(solver::GradShafranovSolver, spec::GSSpec)
+    Diagnostics{typeof(solver), Nothing, typeof(spec)}(solver, spec, nothing)
 end
 
 function _centred_h(g::SpectralTorus, h)
@@ -75,7 +75,7 @@ potential(d::Diagnostics{<:SplineTorus}, ω̂) = d.hz === nothing ? d.solver.Λ 
 
 potential(d::Diagnostics{<:EulerSquare}, ω̂) = d.solver.Λ * ω̂
 
-potential(d::Diagnostics{<:GradShafranovBox}, ĵ) = d.solver.Λ * ĵ
+potential(d::Diagnostics{<:GradShafranovSolver}, ĵ) = d.solver.Λ * ĵ
 
 @doc raw"""
     energy(d, ω)
@@ -113,7 +113,7 @@ function entropy(d::Diagnostics{<:EulerSquare}, ω̂)
 end
 
 @doc raw"""
-    entropy(d::Diagnostics{<:GradShafranovBox}, ĵ)
+    entropy(d::Diagnostics{<:GradShafranovSolver}, ĵ)
 
 The Section 5.5 entropy ``\fun{S} = \int_\Omega u^2/2(Cr^2+D) \, d\mu``, which in the state
 variable ``j = u/r`` is the quadratic form ``\tfrac12 \hat{j}^T \mathbb{W}\hat{j}`` — see
@@ -122,7 +122,7 @@ variable ``j = u/r`` is the quadratic form ``\tfrac12 \hat{j}^T \mathbb{W}\hat{j
 The generic method would report ``\tfrac12\int j^2 dx``, a plausible number for a different
 entropy, which is why this is a method and not a flag.
 """
-entropy(d::Diagnostics{<:GradShafranovBox}, ĵ) = dot(ĵ, d.solver.W, ĵ) / 2
+entropy(d::Diagnostics{<:GradShafranovSolver}, ĵ) = dot(ĵ, d.solver.W, ĵ) / 2
 
 @doc raw"""
     vorticity_mass(d, ω)
@@ -427,7 +427,7 @@ function scatter_data(d::Diagnostics{<:EulerSquare}, ω̂)
 end
 
 @doc raw"""
-    scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
+    scatter_data(d::Diagnostics{<:GradShafranovSolver}, ĵ)
 
 The ``\big(\psi, u/(Cr^2+D)\big)`` cloud of the Section 5.5 figures, on the quadrature grid.
 
@@ -436,7 +436,7 @@ The ordinate is **not** the state variable. §5.5 plots ``u/(Cr^2+D)`` rather th
 `eq:gs-ref`" — the ordinate is ``\delta S/\delta j``, and the plot is the equilibrium condition
 drawn directly. See [`gs_ordinate`](@ref).
 """
-function scatter_data(d::Diagnostics{<:GradShafranovBox}, ĵ)
-    box = d.solver
-    return (field(box.space, box.Λ * ĵ, (0, 0)), gs_ordinate(box, ĵ))
+function scatter_data(d::Diagnostics{<:GradShafranovSolver}, ĵ)
+    solver = d.solver
+    return (field(solver.space, solver.Λ * ĵ, (0, 0)), gs_ordinate(solver, ĵ))
 end

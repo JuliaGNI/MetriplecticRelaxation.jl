@@ -324,10 +324,11 @@ end
 # =================================================================================================
 header("7. C2's mapped domain and its reference eigenvalue λ = 0.002599")
 
-# C2's RELAXATION is deferred -- the pole of eq:mapping needs a polar-spline space, and
-# PoissonBrackets has no triangular DiscreteSpace either; `disk_eigenvalue` says both. Its
-# reference EIGENVALUE is not deferred: a P₁ triangulation of the physical domain has the pole as
-# an ordinary node, so the number the manuscript prints can be checked with nothing regularised.
+# This section is the REFERENCE EIGENVALUE only. A P₁ triangulation of the physical domain has
+# the pole as an ordinary node, so the number the manuscript prints can be checked with nothing
+# regularised -- and it can be checked independently of any spline space, which is the point of
+# computing it here. C2's RELAXATION runs on a `GradShafranovDisk`, whose `PolarSplineSpace`
+# carries the pole; `run_c2.jl` and `verify_gradshafranov_disk.jl` are its counterparts.
 
 # The map first. If it is mistranscribed the eigenvalue below is meaningless, so the geometry is
 # measured against three independent consequences of the printed constants.
@@ -352,7 +353,7 @@ let θs = range(0, 2π; length = 17)[1:(end - 1)], pts = [disk_map(0.0, θ) for 
     spread = maximum(maximum(abs, p .- pts[1]) for p in pts)
 
     check("the map degenerates at s = 0 — the whole circle is one point", spread < 1e-14,
-        @sprintf("spread of disk_map(0, θ) over 16 angles = %.3e — this is why C2's relaxation is deferred",
+        @sprintf("spread of disk_map(0, θ) over 16 angles = %.3e — this is why C2 needs a polar-spline space",
             spread))
 end
 
