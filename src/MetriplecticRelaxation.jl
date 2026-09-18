@@ -28,7 +28,8 @@ using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
 # SimpleSplines' assembly interface but neither of these: `TensorSplineSpace(n, p, bc)`
 # dispatches on the condition type, and `recombination_matrix` is what expresses a
 # homogeneous-Dirichlet basis function in the clamped one — see `EulerSquare`.
-using SimpleSplines: Dirichlet, Free, BSplineBasis, UniformMesh, recombination_matrix
+using SimpleSplines: Dirichlet, Free, BSplineBasis, UniformMesh, recombination_matrix,
+                     bases
 
 # Extended, not shadowed. The spectral grid and the spline space are two more discretisations
 # of the objects these generic functions already name, so they get methods rather than
@@ -74,7 +75,8 @@ export gs_stiffness, gs_profile_matrix, gs_eigenvalue, separable_eigenvalue
 export TakedaGrid, takeda_iterate, takeda_eigenvalue, takeda_field,
        takeda_order, takeda_extrapolate
 export DISK_MAP, GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM
-export disk_map, DiskTriangulation, disk_area, disk_matrices, disk_eigenvalue
+export disk_map, disk_jacobian, DiskTriangulation, disk_area, disk_matrices,
+       disk_eigenvalue
 
 include("takeda.jl")
 
@@ -82,6 +84,10 @@ export GSSpec, SECTION55_RUNS, SECTION55_ORDER, gs_entropy_weight
 export GradShafranovBox, gs_state, gs_flow, gs_current, gs_ordinate, gs_fit, gs_rayleigh
 
 include("gradshafranov.jl")
+
+export GradShafranovDisk, disk_interior
+
+include("gradshafranovdisk.jl")
 
 export Diagnostics, potential, energy, entropy, vorticity_mass, potential_norm²,
        Trace, record!, energy_error, entropy_monotone, entropy_plateau, best_fit_euler,

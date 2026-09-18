@@ -520,6 +520,38 @@ function disk_map(s, θ)
 end
 
 @doc raw"""
+    disk_jacobian(s, θ)
+
+The Jacobian ``\partial(r,z) / \partial(s,\theta)`` of [`disk_map`](@ref), as a `2 × 2` matrix,
+analytically.
+
+Everything goes through ``q = \sqrt{1 + \varepsilon(\varepsilon + 2 s \cos\theta)}``, whose own
+derivatives are ``q_s = \varepsilon \cos\theta / q`` and
+``q_\theta = -\varepsilon s \sin\theta / q``. Then ``r`` depends on ``q`` alone, so
+``\partial r = -(a/\varepsilon) \, \partial q``, and ``z = k s \sin\theta / (2-q)`` with
+``k = c e \xi`` differentiates by the quotient rule.
+
+Analytic and not differenced. It is the coefficient of every matrix a mapped assembly builds,
+so a truncation error in it is a wrong operator rather than an approximate one; `PulledBack`'s
+`jacobian_residual` is what checks this against a central difference, and
+`scripts/verify_gradshafranov_disk.jl` runs that check.
+
+``\det J = 0`` at ``s = 0``: the map is not a diffeomorphism at the pole, which is the whole
+reason C2 needs a polar spline space. No quadrature node sits there — Gauss nodes are interior
+to their cell — so the pulled-back metric ``|\det J| J^{-1} J^{-T}`` is large near the pole and
+finite on the grid.
+"""
+function disk_jacobian(s, θ)
+    (; e, ε, a, b, c, ξ) = DISK_MAP
+    q = sqrt(1 + ε * (ε + 2s * cos(θ)))
+    qs = ε * cos(θ) / q
+    qθ = -ε * s * sin(θ) / q
+    k = c * e * ξ
+    return [-a*qs/ε -a*qθ/ε;
+            k*(sin(θ) * (2 - q) + s * sin(θ) * qs)/(2 - q)^2 k*(s * cos(θ) * (2 - q) + s * sin(θ) * qθ)/(2 - q)^2]
+end
+
+@doc raw"""
 The eigenvalue ``\lambda = 0.002599`` the manuscript quotes for C2, "computed by a standard
 Grad-Shafranov solver".
 
