@@ -153,13 +153,33 @@ here than in a library:
   λ_h = 0.0025970403 and the distance is 1.55e-05. The tight comparison stays in
   `verify_gradshafranov_disk.jl`, at 32×64.
 
-### Found — the collision bracket is not frame-covariant
+  **From review: the mapped-domain path is now covered by the suite, and §4's control was
+  measuring two things at once.**
+
+  `test/runtests.jl` gained a testset for `gs_flow(::GradShafranovDisk)` at 6×12 degree 3. While
+  that method raised, nothing in the suite reached the mapped domain, so a green matrix said
+  nothing about the path this cycle switched on. It asks the degeneracy against the flow's own
+  ∂H/∂ĵ at the initial state and at a random one, symmetry and positive semi-definiteness,
+  positive entropy production, and then six midpoint steps for energy conservation, strict
+  entropy decrease, the Poincaré floor, and the mass Casimir — the last being the diagnostic
+  that separates the two spaces.
+
+  `verify_gradshafranov_disk.jl` §4 gained a third bracket, so the script is now **15 checks**
+  rather than 14. Its existing frameless control differs from the framed bracket in the frame
+  **and** in where the mobility is sampled, because the keyword form hands the mobility a
+  parameter point where the pullback form hands it a physical one. Composing the mobility with
+  the map removes the second difference and leaves the frame alone: at 10×20 the framed value is
+  3.011e-16, the old control 8.229e-04, and the frame-only control 1.373e-03. The conclusion is
+  unchanged — the frame is the defect, by twelve orders — but the script now measures the thing
+  it names.
+
+### Found — the collision bracket is not frame-covariant, so C2's relaxation is still blocked [SUPERSEDED]
 
 **Superseded within this same unreleased cycle: the obstruction below was fixed upstream in
 PoissonBrackets.jl#14, merged as `52ce4d7`, and C2's relaxation now runs — see the entry above.
-The body is left as it was written, because it is what the branch found and why the fix exists.
-Only the heading changed, which said "so C2's relaxation is still blocked" and would have read
-as current in any table of contents.**
+The heading and the body are left as they were written, because they are what the branch found and
+why the fix exists. The `[SUPERSEDED]` marker is appended rather than the heading reworded, so that
+a table of contents does not read "still blocked" as current while the record stays uncorrected.**
 
 **C2's eigenvalue, equilibrium and entropy floor are done. Its relaxation run is not, and the
 obstruction is in `PoissonBrackets` rather than in this repository or in the space.**
@@ -216,6 +236,12 @@ pin are recorded here and nowhere else:
 PR #14, the frame-covariant bracket. `SimpleSplines` did not move. Moved with
 `Pkg.update("PoissonBrackets")`, never `Pkg.resolve`, and `Project.toml` was backed up first
 because `Pkg` eats its comments.
+
+**A fresh `Pkg.update("PoissonBrackets")` no longer reproduces that tree, and this is expected.**
+`[sources]` carries `rev = "main"`, and `main` has moved past `52ce4d7` to `a123830` (tree
+`75e4a5e6365f8a0efaa62e05f1462bcb32a9f640`). The difference is `docs/Project.toml` and
+`scripts/Project.toml` only — no library source — so the numbers above stand against either tree.
+The tree in the table is the one they were measured against, and it stays as it is for that reason.
 
 Before either move the pins were `23dba27` and `6c199ca`, which is what every §5.4 and §5.5
 number before this entry was measured against. The first move was needed for `PolarSplineBasis`

@@ -175,7 +175,7 @@ are comparable across sections by construction.
 of them controls; `scripts/verify_gradshafranov.jl` settles the relaxation in **42 checks** across
 ten sections, also ten controls. Between them they pin the measure, the profile, the mobility and
 both references before `run_c1.jl` is believed. `scripts/verify_gradshafranov_disk.jl` does the
-same for the mapped disk in **14 checks**: `λ_h` and the two measure-swap controls, the discrete
+same for the mapped disk in **15 checks**: `λ_h` and the two measure-swap controls, the discrete
 equilibrium by three independent estimates, the Poincaré floor, and what a frame check can and
 cannot see.
 

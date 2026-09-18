@@ -966,4 +966,38 @@ end
         @test disk_eigenvalue(32, 64).λ > GS_LAMBDA_DISK_CONTINUUM
         @test GS_LAMBDA_DISK > GS_LAMBDA_DISK_CONTINUUM
     end
+
+    @testset "$(rpad("C2's flow runs on the map: H, S and the MASS Casimir", 76))" begin
+        # The mesh is coarse on purpose — the run itself is 8×16, and what is under test here is
+        # the mapped-domain path rather than the run's numbers.
+        spec = SECTION55_RUNS["c2"]
+        disk = GradShafranovDisk((6, 12), 3)
+        f = gs_flow(disk)
+        ĵ = gs_state(disk, spec)
+        λh = gs_eigenvalue(disk.space)
+        # The degeneracy is asked against the flow's own ∂H/∂ĵ = 𝕄Λĵ, which carries the PHYSICAL
+        # mass. A bracket built on the parameter frame misses this by twelve orders of magnitude;
+        # `verify_gradshafranov_disk.jl` §4 measures both controls.
+        @test degeneracy_residual(f, ĵ) < 1e-12
+        @test degeneracy_residual(f, randn(nbasis(disk))) < 1e-12
+        @test issymmetric(f.metric, ĵ)
+        @test ispositive_semidefinite(f.metric, ĵ)
+        @test entropy_production(f, ĵ) > 0
+
+        H₀, S = hamiltonian(f, ĵ), entropy(f, ĵ)
+        m₀ = integrate(disk, ĵ)
+        integ = Integrator(f, ImplicitMidpoint(), spec.Δt; û₀ = copy(ĵ))
+        for _ in 1:6
+            integrate_step!(ĵ, integ)
+            Snew = entropy(f, ĵ)
+            @test Snew < S                       # exact for a quadratic entropy at any Δt
+            @test Snew > λh * H₀                 # the Poincaré floor
+            S = Snew
+            @test abs(hamiltonian(f, ĵ) - H₀) / abs(H₀) < 1e-12
+            # The state space is the FULL polar space, so the bracket keeps its mass Casimir and
+            # ∫j dx is conserved. This is the diagnostic that separates the two spaces: it drifts
+            # in C1's Dirichlet space, and it is why the disk relaxes to the free equilibrium.
+            @test abs(integrate(disk, ĵ) - m₀) / abs(m₀) < 1e-12
+        end
+    end
 end

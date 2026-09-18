@@ -216,14 +216,25 @@ let ĵ = gs_state(disk, spec),
         mobility = (x, u) -> herrnegger_mobility(x[1]), mobility_derivative = 0),
     frameless = CollisionBracket(disk.space, disk.Λ;
         mobility = (x, u) -> herrnegger_mobility(x[1]), mobility_derivative = 0,
-        density = measure(disk.pb)), g = disk.MΛ * ĵ
+        density = measure(disk.pb)),
+    # The control above differs from the framed bracket in TWO ways, not one: the frame, and
+    # where the mobility is sampled. The pullback form hands the mobility a PHYSICAL point; the
+    # keyword form hands it a PARAMETER point, so `herrnegger_mobility(x[1])` reads a radius in
+    # the wrong coordinates. Composing the mobility with the map removes that second difference
+    # and leaves the frame as the only one, which is what this line isolates.
+    frameless_phys = CollisionBracket(disk.space, disk.Λ;
+        mobility = (x̂, u) -> herrnegger_mobility(disk_map(x̂[1], x̂[2])[1]),
+        mobility_derivative = 0, density = measure(disk.pb)), g = disk.MΛ * ĵ
 
     rf = degeneracy_residual(framed, ĵ, g)
     rp = degeneracy_residual(frameless, ĵ, g)
+    rm = degeneracy_residual(frameless_phys, ĵ, g)
     @printf("    pullback form   𝔾 ∂H/∂ĵ = %.3e\n", rf)
     @printf("    CONTROL frameless        %.3e   (%.1e× larger)\n", rp, rp / rf)
+    @printf("    CONTROL frame only       %.3e   (%.1e× larger)\n", rm, rm / rf)
     record("the framed bracket is degenerate on the flow's own energy gradient", rf < 1e-12)
     record("CONTROL the frameless one is not", rp > 1e-6)
+    record("CONTROL the frame alone accounts for it", rm > 1e-6)
 end
 say("")
 
