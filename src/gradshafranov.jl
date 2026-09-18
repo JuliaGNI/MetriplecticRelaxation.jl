@@ -88,15 +88,16 @@ The runs of Section 5.5, keyed by name.
 | run | figs | domain | ``x_0`` | ``w_1^2`` | ``w_2^2`` | ``N`` |
 |:--|:--|:--|:--|:--|:--|:--|
 | `c1` | `gsr_*` | ``[1,7] \times [-9.5, 9.5]`` | ``(4, 0)`` | ``0.5`` | ``3.2`` | ``1`` |
+| `c2` | `gsc_*` | the image of the unit disk under `eq:mapping` | ``(12, 0)`` | ``0.6`` | ``6.0`` | ``1`` |
 
 The entropy and the profile are the same for every §5.5 run — ``s = y^2/2(Cr^2+D)`` with
 ``C = 0.6``, ``D = 0.2`` — so they are constants of `takeda.jl` rather than fields here.
 
-**C2, the mapped disk, is not in this table.** It is deferred, and the reason is in
-`CHANGELOG.md`: its domain is the image of the unit disk, the isogeometric route brings a polar
-singularity at ``s = 0`` where the standard tensor-product basis is not ``C^1``, and a
-tensor-product space on a box has no way to represent that without a polar-spline
-construction. Nothing here is quietly regularised to make it fit.
+**C2 runs on a [`GradShafranovDisk`](@ref), not a box**, because `eq:mapping` sends the whole
+circle ``s = 0`` to one point and a tensor-product basis on the parameter square is not even
+``C^0`` there. Nothing is regularised to make it fit: no ``\varepsilon`` floor on ``s``, no
+puncture, no modified basis near the pole. ``z_0 = 0`` is not printed in §5 either; the geometry
+is symmetric in ``z`` and the pole sits at ``r = 11.412925``, just inboard of ``r_0 = 12``.
 
 # The recorded choices, and what they produced
 
@@ -170,13 +171,43 @@ varies — at ``N = 378`` and ``\Delta t = 0.0625`` it is **2.1 s**, so the 400 
 recorded run are some 14 minutes rather than the three hours the ``\Delta t = 2`` figure would
 suggest. The cells are strongly anisotropic in *shape* — ``h_z/h_r = 2.7`` — which is the right
 answer and not a defect.
+
+# C2's own choices, and they are not C1's
+
+``\Delta t`` and ``T`` are fixed by matching C1's own ratios to the initial entropy-production
+time ``\tau = (S_0 - \lambda_h H_0)/(S,S)_0``, which is ``3.79 \times 10^{-2}`` for C1 and
+``7.65 \times 10^{-3}`` for C2 — a factor five. C1 runs ``\Delta t/\tau = 1.65`` and
+``T/\tau = 660``, so C2 gets ``\Delta t = 0.0125`` and ``T = 5``, again 400 steps.
+
+**The mesh is set by cost, and the cost rises faster here than the degree-of-freedom count.**
+Measured in a cold process at ``\Delta t = 0.0125``: **2.08 s** per step at ``N = 147``
+(``8 \times 16`` cubic) and **7.51 s** at ``N = 223`` (``10 \times 20``) — ``3.6\times`` for
+``1.5\times`` the degrees of freedom, because the ``O(N^3)`` Jacobian is ``N`` dense
+``N \times N`` assemblies and the pole rows break `KroneckerMass` besides. ``12 \times 24`` and
+``16 \times 32`` were started and not measured. So ``8 \times 16`` is the mesh. Both figures are
+the *transient's* step cost, where Newton works hardest: the recorded run's own 400 steps take
+**306 s**, because the state is at its fixed point for most of them.
+
+**C2 gets a different step-size measurement from C1's, and the trajectory is why.** ``S`` falls
+by 99.8 % of its total reduction in ``t < 0.25`` and is stationary by ``t \approx 0.75``, some
+sixty steps, so there is no window for C1's order test at this ``\Delta t``: a step-halving
+comparison inside the transient reports the stiff-mode error dying off, and one after it
+compares three copies of the same fixed point, which implicit midpoint reproduces exactly at any
+step. `run_c2.jl` therefore asserts the statement its numbers rest on — **the equilibrium is
+``\Delta t``-independent** — and reports the transient's under-resolution beside it rather than
+asserting an order it does not have.
+
+**C2 does not reach `eq:gs-ref`, and that is a property of the state space rather than of any
+of these choices.** See [`GradShafranovDisk`](@ref) and `scripts/run_c2.jl`'s header.
 """
 const SECTION55_RUNS = Dict(
     "c1" => GSSpec("c1", "5.5", gaussian_w2((4.0, 0.0), (0.5, 3.2), 1.0),
-    (18, 21), 2, 0.0625, 25.0))
+        (18, 21), 2, 0.0625, 25.0),
+    "c2" => GSSpec("c2", "5.5", gaussian_w2((12.0, 0.0), (0.6, 6.0), 1.0),
+        (8, 16), 3, 0.0125, 5.0))
 
 "The Section 5.5 runs, in the order the manuscript presents them."
-const SECTION55_ORDER = ("c1",)
+const SECTION55_ORDER = ("c1", "c2")
 
 ## The discretisation
 
