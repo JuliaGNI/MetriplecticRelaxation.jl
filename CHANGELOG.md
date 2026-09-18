@@ -21,6 +21,107 @@ here than in a library:
 
 ### Added
 
+- **`src/gradshafranovdisk.jl` — C2, the mapped disk, discretised.** §5.5's second geometry is
+  the image of the unit disk under `eq:mapping`, whose pole collapses the whole circle `s = 0`
+  to one point. `GradShafranovDisk` discretises it isogeometrically on a `PolarSplineSpace`,
+  which is `C⁰` and `C¹` there by construction. **Nothing is regularised**: no `ε` floor on `s`,
+  no puncture at the origin, no modified basis near the pole. `src/takeda.jl` gains
+  `disk_jacobian`, the analytic Jacobian of `disk_map`.
+
+  **λ_h, and it is a better estimate of the continuum than the P₁ extrapolation.** The space's
+  own Grad-Shafranov eigenvalue is
+
+  | | value |
+  |:--|--:|
+  | `λ_h`, cubic, converged | **`0.0025970351`** |
+  | the P₁ continuum extrapolation | `0.0025970`, itself uncertain at `1.43e-05` relative |
+  | the published number | `0.002599`, `0.075 %` above the continuum |
+
+  Degree 2 and degree 3 agree to seven figures, and `λ_h` is already converged to eight at
+  `8 × 16` cells — eigenvalues of a degree-`p` isogeometric discretisation converge at
+  `O(h^{2p})` and the geometry is exact here, the Jacobian being evaluated analytically at the
+  quadrature nodes rather than interpolated. A second-order method three refinements from its
+  limit cannot match that, so the agreement is a confirmation of the P₁ value and not the other
+  way round.
+
+  **The discrete equilibrium satisfies `eq:gs-ref`.** Three independent estimates of the same
+  number agree: the generalised eigensolve gives `λ_h`, the scatter fit of `u/(Cr²+D)` against
+  `ψ` gives it to `+7.9e-10` relative with a relative residual of `2.0e-05`, and the Rayleigh
+  quotient `S/H` to `+4.3e-10`. The Poincaré floor `S/H ≥ λ_h` holds at the initial Gaussian,
+  which sits `2.2×` above it, and on 50 random states.
+
+  **Two measures, and they are not interchangeable.** `K^μ` and `B` carry `dμ = dr dz / r`;
+  `M` and `W` carry the plain `dr dz`, because `j = u/r` already holds one power of `r` and
+  `gs_entropy_weight` absorbs another. Both come from one `PulledBack` each, so the places a
+  weight is needed cannot disagree. Swapping the two moves `λ_h` from `0.00259704` to
+  `0.000208` one way and `0.0309` the other — an order of magnitude, not a small error. Getting
+  `W` wrong in the first draft did not raise: it moved the Rayleigh quotient to `0.000208` and
+  put the initial state *below* `λ_h`, breaking the Poincaré floor, which is what caught it.
+
+  Archived in `scripts/verify_gradshafranov_disk.jl`, which exits non-zero on any failure.
+
+### Found — the collision bracket is not frame-covariant, so C2's relaxation is still blocked
+
+**C2's eigenvalue, equilibrium and entropy floor are done. Its relaxation run is not, and the
+obstruction is in `PoissonBrackets` rather than in this repository or in the space.**
+
+`CollisionBracket` forms `β = (−∂₂φ, ∂₁φ)` from the space's own derivative tables and assembles
+against those tables. On an unmapped domain they are the physical derivatives and the bracket is
+right, which is why every §5.4 run and C1 are unaffected. On a mapped domain they are the
+*parameter* derivatives, and the physical gradient is `∇_x = J⁻ᵀ∇̂`.
+
+Measured on one physical problem written in three parametrisations differing only by a linear
+stretch, with the measure and the generating map pulled back correctly in all three:
+
+| stretch | `∫u dx` | `‖G‖` | ratio |
+|--:|--:|--:|--:|
+| 1 | `0.4053744627` | `3.7098e+03` | `1.00` |
+| 2 | `0.4053744627` | `5.9356e+04` | `16.00` |
+| 4 | `0.4053744627` | `9.4970e+05` | `256.00` |
+
+`∫u dx` is identical, so the three are the same problem. The bracket scales as the **fourth**
+power of the stretch: it is quadratic in `∇φ` and the assembly contracts two further
+derivatives.
+
+**No structural check can see this.** Symmetry, positive semi-definiteness and the degeneracy
+`(F,H) = 0` hold in every one of those parametrisations — they are algebraic properties of
+`Q₂(z) = z⊥ ⊗ z⊥` and say nothing about which `z` was handed in. So a `PolarSplineSpace` passing
+the whole structural pass is **necessary and not sufficient** for carrying a flow on a mapped
+domain.
+
+`gs_flow(::GradShafranovDisk)` therefore **raises** rather than returning a flow. A flow built
+on the parameter-frame bracket runs, converges and produces numbers, and the numbers are about
+the parametrisation. Observed before the diagnosis: at C1's `Δt = 0.0625` the Newton solver did
+not converge, energy drifted by 85 % and entropy rose 2.5-fold, at 60 s per step against C1's
+2.1 s at twice the degrees of freedom.
+
+The fix is a frame-aware `CollisionBracket` — the perp in the physical frame and the derivative
+tables replaced by `Φ_k^phys = Σ_l (J⁻ᵀ)_kl Φ̂_l`. That is an extension to the bracket in
+`PoissonBrackets`, not to the space in `SimpleSplines`.
+
+Full account: `Knowledge/Metriplectic Relaxation/The collision bracket is not frame-covariant.md`.
+
+### Changed — the pinned dependency trees, and the SimpleSplines compat bound
+
+**The manifests moved forward, and the numbers above were measured against the new trees.**
+`Manifest.toml` and `scripts/Manifest.toml` are hand-seeded and gitignored, so the trees they
+pin are recorded here and nowhere else:
+
+| package | tree | version |
+|:--|:--|:--|
+| `PoissonBrackets` | `493052ea4b8ecf65bd82e4562680218d601a6e9f` | `0.1.0` |
+| `SimpleSplines` | `fa85fb1c171129520994d31a6c03192b47135b88` | `0.2.0` |
+
+Previously `23dba27` and `6c199ca`, which is what every §5.4 and §5.5 number before this entry
+was measured against. The move was needed for `PolarSplineBasis` and `PulledBack`, which reached
+`main` in SimpleSplines.jl#15/#17 and PoissonBrackets.jl#13. The full suite passes unchanged
+against the new trees, so no existing number moved.
+
+`[compat] SimpleSplines` goes from `"0.1"` to `"0.1, 0.2"`. The bound is what actually blocked
+the move: `rev = "main"` fetches whatever `main` is, and a stale bound then reports
+"Unsatisfiable requirements" rather than anything about the version. `Pkg.update`, not
+`Pkg.resolve` — a resolve treats a `rev` pin as fixed and never re-fetches.
+
 - **`src/torus.jl` — the §4 problem definition.** The periodic domain, the anisotropic Gaussian
   of `eq:initial_gaussian`, the prescribed Hamiltonian `h = cos²x₁ sin²x₂` of `eq:islands-h`,
   the closed-form entropy minimisers of both test cases, and the contour geometry behind the
