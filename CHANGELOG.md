@@ -60,7 +60,106 @@ here than in a library:
 
   Archived in `scripts/verify_gradshafranov_disk.jl`, which exits non-zero on any failure.
 
-### Found — the collision bracket is not frame-covariant, so C2's relaxation is still blocked
+- **C2's relaxation run now completes: `gs_flow(::GradShafranovDisk)` returns a
+  `MetriplecticFlow`.** The frame-covariant bracket, built with the pullback form
+  `CollisionBracket(space, Λ, pb; mobility, mobility_derivative)`, pulls the perpendicular,
+  assembly tables, mass sandwich and mobility sample points from one map. The mobility now
+  receives physical points, so `herrnegger_mobility(x[1])` needs no map composition — a change
+  from the box.
+
+  `GradShafranovDisk` keeps the `PulledBack` object in field `pb` rather than unpacking it to
+  `μ` and `x`, because the bracket needs the frame and volume element too. Three call sites
+  now read `measure(disk.pb)` and `nodes(disk.pb)` instead of `disk.μ` and `disk.x`.
+
+  **New `const GradShafranovSolver = Union{GradShafranovBox, GradShafranovDisk}`.** The four
+  `Diagnostics` methods reading only `Λ`, `W`, `M`, `b` and the space were widened to it
+  rather than duplicated. `integrate`, `l2inner`, `l2norm` gained disk methods.
+
+  `scripts/runner.jl`'s `run_gs` split into a form building `GradShafranovBox` from the spec
+  and a form taking an already-built solver; `run_c1.jl` unchanged. `"c2"` added to
+  `SECTION55_RUNS` and `SECTION55_ORDER`, so `scripts/figures.jl c2` draws the `gsc_*` pair
+  with no change to that script. New driver `scripts/run_c2.jl`, modelled on `run_c1.jl`.
+
+  `scripts/verify_gradshafranov_disk.jl` §4 rewritten: previously titled "WHY THE RELAXATION
+  RUN IS BLOCKED", now "the bracket reads the physical frame — and what this measurement
+  cannot see". Keeps the three-parametrisation linear-stretch table as a control on the
+  keyword form (which must scale as the fourth power), adds the pullback form beside it
+  (which must be invariant), states in the script itself that a linear reparametrisation
+  cannot reach the frame's direction — any such reparametrisation is affine, so `J` is
+  constant and a transposed frame passes the test exactly — and points to
+  `PoissonBrackets/scripts/verify_frame_covariance.jl` for the check that can. Adds C2's own
+  check: `degeneracy_residual` against the flow's actual `∂H/∂ĵ = 𝕄Λĵ`, framed against
+  frameless.
+
+  **Measured numerics**, recorded choice and control: **8×16 cells, degree 3, N = 147, Δt =
+  0.0125, T = 5.0, 400 steps, implicit midpoint, Newton to `default_f_abstol`.** Δt and T
+  fixed by matching C1's ratios to the initial entropy-production time τ = (S₀ − λ_h
+  H₀)/(S,S)₀, which is 3.79e-02 for C1 and 7.65e-03 for C2 — a factor five. Cost in a cold
+  process: 2.08 s per step at N = 147, 7.51 s at N = 223 (10×20), i.e. 3.6× for 1.5× the
+  degrees of freedom. 12×24 and 16×32 were started and NOT measured — the probe was stopped
+  once the mesh was chosen.
+
+  **What the run reproduces:** Energy conserved to 7.913e-15 relative over 400 steps, against
+  a √n·f_abstol/|H₀| bound of 1.03e-11 — a ratio to the one-step bound of 0.02. On a mapped
+  domain this is also the check that the frame is right, and the archived measurement of it is
+  `degeneracy_residual` against the flow's own ∂H/∂ĵ in `verify_gradshafranov_disk.jl`:
+  3.011e-16 framed against 8.229e-04 frameless, at 10×20. S monotone, strictly falling at
+  every sample above the floor,
+  worst increment -1.905e-12. (S,S) > 0 at every active sample, ≥ 0 to 7.4e-10 of its own
+  scale everywhere. The Poincaré floor S/H ≥ λ_h holds at every sample. λ_h at this mesh is
+  0.0025970403 (converged at 32×64: 0.0025970351); the P₁ triangulation at 64×128 gives
+  0.0025990851, which rounds to the published 0.002599.
+
+  **What it does NOT reproduce — this is the headline.** `eq:gs-ref`, δS/δj = λψ, is NOT
+  reached. The state space is the FULL polar space — the Dirichlet condition is imposed on ψ
+  alone by zeroing Λ outside the interior, while j keeps the rim row — so the bracket's MASS
+  and MOMENTUM Casimirs are present and the equilibrium carries the multipliers μ and c.
+  Measured at t = T, relative residual of the fit of u/(Cr²+D):
+  λψ alone 3.4162e-01 | λψ + μ 1.5358e-01 | λψ + μ + c·x 1.3341e-04 (the projection-error
+  floor). A factor 2561. The CONTROL is the same three fits at t = 0, where the extra
+  parameters buy only a factor 1.09 — so the collapse at t = T is the equilibrium. The
+  Casimir generators, as relative L² projection errors: 1 → 1.7e-15 (exact, by the partition
+  of unity), r → 7.1e-06, z → 7.3e-05. The z multiplier comes out at -8.456e-20 (the
+  geometry's z symmetry).
+
+  **THE FAST DIAGNOSTIC IS THE MASS:** ∫u dμ is conserved to 1.1e-16 here, and drifts 83 % in
+  C1's Dirichlet space. `GradShafranovBox`'s own docstring already measures the same
+  contrast: its `:free` space misses eq:gs-ref by 2.52e-01 against the Dirichlet space's
+  4.28e-04. An EIGENVALUE check cannot see this — the pencil (𝕄Λ, 𝕎) carries no mass
+  constraint, so its lowest eigenvector is the μ = 0, c = 0 member in both spaces. The
+  control has to be a relaxation. What is missing is a homogeneous-Dirichlet POLAR spline
+  space. `SimpleSplines.PolarSplineBasis` raises unless the radial axis is a clamped
+  `BSplineBasis`; recombining the OUTER end is compatible with the pole triangle and is
+  simply not implemented. That is a SimpleSplines change, and nothing here was regularised or
+  absorbed to work around it.
+
+  Full account: `Knowledge/Metriplectic Relaxation/The polar spline space carries the
+  Casimirs, so the mapped disk relaxes to the free equilibrium.md`. Follow-up task:
+  `Tasks/Give the polar spline space a homogeneous-Dirichlet rim.md`.
+
+  **Also worth recording: C2 cannot be given C1's step-size measurement, and the trajectory is
+  why.** S falls by 99.8 % of its total in t < 0.25 and is stationary by t ≈ 0.75, some sixty
+  steps, so there is no window for an order test at this Δt — a step-halving comparison inside
+  the transient reports the stiff-mode error dying off (ratio 67.6 at t = 0.5, against the 4 an
+  asymptotic second-order regime would give), and one after it compares three copies of the
+  same fixed point, which implicit midpoint reproduces exactly at any step. What `run_c2.jl`
+  asserts instead is the statement its numbers actually rest on — **the equilibrium is
+  Δt-independent** — with the transient's under-resolution reported beside it rather than
+  asserted away.
+
+  **§4's continuum comparison is asserted at 1e-4, not at the P₁ extrapolation's own
+  1.43e-05 uncertainty**, and the reason is the mesh rather than the method: that uncertainty is
+  a statement about the converged λ_h = 0.0025970351 at 32×64, while this run is at 8×16 where
+  λ_h = 0.0025970403 and the distance is 1.55e-05. The tight comparison stays in
+  `verify_gradshafranov_disk.jl`, at 32×64.
+
+### Found — the collision bracket is not frame-covariant
+
+**Superseded within this same unreleased cycle: the obstruction below was fixed upstream in
+PoissonBrackets.jl#14, merged as `52ce4d7`, and C2's relaxation now runs — see the entry above.
+The body is left as it was written, because it is what the branch found and why the fix exists.
+Only the heading changed, which said "so C2's relaxation is still blocked" and would have read
+as current in any table of contents.**
 
 **C2's eigenvalue, equilibrium and entropy floor are done. Its relaxation run is not, and the
 obstruction is in `PoissonBrackets` rather than in this repository or in the space.**
@@ -109,13 +208,19 @@ pin are recorded here and nowhere else:
 
 | package | tree | version |
 |:--|:--|:--|
-| `PoissonBrackets` | `493052ea4b8ecf65bd82e4562680218d601a6e9f` | `0.1.0` |
+| `PoissonBrackets` | `3c0741e846b37449aaac1351c69215594b926f25` | `0.1.0` |
 | `SimpleSplines` | `fa85fb1c171129520994d31a6c03192b47135b88` | `0.2.0` |
 
-Previously `23dba27` and `6c199ca`, which is what every §5.4 and §5.5 number before this entry
-was measured against. The move was needed for `PolarSplineBasis` and `PulledBack`, which reached
-`main` in SimpleSplines.jl#15/#17 and PoissonBrackets.jl#13. The full suite passes unchanged
-against the new trees, so no existing number moved.
+`PoissonBrackets` moved a second time for C2's relaxation, from
+`493052ea4b8ecf65bd82e4562680218d601a6e9f` to the tree above, which is commit `52ce4d7` —
+PR #14, the frame-covariant bracket. `SimpleSplines` did not move. Moved with
+`Pkg.update("PoissonBrackets")`, never `Pkg.resolve`, and `Project.toml` was backed up first
+because `Pkg` eats its comments.
+
+Before either move the pins were `23dba27` and `6c199ca`, which is what every §5.4 and §5.5
+number before this entry was measured against. The first move was needed for `PolarSplineBasis`
+and `PulledBack`, which reached `main` in SimpleSplines.jl#15/#17 and PoissonBrackets.jl#13.
+The full suite passes unchanged against the new trees, so no existing number moved.
 
 `[compat] SimpleSplines` goes from `"0.1"` to `"0.1, 0.2"`. The bound is what actually blocked
 the move: `rev = "main"` fetches whatever `main` is, and a stale bound then reports

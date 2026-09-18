@@ -509,9 +509,9 @@ condition consistent: its Gaussian is centred at ``r_0 = 12``, just outboard of 
 None of the four appears in the manuscript; all four are what its constants produce.
 
 **The map degenerates at ``s = 0``**: the whole circle ``s = 0`` collapses to one point, so
-the parametrisation is not a diffeomorphism there, and that is the whole reason C2's relaxation
-is deferred rather than run. See [`disk_eigenvalue`](@ref) for why the *eigenvalue* is
-nevertheless computable without regularising anything.
+the parametrisation is not a diffeomorphism there, and a tensor-product spline space on the
+parameter square is not even ``C^0``. [`GradShafranovDisk`](@ref) answers that with a
+`PolarSplineSpace`, and [`disk_eigenvalue`](@ref) shows why the *eigenvalue* never needed one.
 """
 function disk_map(s, θ)
     (; e, ε, a, b, c, ξ) = DISK_MAP
@@ -706,11 +706,10 @@ A triangulation of the **physical** domain has no such problem: the pole is an o
 eigenvalue is computable exactly as the manuscript's own solver computes it.
 
 What this does *not* give is C2's relaxation. That needs ``\nabla\psi`` on the space the state
-lives in, sampled at the quadrature points of a [`CollisionBracket`](@ref) — and
-PoissonBrackets' only two-dimensional space is the tensor-product
-[`TensorSplineSpace`](@ref). There is no ``P_1`` triangular `DiscreteSpace`, so this mesh
-cannot carry the flow, and the parameter square cannot carry the pole. Either obstruction alone
-defers C2; `CHANGELOG.md` records both.
+lives in, sampled at the quadrature points of a [`CollisionBracket`](@ref), and there is no
+``P_1`` triangular `DiscreteSpace` — so this mesh supplies the reference eigenvalue and nothing
+else. The relaxation runs on [`GradShafranovDisk`](@ref) instead, whose `PolarSplineSpace`
+carries the pole.
 """
 function disk_eigenvalue(n::Int, m::Int; tol = 1e-13, maxiter::Int = 2000)
     t = DiskTriangulation(n, m)

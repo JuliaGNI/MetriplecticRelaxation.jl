@@ -4,7 +4,9 @@
 Section 5.5's **second** geometry, C2: the image of the unit disk under [`disk_map`](@ref),
 discretised isogeometrically on a `PolarSplineSpace`.
 
-The counterpart of [`GradShafranovBox`](@ref), and it differs in exactly two ways.
+The counterpart of [`GradShafranovBox`](@ref). It differs in three ways, and the third is the
+one that decides what a relaxation on it converges to: the pole, the two measures, and the state
+space.
 
 # The pole, and why a tensor-product space cannot be used
 
@@ -35,15 +37,30 @@ needed cannot disagree. `scripts/verify_gradshafranov_disk.jl` measures what hap
 do: swapping the two measures moves ``\lambda_h`` from ``0.00259704`` to ``0.000208`` one way
 and ``0.0309`` the other.
 
-# The boundary
+# The boundary, and the state space it does NOT constrain
 
 ``\psi = 0`` on the rim ``s = 1``. The radial basis is clamped rather than Dirichlet-recombined
 — `PolarSplineBasis` takes a plain clamped basis — so the condition is imposed by **dropping**
-the last radial row, the only functions that do not vanish at ``s = 1``. That costs
-``N_\theta`` degrees of freedom and is the same elimination `GradShafranovBox`'s `:free` branch
-performs with a recombination matrix.
+the last radial row from ``\Lambda``, the only functions that do not vanish at ``s = 1``. That
+is the same elimination `GradShafranovBox`'s `:free` branch performs with a recombination
+matrix.
+
+**The state ``\hat{j}`` is not restricted, and this matters more than it looks.** Only
+``\psi = \Lambda\hat{j}`` is; ``\hat{j}`` keeps the rim row and lives in the full polar
+space. So the constant is in the state space — *exactly*, by the partition of unity the pole
+triangle preserves — and so, to five and four digits, are ``r`` and ``z``. The bracket's mass
+and momentum **Casimirs are therefore present**, and a relaxation converges to
+``\delta S/\delta j = \lambda\psi + c\cdot x + \mu`` rather than to `eq:gs-ref`. This is
+`GradShafranovBox`'s `:free` case, on a geometry that has no `:dirichlet` option, because a
+homogeneous-Dirichlet *polar* spline space does not exist yet.
+
+`scripts/run_c2.jl` measures it: residual `3.4162e-01` about ``\lambda\psi`` and `1.3341e-04`
+about ``\lambda\psi + c\cdot x + \mu``, with ``\int u \, d\mu`` conserved to `1.1e-16`
+where the box's Dirichlet space drifts 83 %. **An eigenvalue check cannot see any of it** — the
+pencil ``(\mathbb{M}\Lambda, \mathbb{W})`` carries no mass constraint — which is why
+[`gs_eigenvalue`](@ref) and the equilibrium check are unaffected and correct.
 """
-struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT}
+struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT, PT}
     space::ST
     Λ::Matrix{T}
     M::MT
@@ -51,8 +68,7 @@ struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT}
     W::Matrix{T}
     b::Vector{T}
     interior::Vector{Int}
-    μ::Vector{T}
-    x::Vector{NTuple{2, T}}
+    pb::PT
 end
 
 function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3)
@@ -87,8 +103,11 @@ function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3)
     σ = [gs_entropy_weight(x[1]) for x in nodes(pbx)]
     W = Matrix(weighted_matrix(s, σ .* measure(pbx), (0, 0), (0, 0)))
 
+    # `pbμ` is kept whole rather than unpacked into its measure and its nodes: `gs_flow` hands
+    # it to `CollisionBracket`, which reads the frame `J⁻ᵀ` and the volume element from it as
+    # well. Rebuilding it there would be a second object that could disagree with this one.
     GradShafranovDisk(s, Matrix(Λ), M, Matrix((A .+ A') ./ 2), (W .+ W') ./ 2,
-        Vector{Float64}(M * ones(nbasis(s))), keep, measure(pbμ), nodes(pbμ))
+        Vector{Float64}(M * ones(nbasis(s))), keep, pbμ)
 end
 
 GradShafranovDisk(cells::Int, degree::Int = 3) = GradShafranovDisk((cells, cells), degree)
@@ -184,48 +203,49 @@ end
 @doc raw"""
     gs_flow(disk::GradShafranovDisk)
 
-**Raises.** C2's relaxation cannot be run yet, and the obstruction is in the bracket rather
-than in the space.
+The [`MetriplecticFlow`](@ref) of the Section 5.5 relaxation on the mapped disk: the same three
+objects as [`gs_flow`](@ref)`(::GradShafranovBox)` — the collision-like bracket, the
+``\Delta^*`` energy and the Herrnegger-Maschke entropy — with the geometry supplied to the
+bracket as a [`PulledBack`](@ref) rather than as a `density`.
 
-`CollisionBracket` forms ``\beta = (-\partial_2 \varphi, \partial_1 \varphi)`` from the
-space's own derivative tables. On an unmapped domain those *are* the physical derivatives and
-the bracket is right, which is why every §5.4 and C1 run is unaffected. On a mapped domain they
-are the **parameter** derivatives, and the physical gradient is ``\nabla_x = J^{-T}
-\hat\nabla`` — a different object wherever ``J`` is not a multiple of a rotation, which for
-`eq:mapping` it nowhere is.
+# Why the pullback and not a density
 
-Measured in `scripts/verify_gradshafranov_disk.jl`: the same physical problem written in three
-parametrisations differing by a linear stretch gives the identical ``\int u \, dx`` and a
-bracket whose norm scales as the **fourth power** of the stretch. Four, because the bracket is
-quadratic in ``\nabla\varphi`` and the assembly contracts two further derivatives.
+A space's derivative tables are the **parameter** derivatives. On an unmapped domain those are
+also the physical ones, which is why the box's keyword form is right and stays right. Here they
+are not: the physical gradient is ``\nabla_x = J^{-T}\hat\nabla``, and a bracket that ignores
+``J^{-T}`` is a bracket of the parametrisation. Handing `disk.pb` to the constructor fixes four
+things from the one map — the measure, the frame the gradients and the perpendicular are read
+in, the pairing the mass sandwich uses, and the points the mobility is sampled at.
 
-**The structural checks cannot see this.** Symmetry, positive semi-definiteness and the
-degeneracy ``(F,H) = 0`` hold in every one of those parametrisations — they are algebraic
-properties of ``Q_2(z) = z^\perp \otimes z^\perp`` and say nothing about which ``z`` was
-handed in. So `PolarSplineSpace` passing §2's structural pass is necessary and not sufficient.
+**No structural check can tell the two apart.** Symmetry, positive semi-definiteness and the
+degeneracy ``\mathbb{G}\,\partial H/\partial\hat{j} = 0`` hold for the framed bracket, for the
+frameless one and for one whose frame is transposed. Passing the structural pass is necessary
+and not sufficient on a mapped domain, so `scripts/verify_gradshafranov_disk.jl` measures the
+covariance separately.
 
-What is needed is `CollisionBracket` taking the pullback: the perp in the physical frame, and
-the derivative tables replaced by their node-dependent combinations
-``\Phi^{\mathrm{phys}}_k = \sum_l (J^{-T})_{kl} \hat\Phi_l``. That is an extension to the
-bracket in `PoissonBrackets`, not to the space.
+# The mobility is written in the physical radius
 
-Everything else about C2 is in place and verified: [`gs_eigenvalue`](@ref) gives
-``\lambda_h``, the discrete equilibrium satisfies `eq:gs-ref` with that ``\lambda``, and the
-Poincaré floor holds. Only the *dynamics* is blocked.
+``M = Cr^2+D`` is sampled at ``F(\hat{x}_q)``, so `herrnegger_mobility(x[1])` needs no
+composition with the map — a difference from the box, where the quadrature nodes already are
+the physical points.
 
-This raises rather than returning a flow, because a flow built on the parameter-frame bracket
-runs, converges, conserves energy and produces numbers — and the numbers are about the
-parametrisation.
+`mobility_derivative = 0` is not a shortcut: ``M`` depends on ``r`` alone, which is what makes
+``\mathbb{G}`` quadratic in ``\hat{j}``, the dissipative residual an exact cubic polynomial and
+its Jacobian analytic.
+
+# The degeneracy
+
+``\partial H/\partial\hat{j} = \mathbb{M}\Lambda\hat{j} = \mathbb{M}\hat\psi`` carries the
+**physical** mass ``\mathbb{M} = \int\Psi_K\Psi_L\,dr\,dz``, and with a frame the sandwich pairs
+with exactly that matrix rather than with the space's parameter-measure one. The two coincide on
+an unmapped domain, which is why the box never needed the distinction.
 """
 function gs_flow(disk::GradShafranovDisk)
-    throw(ArgumentError(
-        "C2's relaxation cannot be run yet: `CollisionBracket` reads the gradient in the " *
-        "space's own coordinates, which on a mapped domain are not the physical ones. " *
-        "Measured in `scripts/verify_gradshafranov_disk.jl`: the bracket's norm scales as the " *
-        "fourth power of a linear stretch of the parametrisation, on an unchanged physical " *
-        "problem, while symmetry, semidefiniteness and the degeneracy all still hold. The fix " *
-        "is a frame-aware `CollisionBracket` using ∇_x = J⁻ᵀ∇̂; see the docstring. The " *
-        "eigenvalue, the equilibrium and the Poincaré floor are unaffected and are verified."))
+    G = CollisionBracket(disk.space, disk.Λ, disk.pb;
+        mobility = (x, u) -> herrnegger_mobility(x[1]),
+        mobility_derivative = 0)
+    MetriplecticFlow(disk.space, G, QuadraticHamiltonian(disk.MΛ),
+        QuadraticHamiltonian(disk.W))
 end
 
 @doc raw"""
@@ -235,16 +255,16 @@ end
 The manuscript's ``u_h = r \, j_h`` and the scatter ordinate
 ``u_h/(Cr^2+D) = \sigma(r) j_h``, both on the quadrature grid.
 
-``r`` is the **physical** radius, `disk.x`, not the radial parameter. On the box the two are
+``r`` is the **physical** radius, `nodes(disk.pb)`, not the radial parameter. On the box the two are
 the same coordinate and the distinction does not arise; here it is the difference between
 ``[8,16]`` and ``[0,1]``.
 """
 function gs_current(disk::GradShafranovDisk, ĵ::AbstractVector)
-    [x[1] for x in disk.x] .* field(disk.space, ĵ, (0, 0))
+    [x[1] for x in nodes(disk.pb)] .* field(disk.space, ĵ, (0, 0))
 end
 
 function gs_ordinate(disk::GradShafranovDisk, ĵ::AbstractVector)
-    [gs_entropy_weight(x[1]) for x in disk.x] .* field(disk.space, ĵ, (0, 0))
+    [gs_entropy_weight(x[1]) for x in nodes(disk.pb)] .* field(disk.space, ĵ, (0, 0))
 end
 
 @doc raw"""
@@ -260,7 +280,7 @@ projection coefficient whose error is second order in `relative`, so it is alrea
 state that has barely moved.
 """
 function gs_fit(disk::GradShafranovDisk, ĵ::AbstractVector)
-    wμ = quadrature_weights(disk.space) .* disk.μ
+    wμ = quadrature_weights(disk.space) .* measure(disk.pb)
     y = gs_ordinate(disk, ĵ)
     ψ = field(disk.space, disk.Λ * ĵ, (0, 0))
     λ = dot(wμ, y .* ψ) / dot(wμ, ψ .* ψ)
@@ -278,3 +298,29 @@ reads the two Hamiltonian matrices and never touches a coordinate.
 function gs_rayleigh(disk::GradShafranovDisk, ĵ::AbstractVector)
     dot(ĵ, disk.W, ĵ) / dot(ĵ, disk.MΛ, ĵ)
 end
+
+@doc raw"""
+    integrate(disk::GradShafranovDisk, ĵ)
+    l2inner(disk::GradShafranovDisk, ĵ, v̂)
+    l2norm(disk::GradShafranovDisk, ĵ)
+
+``\int_\Omega j_h \, dx``, ``(j_h, v_h)_{L^2(dx)}`` and its norm — word for word the box's, and
+for the same reasons, because ``\mathbb{M}`` and ``b`` already carry the map. Both are built
+from `pbx`, the plain ``dr\,dz`` pullback, so nothing here needs to know the geometry a second
+time.
+"""
+integrate(disk::GradShafranovDisk, ĵ::AbstractVector) = dot(disk.b, ĵ)
+
+l2inner(disk::GradShafranovDisk, ĵ::AbstractVector, v̂::AbstractVector) = dot(ĵ, disk.M, v̂)
+
+l2norm(disk::GradShafranovDisk, ĵ::AbstractVector) = sqrt(max(l2inner(disk, ĵ, ĵ), 0.0))
+
+"""
+    GradShafranovSolver
+
+The two §5.5 discretisations, where a diagnostic reads only ``\\Lambda``, ``\\mathbb{W}``,
+``\\mathbb{M}``, ``b`` and the space — all of which the box and the disk carry under the same
+names. Used where widening a signature says the truth and a second method would only duplicate
+it; where the two genuinely differ, as in [`gs_ordinate`](@ref), each keeps its own method.
+"""
+const GradShafranovSolver = Union{GradShafranovBox, GradShafranovDisk}

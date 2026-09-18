@@ -162,18 +162,22 @@ claims needs that: the discrete first Dirichlet eigenvalue is already within `3.
 
 ## §5.5 — what is implemented, and what it found
 
-Two files, because this section has a classical counterpart §5.4 lacks. `src/takeda.jl` holds the
-Grad–Shafranov problem itself and the **classical** solver — the finite-volume `−Δ*` and the
-iteration of Takeda & Tokuda §3.2, Eqs. (3.22)–(3.25) — plus C2's geometry: `disk_map`, its
-triangulation, and `disk_eigenvalue`. `src/gradshafranov.jl` holds the **relaxation** on the
-rectangle: `GradShafranovBox`, the entropy and its references, `gs_rayleigh`, `gs_fit`, and
-`SECTION55_RUNS`. Both feed §4's and §5.4's diagnostics, so the numbers are comparable across
-sections by construction.
+Three files, because this section has a classical counterpart §5.4 lacks and two geometries.
+`src/takeda.jl` holds the Grad–Shafranov problem itself and the **classical** solver — the
+finite-volume `−Δ*` and the iteration of Takeda & Tokuda §3.2, Eqs. (3.22)–(3.25) — plus C2's
+geometry: `disk_map`, its triangulation, and `disk_eigenvalue`. `src/gradshafranov.jl` holds the
+**relaxation** on the rectangle: `GradShafranovBox`, the entropy and its references,
+`gs_rayleigh`, `gs_fit`, and `SECTION55_RUNS`; `src/gradshafranovdisk.jl` holds C2's, on a
+`PolarSplineSpace` through the pole. All three feed §4's and §5.4's diagnostics, so the numbers
+are comparable across sections by construction.
 
 `scripts/verify_takeda.jl` settles the classical side in **38 checks** across seven sections, ten
 of them controls; `scripts/verify_gradshafranov.jl` settles the relaxation in **42 checks** across
 ten sections, also ten controls. Between them they pin the measure, the profile, the mobility and
-both references before `run_c1.jl` is believed.
+both references before `run_c1.jl` is believed. `scripts/verify_gradshafranov_disk.jl` does the
+same for the mapped disk in **14 checks**: `λ_h` and the two measure-swap controls, the discrete
+equilibrium by three independent estimates, the Poincaré floor, and what a frame check can and
+cannot see.
 
 C1 runs at **18 × 21 cells of degree 2** with `Δt = 0.0625` over 400 steps. `Δt` is not a
 preference: measured on the run's own space, `‖Δt − Δt/2‖ = 2.738e-04` against
@@ -194,6 +198,10 @@ the output would have caught it.
 | C1 | against the printed `0.030302` | **+2.22e-03** — the paper's own grid error, same side |
 | C1 | the two-space control (10 × 12, 240 steps) | `V` misses `eq:gs-ref` by **2.5171e-01** against `V_D`'s **4.2761e-04**, a factor **589** |
 | C2 | the reference eigenvalue, `P₁` disk | `λ = 0.0025990851` against the printed `0.002599` |
+| C2 | the polar space's own `λ_h` | `0.0025970403` at 8 × 16 cubic, `0.0025970351` converged |
+| C2 | `H` conserved, with the framed bracket | **7.913e-15** relative over 400 steps |
+| C2 | `u/(Cr²+D) → λψ + c·x + μ` | **1.3341e-04**, against **3.4162e-01** about `λψ` alone |
+| C2 | the mass Casimir, which is the diagnosis | conserved to **1.1e-16**, where C1's `V_D` drifts 83 % |
 
 ### The findings, and both are again about the manuscript
 
@@ -210,16 +218,28 @@ the output would have caught it.
   constraint, so its lowest eigenvector is the `μ = 0` member in *both* spaces; what separates
   them is the **flow**, not the fixed-point problem.
 
-### C2's relaxation is deferred, and nothing was regularised
+### C2's relaxation runs, and stops short of `eq:gs-ref` for a stated reason
 
-Two obstructions, either sufficient alone. The map of `eq:mapping` collapses the whole circle to
-one point at `s = 0` — measured, the spread of `disk_map(0, θ)` over sixteen angles is exactly
-`0.000e+00` — so a tensor-product spline space is not even `C⁰` there; imposing single-valuedness
-needs a **polar-spline** construction that SimpleSplines does not have. And PoissonBrackets'
-only two-dimensional space is `TensorSplineSpace`, while `CollisionBracket` reads `∇ψ` at *its*
-quadrature points, so the `P₁` triangulation that gives the reference eigenvalue cannot carry the
-flow. There is no `ε` floor on `s`, no puncture at the origin, and no modified basis: C2's
-reference eigenvalue is reproduced and its relaxation is simply not run.
+Three obstructions stand between C2 and `eq:gs-ref`. Two are gone. `eq:mapping` collapses the
+whole circle to one point at `s = 0` — measured, the spread of `disk_map(0, θ)` over sixteen
+angles is exactly `0.000e+00` — so a tensor-product spline space is not even `C⁰` there; that is
+now answered by a `PolarSplineSpace`. And `CollisionBracket` read `∇ψ` in the space's own
+coordinates, which on a mapped domain are not the physical ones; that is now answered by handing
+it the pullback. `run_c2.jl` conserves energy to `7.9e-15`, keeps entropy monotone and holds the
+Poincaré floor.
+
+**The third is the state space, and it is open.** The Dirichlet condition is imposed on `ψ`
+alone, so `j` lives in the full polar space, which contains the constant exactly. The bracket's
+mass and momentum Casimirs are therefore present and the run converges to
+`δS/δj = λψ + c·x + μ` rather than to `eq:gs-ref` — residual `3.4162e-01` about `λψ` against
+`1.3341e-04` with the multipliers, and the mass conserved to `1.1e-16` where C1's Dirichlet space
+drifts 83 %. This is the `:free` case above, on a geometry that has no `:dirichlet` option
+because `PolarSplineBasis` requires a clamped radial basis. Recombining the *outer* end is
+compatible with the pole triangle and is simply not implemented.
+
+There is no `ε` floor on `s`, no puncture at the origin, and no modified basis, and the
+multipliers are not absorbed to make the scatter look right: the driver prints the distance from
+`eq:gs-ref` under a `[NOT REPRODUCED]` label.
 
 ## Layout
 
