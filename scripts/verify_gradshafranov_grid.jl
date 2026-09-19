@@ -101,13 +101,15 @@ let (rs, zs) = gs_axes(NR, NZ)
     # it, the initial panel would under-report its own peak, and `figure_fields` shares its colour
     # range between the two panels — so the final panel would be drawn against a peak that is not
     # the run's.
-    let spec = SECTION55_RUNS["c1"]
-        check("the Gaussian's centre is a node on both axes, for odd counts",
-            any(==(4.0), rs) && any(==(0.0), zs) && isodd(NR) && isodd(NZ),
-            @sprintf("Nr = %d, Nz = %d, both odd: %s   centre (4, 0) on the grid: %s",
+    # The centre is read off the run rather than copied in, so that a change to `SECTION55_RUNS`
+    # reddens this row instead of leaving it asserting a literal the run no longer has.
+    let (r₀, z₀) = SECTION55_RUNS["c1"].gaussian.x₀
+        check("C1's Gaussian centre is a node on both axes, for odd counts",
+            any(==(r₀), rs) && any(==(z₀), zs) && isodd(NR) && isodd(NZ),
+            @sprintf("Nr = %d, Nz = %d, both odd: %s   centre (%.4g, %.4g) on the grid: %s",
                 NR, NZ,
-                string(isodd(NR) && isodd(NZ)),
-                string(any(==(4.0), rs) && any(==(0.0), zs))))
+                string(isodd(NR) && isodd(NZ)), r₀, z₀,
+                string(any(==(r₀), rs) && any(==(z₀), zs))))
     end
 end
 

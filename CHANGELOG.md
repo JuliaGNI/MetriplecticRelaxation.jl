@@ -52,6 +52,12 @@ error: the ratio of the two grids is constant along `z` to `2.2e-16`, equals `σ
 `1.1e-16`, and `σ` itself varies by a factor `5.286` over `[1,7]`, without which the first two
 rows would be vacuous.
 
+**The script was checked by breaking the resampler, not by reading it.** With `gs_grid` evaluating
+at `(z_j, r_i)` instead of `(r_i, z_j)`, it reports **9 failures across five of its six sections**
+and exits 1 — the `dμ` integral, both exactness rows, the Dirichlet edges, the index rows, both
+refinement rates, and both `σ` rows. A verification script that only fails in the section written
+for the defect is a script whose other sections are decoration.
+
 **Two findings the §5.4 script's rules did not survive being carried over.**
 
 - **The transposed-grid control has to be moved off C1's own centre.** C1's Gaussian sits at
