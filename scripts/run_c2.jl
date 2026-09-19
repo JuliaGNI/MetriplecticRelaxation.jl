@@ -42,7 +42,7 @@
 # the same equilibrium family, reached by a run that conserves energy, decreases entropy and
 # holds the Poincare floor exactly as this one does.  Only a state space without those three
 # forces the multipliers to vanish.  `GradShafranovDisk(cells, p; state = :free)` is that other
-# space, and `verify_gradshafranov_disk.jl` section 6 relaxes BOTH and reports the contrast; this
+# space, and `verify_gradshafranov_disk.jl` section 5 relaxes BOTH and reports the contrast; this
 # script runs the `:dirichlet` one, which is the default.
 #
 # THE FAST DIAGNOSTIC IS THE MASS, and it points the opposite way to intuition: `int u dmu` must
@@ -139,11 +139,15 @@ header("1. H is conserved to machine precision and S is monotone")
 #     50 steps    max|ΔH|/|H₀| = 2.50e-13     0.24 steps' worth   (√n would be 7.07)
 #    375 steps    max|ΔH|/|H₀| = 2.28e-11    22.29 steps' worth   (√n would be 19.36)
 #
-# — a factor 93 for 7.5× the steps, i.e. n^1.6, faster than a random walk and slower than
-# linear. So the assertion below is against the LINEAR accumulation, which is what n steps each
-# bounded by the tolerance actually justify, and the √n figure is reported beside it. This is a
-# change of model, not a widened threshold: the √n form was never near-binding before — the
-# previous 8×16 run sat at 0.02 steps' worth — so this is the first run that tested it.
+# — a factor 91 for 7.5× the steps, i.e. n^2.2, which is faster than LINEAR and not a random
+# walk at all; at 375 steps the √n form is already exceeded, 22.29 against 19.36. So the
+# assertion below is against the linear accumulation, and what justifies it is the per-step
+# argument rather than that fit: n steps each bounded by the tolerance can at worst add with one
+# sign, which is n times one step's worth. The √n figure is reported beside it.
+#
+# THAT BOUND IS A STATEMENT ABOUT THIS n AND NOT ABOUT ANY n. At n^2.2 the headroom below a
+# linear bound shrinks as n^1.2, and here it is 17× at 375 steps. A longer run needs this
+# measured again rather than assumed.
 #
 # WHAT MAKES IT THE TOLERANCE AND NOT SOMETHING ELSE is that it scales with the tolerance.
 # Measured over 50 steps at 12×24: `f_abstol` tightened by 100× took the drift from 2.50e-13 to
@@ -158,7 +162,7 @@ let e = maximum(energy_error(tr)),
     tol = default_f_abstol(Float64, nbasis(disk), tr.initial),
     n = round(Int, spec.T / spec.Δt), per = tol / abs(H₀)
 
-    check("H conserved at the Newton residual tolerance, accumulating sub-linearly",
+    check("H conserved at the Newton residual tolerance, within the linear bound",
         e < n * per,
         @sprintf("max |ΔH|/|H₀| = %.3e   max |ΔH| = %.3e   H₀ = %.12e   f_abstol/H₀ = %.2e   linear bound %.2e   steps' worth %.2f of %d   (√n = %.2f)",
             e, e * abs(H₀), H₀, per, n * per, e / per, n, sqrt(n)))
@@ -199,10 +203,10 @@ let ps = [p[2] for p in production], sc = maximum(ps),
             minimum(ps), production[argmin(ps)][1], sc, minimum(ps) / sc))
 end
 
-# The mass Casimir ∫u dμ = ∫j dx IS conserved here, because the rim row is dropped from Λ alone
-# and the constant stays in the state space. That is the opposite of C1, where its absence is
-# what forces the equilibrium multipliers to zero and so makes eq:gs-ref exact. Printed here
-# beside the other round-off quantities; section 2 asserts on it, as the diagnosis.
+# The mass Casimir ∫u dμ = ∫j dx DRIFTS here, because the rim condition takes the constant out
+# of the state space. That is C1's reading of the same quantity: its absence is what forces the
+# equilibrium multipliers to zero and so makes eq:gs-ref exact. Printed here beside the other
+# round-off quantities; section 2 asserts on it, as the diagnosis.
 check("the mass drift is reported, not asserted  [REPORTED]", true,
     @sprintf("∫u dμ: %.10f → %.10f   relative change %+.3e",
         tr.M[1], tr.M[end], (tr.M[end] - tr.M[1]) / tr.M[1]))
@@ -223,7 +227,9 @@ header("2. S decreases to λ_h H₀, the mass DRIFTS, and the Poincaré floor ho
 # `PolarSplineSpace` on a radial axis recombined at the OUTER end, so every basis function
 # vanishes at s = 1 and the constant is gone -- by construction, not by a tolerance. `:free`
 # keeps the full polar space and is the CONTROL: it conserves the mass exactly and misses
-# `eq:gs-ref` by 3.4e-01, which is a factor 5600 on the same mesh and the same number of steps.
+# `eq:gs-ref` by 3.4161e-01, which is a factor 27481 on the same mesh and the same number of
+# steps. That miss is MESH-INDEPENDENT — 3.4162e-01 at 8×16 against 3.4161e-01 at 12×24 — because
+# it is a different equilibrium and not a discretisation error, so refining cannot close it.
 #
 # SO THE MASS MUST DRIFT HERE, and a run in which it did not would be a run in the wrong space.
 # This is the reverse of C1's reading of the same quantity and it is the fastest diagnostic
@@ -319,11 +325,13 @@ let wμ = quadrature_weights(space(disk)) .* measure(disk.pb), x = nodes(disk.pb
     ((r1₀, _), _, (r4₀, _)) = fits(tr.initial)
     ((r1, c1), (r2, _), (r4, c4)) = fits(tr.final)
 
-    # THE CLAIM. `eq:gs-ref` itself, on one parameter, and the bound is the L² projection error
-    # of the continuum equilibrium onto this space rather than a round number — that floor falls
-    # at the approximation order under refinement (measured: 6.15e-05 at 8×16 against 1.24e-05
-    # at 12×24, a ratio of 4.95 for a mesh ratio of 1.5, i.e. order 3.94 ≈ p+1), so a fixed
-    # threshold here would be a threshold about the mesh.
+    # THE CLAIM. `eq:gs-ref` itself, on one parameter. `r1` IS the L² projection error of the
+    # continuum equilibrium onto this space, so there is no tighter bound to assert it against:
+    # the floor falls at the approximation order under refinement — measured, 6.15e-05 at 8×16
+    # against 1.24e-05 at 12×24, a ratio of 4.95 for a mesh ratio of 1.5, i.e. order 3.94 ≈ p+1
+    # — and a threshold tracking it would be a threshold about the mesh. `1e-3` is therefore a
+    # LOOSE sanity bound, 80× above the measured value, and the discriminating content of this
+    # section is the two ratios below rather than this number.
     check("the scatter collapses onto eq:gs-ref, δS/δj = λψ", r1 < 1e-3,
         @sprintf("‖u/(Cr²+D) − λψ‖/‖u/(Cr²+D)‖ = %.4e at t = T, %.4e at t = 0 — a factor %.0f",
             r1, r1₀, r1₀ / r1))
@@ -357,8 +365,9 @@ header("4. against the P₁ solver on the same mapped domain")
 # EVERY COMPARISON BELOW IS AGAINST λ_h = `gs_eigenvalue(space(disk))`, which does not depend on
 # this run: these three checks would pass identically if the relaxation had never been stepped.
 # That is a division of labour rather than an oversight — what ties the run to λ_h is section
-# 3's Rayleigh-quotient check, S/H = λ_h to 1e-10. This section is a statement about the two
-# DISCRETISATIONS, and about the relaxation only by way of that check.
+# 2's Rayleigh-quotient check, S/H = λ_h to the projection floor's own quadratic law. This
+# section is a statement about the two DISCRETISATIONS, and about the relaxation only by way of
+# that check.
 let e = abs(λh - λp1) / λp1
     check("the space's λ_h agrees with the P₁ solver to its own grid error", e < 1e-3,
         @sprintf("λ_h = %.10f   P₁ 64×128 = %.10f   relative %+.3e", λh, λp1, e))
@@ -415,9 +424,10 @@ header("5. Δt: the equilibrium does not depend on it, and the transient now has
 #
 # THIS SECTION RUNS ON A COARSER MESH THAN THE REST OF THE SCRIPT, and says so rather than
 # quietly using `spec.cells`.  Δt-independence is a property of the integrator and the flow, not
-# of the space, so it is measured where it is cheap: three integrations at 12×24 would be 1300
-# steps at 22 s each, and the same three at 8×16 are under a minute apiece.  The equilibrium each
-# one converges to is that mesh's own, which is exactly what the check compares against itself.
+# of the space, so it is measured where it is cheap: the three integrations are 625, 1250 and
+# 2500 steps, and one step costs 8.8 s at 12×24 against 1.3 s at 8×16 — measured cold in the
+# transient, so an upper bound on the later ones.  The equilibrium each one converges to is that
+# mesh's own, which is exactly what the check compares against itself.
 #
 # WHERE THE SECOND SAMPLE IS TAKEN IS NOT A FREE CHOICE, and t = T is too early. Measured on
 # this mesh, the relative L² difference between Δt and Δt/2 and its successive ratio:
@@ -516,8 +526,9 @@ let (λ, _, rel) = gs_fit(disk, tr.final),
         "is the polar space with a homogeneous-Dirichlet rim, so the constant is not in it, the",
         "bracket's mass Casimir is not conserved, and the equilibrium multipliers μ and c are",
         "forced to zero. A run in which this quantity were conserved would be a run in the",
-        "`:free` space, where the residual about λψ is 3.4e-01 instead — a factor 5600 on the",
-        "same mesh.", "",
+        "`:free` space, where the residual about λψ is 3.4161e-01 instead — a factor 27481 on",
+        "the same mesh. That miss is mesh-independent, 3.4162e-01 at 8×16 against 3.4161e-01",
+        "here, because it is a different equilibrium rather than a discretisation error.", "",
         "**`eq:gs-ref`, δS/δj = λψ, IS reproduced.** The residual above is the L² projection",
         "error of the continuum equilibrium onto this space, and it converges at the",
         "approximation order: 6.15e-05 at 8×16 against 1.24e-05 at 12×24, a ratio of 4.95 for a",

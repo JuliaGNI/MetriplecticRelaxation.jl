@@ -218,28 +218,31 @@ the output would have caught it.
   constraint, so its lowest eigenvector is the `μ = 0` member in *both* spaces; what separates
   them is the **flow**, not the fixed-point problem.
 
-### C2's relaxation runs, and stops short of `eq:gs-ref` for a stated reason
+### C2's relaxation reaches `eq:gs-ref`, and the third obstruction was the state space
 
-Three obstructions stand between C2 and `eq:gs-ref`. Two are gone. `eq:mapping` collapses the
-whole circle to one point at `s = 0` — measured, the spread of `disk_map(0, θ)` over sixteen
-angles is exactly `0.000e+00` — so a tensor-product spline space is not even `C⁰` there; that is
-now answered by a `PolarSplineSpace`. And `CollisionBracket` read `∇ψ` in the space's own
-coordinates, which on a mapped domain are not the physical ones; that is now answered by handing
-it the pullback. `run_c2.jl` conserves energy to `7.9e-15`, keeps entropy monotone and holds the
-Poincaré floor.
+Three obstructions stood between C2 and `eq:gs-ref`, and all three are gone. `eq:mapping`
+collapses the whole circle to one point at `s = 0` — measured, the spread of `disk_map(0, θ)`
+over sixteen angles is exactly `0.000e+00` — so a tensor-product spline space is not even `C⁰`
+there; that is answered by a `PolarSplineSpace`. `CollisionBracket` read `∇ψ` in the space's own
+coordinates, which on a mapped domain are not the physical ones; that is answered by handing it
+the pullback.
 
-**The third is the state space, and it is open.** The Dirichlet condition is imposed on `ψ`
-alone, so `j` lives in the full polar space, which contains the constant exactly. The bracket's
-mass and momentum Casimirs are therefore present and the run converges to
-`δS/δj = λψ + c·x + μ` rather than to `eq:gs-ref` — residual `3.4162e-01` about `λψ` against
-`1.3341e-04` with the multipliers, and the mass conserved to `1.1e-16` where C1's Dirichlet space
-drifts 83 %. This is the `:free` case above, on a geometry that has no `:dirichlet` option
-because `PolarSplineBasis` requires a clamped radial basis. Recombining the *outer* end is
-compatible with the pole triangle and is simply not implemented.
+**The third was the state space.** The bracket has mass and momentum Casimirs, so on a space
+containing `1`, `r` and `z` the relaxed state is `δS/δj = λψ + c·x + μ` with the multipliers not
+zero — a different member of the same equilibrium family, reached by a run that conserves energy,
+decreases entropy and holds the Poincaré floor exactly as the right one does. A
+homogeneous-Dirichlet **rim**, recombining the outer end of the radial axis, removes the constant
+and forces them to vanish. `GradShafranovDisk` now takes `state = :dirichlet` (the default) or
+`:free`, as `GradShafranovBox` does, and `:free` is retained as the control.
+
+**The mass is the diagnosis and it reads the opposite way to intuition: it must DRIFT.**
+Conserved to round-off means the constant is still in the space. An eigenvalue check cannot see
+any of this — `λ_h` is bit-identical between the two spaces, because the pencil carries no mass
+constraint — so the control has to be a relaxation.
 
 There is no `ε` floor on `s`, no puncture at the origin, and no modified basis, and the
-multipliers are not absorbed to make the scatter look right: the driver prints the distance from
-`eq:gs-ref` under a `[NOT REPRODUCED]` label.
+multipliers are not absorbed to make the scatter look right — they are measured, and they come
+out at the residual's own floor.
 
 ## Layout
 

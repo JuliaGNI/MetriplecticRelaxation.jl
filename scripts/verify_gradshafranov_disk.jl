@@ -1,7 +1,7 @@
 # C2, the mapped disk: what the polar space and the pulled-back bracket deliver.
 #
 # Section 5.5's second geometry is the image of the unit disk under `eq:mapping`. Its
-# discretisation is `GradShafranovDisk`, and this script establishes four things about the
+# discretisation is `GradShafranovDisk`, and this script establishes five things about the
 # operators the relaxation is built from:
 #
 #   1. λ_h, the space's own Grad-Shafranov eigenvalue, against the continuum value and against
@@ -10,7 +10,9 @@
 #      by three independent estimates that must agree;
 #   3. the Poincaré floor, S/H ≥ λ_h, at the initial state and off the flow;
 #   4. the bracket reads the PHYSICAL frame — and the linear-stretch measurement that shows it
-#      cannot see the frame's direction, which is why that check lives elsewhere.
+#      cannot see the frame's direction, which is why that check lives elsewhere;
+#   5. the two state spaces, `:dirichlet` and `:free`, separated by a short relaxation in each —
+#      the only control that can see the difference, since their eigenvalues are identical.
 #
 # The relaxation run itself is `run_c2.jl`.
 #
@@ -249,7 +251,7 @@ say("""  That degeneracy is energy conservation. `run_c2.jl` is the relaxation r
 say("")
 
 ## ---------------------------------------------------------------------------------------
-say("6. the two state spaces, and why only a relaxation separates them")
+say("5. the two state spaces, and why only a relaxation separates them")
 say("")
 
 # `verify_gradshafranov.jl` runs this control on the box. It has to be run on the disk too,
@@ -277,8 +279,14 @@ function multiplier_fit_disk(disk, ĵ)
     return (λfit = θ[1], extra = maximum(abs, θ[2:4]) / scale)
 end
 
-let rows = NamedTuple[], steps = 120, cells = (6, 12)
-    spec = SECTION55_RUNS["c2"]
+# The count follows the run's own T rather than being a number: what the contrast below compares
+# is two RELAXED states, and how far a fixed step count reaches depends on `spec.Δt`. Measured at
+# 6×12: at t = 0.48 the Dirichlet state is still in the transient, its residual sits at 9.53e-03
+# and the ratio below comes out at 36; by t = 1.5 the residual has floored at 2.99e-04 and the
+# ratio is 1145, with the multiplier ratio 12347.
+let rows = NamedTuple[], spec = SECTION55_RUNS["c2"], cells = (6, 12),
+    steps = round(Int, spec.T / spec.Δt)
+
     for st in (:dirichlet, :free)
         disk = GradShafranovDisk(cells, 3; state = st)
         f = gs_flow(disk)

@@ -969,7 +969,7 @@ end
 
     @testset "$(rpad("C2's flow runs on the map: H, S and the MASS Casimir", 76))" for state in (:dirichlet,
         :free)
-        # The mesh is coarse on purpose — the run itself is 8×16, and what is under test here is
+        # The mesh is coarse on purpose — the run itself is 12×24, and what is under test here is
         # the mapped-domain path rather than the run's numbers.
         #
         # Both state spaces are run, because the mass Casimir is the one thing they disagree

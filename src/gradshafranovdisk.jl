@@ -177,8 +177,14 @@ function disk_interior(s::PolarSplineSpace)
     return [k for k in 1:nbasis(s) if !(k in rim)]
 end
 
+# `Dirichlet` and not "anything but `Free`": of the seven boundary conditions, only that one makes
+# every function vanish at the rim, which is what `disk_interior` claims of the indices it
+# returns. A `Neumann` or `Robin` rim recombines the same rows without that consequence, and
+# treating it as constrained here would return every index while claiming they all vanish — the
+# silent error this function's docstring warns about, in the other direction. `disk_interior` is
+# exported, so the narrow reading is the safe one.
 _rim_is_constrained(radial) = false
-_rim_is_constrained(radial::RecombinedBSplineBasis) = !(boundary(radial)[2] isa Free)
+_rim_is_constrained(radial::RecombinedBSplineBasis) = boundary(radial)[2] isa Dirichlet
 
 @doc raw"""
     gs_stiffness(space::PolarSplineSpace)

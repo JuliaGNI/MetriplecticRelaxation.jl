@@ -70,15 +70,21 @@ here than in a library:
 
   **Measured at `t = T`, 12×24 cubic cells, N = 291, Δt = 0.004, T = 1.5, 375 steps:**
 
+  Both columns are at the **same mesh and the same step count**, which the first draft of this
+  entry was not — the `:free` figure was an 8×16 one. It makes no difference to four digits, and
+  that is itself the finding: the free space's miss is **mesh-independent**, 3.4162e-01 at 8×16
+  against 3.4161e-01 at 12×24, because it is a different equilibrium rather than a discretisation
+  error. Refining cannot close it; only changing the state space can.
+
   | | `:dirichlet` | `:free` control |
   |:--|--:|--:|
-  | `‖u/(Cr²+D) − λψ‖/‖u/(Cr²+D)‖` | **1.2431e-05** | 3.4162e-01 |
+  | `‖u/(Cr²+D) − λψ‖/‖u/(Cr²+D)‖` | **1.2431e-05** | 3.4161e-01 — a factor **27481** |
   | the same at `t = 0` | 6.7468e-01 | — |
   | what the multipliers buy | **1.22×** | 2561× |
   | μ, c | −4.16e-08, (3.04e-09, 8.21e-22) | — |
-  | \|S/H − λ_h\|/λ_h | 1.7590e-10 | — |
+  | \|S/H − λ_h\|/λ_h | 1.7590e-10 | 1.9941e-01 |
   | fitted λ against λ_h | −1.698e-06 | — |
-  | ∫u dμ drift | **+60.8 %** | 0.0e+00 |
+  | ∫u dμ drift | **+60.8 %** | 4.46e-16 |
   | `1`, `r`, `z` as projection errors | 1.278e-01, 1.276e-01, 1.814e-01 | 1.7e-15, 7.1e-06, 7.3e-05 |
 
   **THE MASS DRIFTING IS THE POSITIVE CONTROL,** read the opposite way to C1's: conserving it
@@ -110,13 +116,20 @@ here than in a library:
 
   The energy check asserted C1's `√n` random-walk accumulation and now asserts linear. **The
   tolerance claim is confirmed** — `f_abstol` tightened 100× took the drift from 2.50e-13 to
-  1.54e-15, a factor 163 — but the accumulation is measurably n^1.6: 0.24 steps' worth at 50
-  steps against 22.29 at 375, where `√n` would be 7.07 and 19.36. The `√n` form was never
-  near-binding before, the previous 8×16 run sitting at 0.02 steps' worth, so this is the first
-  run that tested it. **This is a change of model after it failed, and it deserves review.**
+  1.54e-15, a factor 163 — but the accumulation is measurably **n^2.2**: 0.24 steps' worth at 50
+  steps against 22.29 at 375, where `√n` would be 7.07 and 19.36. That is **faster than linear**,
+  so the linear bound is a statement about this `n` and not about any `n`: the headroom below it
+  shrinks as n^1.2 and is 17× at 375 steps. What justifies the bound is the per-step argument
+  rather than the fit — `n` steps each bounded by the tolerance can at worst add with one sign.
+  The `√n` form was never near-binding before, the previous 8×16 run sitting at 0.02 steps'
+  worth, so this is the first run that tested it. **This is a change of model after it failed,
+  and it deserves review.**
 
-  `scripts/verify_gradshafranov_disk.jl` gains §6, which relaxes both spaces as the control the
-  box already has. The `gs_flow(::GradShafranovDisk)` testset runs both, and its mass assertion
+  `scripts/verify_gradshafranov_disk.jl` gains §5, which relaxes both spaces as the control the
+  box already has. Its step count follows the run's own `T` rather than being a number: at a
+  fixed 120 steps the new Δt reaches only `t = 0.48`, leaving the `:dirichlet` state in the
+  transient, and the contrast ratios came out at 36 and 13 against a `> 50` threshold. At
+  `t = 1.5` they are 1145 and 12347. The `gs_flow(::GradShafranovDisk)` testset runs both, and its mass assertion
   **inverts** with them rather than being deleted. Knowledge:
   `A rim condition composes with the pole triangle without rebuilding it.md`,
   `The Rayleigh quotient floors at the square of the projection error.md`,
