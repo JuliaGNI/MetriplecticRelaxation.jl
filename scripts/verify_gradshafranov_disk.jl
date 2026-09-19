@@ -26,7 +26,7 @@ using PoissonBrackets
 using SimpleSplines: UniformMesh, Dirichlet, (..)
 
 # Named rather than brought in by a bare `using`: `field`, `integrate` and the integrator are
-# what §6's relaxation control needs, and this repository's convention is an explicit list.
+# what §5's relaxation control needs, and this repository's convention is an explicit list.
 using PoissonBrackets: field, Integrator, ImplicitMidpoint, integrate_step!
 using MetriplecticRelaxation: SECTION55_RUNS, gs_state, gs_flow, gs_fit, gs_ordinate,
                               integrate
