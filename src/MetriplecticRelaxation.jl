@@ -82,7 +82,8 @@ export disk_map, disk_jacobian, DiskTriangulation, disk_area, disk_matrices,
 include("takeda.jl")
 
 export GSSpec, SECTION55_RUNS, SECTION55_ORDER, gs_entropy_weight
-export GradShafranovBox, gs_state, gs_flow, gs_current, gs_ordinate, gs_fit, gs_rayleigh
+export GradShafranovBox, gs_state, gs_flow, gs_current, gs_ordinate, gs_fit, gs_rayleigh,
+       gs_axes, gs_grid, gs_ordinate_grid
 
 include("gradshafranov.jl")
 
