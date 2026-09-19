@@ -1,12 +1,11 @@
 @doc raw"""
-    GradShafranovDisk(cells, degree = 3)
+    GradShafranovDisk(cells, degree = 3; state = :dirichlet)
 
 Section 5.5's **second** geometry, C2: the image of the unit disk under [`disk_map`](@ref),
 discretised isogeometrically on a `PolarSplineSpace`.
 
-The counterpart of [`GradShafranovBox`](@ref). It differs in three ways, and the third is the
-one that decides what a relaxation on it converges to: the pole, the two measures, and the state
-space.
+The counterpart of [`GradShafranovBox`](@ref), including its `state` argument. It differs in
+two ways: the pole, and the two measures.
 
 # The pole, and why a tensor-product space cannot be used
 
@@ -37,28 +36,40 @@ needed cannot disagree. `scripts/verify_gradshafranov_disk.jl` measures what hap
 do: swapping the two measures moves ``\lambda_h`` from ``0.00259704`` to ``0.000208`` one way
 and ``0.0309`` the other.
 
-# The boundary, and the state space it does NOT constrain
+# The two state spaces
 
-``\psi = 0`` on the rim ``s = 1``. The radial basis is clamped rather than Dirichlet-recombined
-— `PolarSplineBasis` takes a plain clamped basis — so the condition is imposed by **dropping**
-the last radial row from ``\Lambda``, the only functions that do not vanish at ``s = 1``. That
-is the same elimination `GradShafranovBox`'s `:free` branch performs with a recombination
-matrix.
+``\psi = 0`` on the rim ``s = 1`` either way; `state` says where ``\hat{j}`` lives, exactly as
+it does for [`GradShafranovBox`](@ref), and it decides which member of the equilibrium family a
+relaxation converges to.
 
-**The state ``\hat{j}`` is not restricted, and this matters more than it looks.** Only
-``\psi = \Lambda\hat{j}`` is; ``\hat{j}`` keeps the rim row and lives in the full polar
-space. So the constant is in the state space — *exactly*, by the partition of unity the pole
-triangle preserves — and so, to five and four digits, are ``r`` and ``z``. The bracket's mass
-and momentum **Casimirs are therefore present**, and a relaxation converges to
-``\delta S/\delta j = \lambda\psi + c\cdot x + \mu`` rather than to `eq:gs-ref`. This is
-`GradShafranovBox`'s `:free` case, on a geometry that has no `:dirichlet` option, because a
-homogeneous-Dirichlet *polar* spline space does not exist yet.
+`:dirichlet` — the default — puts ``\hat{j}`` in the rim-constrained polar space, built by
+recombining the **outer** end of the radial axis:
 
-`scripts/run_c2.jl` measures it: residual `3.4162e-01` about ``\lambda\psi`` and `1.3341e-04`
-about ``\lambda\psi + c\cdot x + \mu``, with ``\int u \, d\mu`` conserved to `1.1e-16`
-where the box's Dirichlet space drifts 83 %. **An eigenvalue check cannot see any of it** — the
-pencil ``(\mathbb{M}\Lambda, \mathbb{W})`` carries no mass constraint — which is why
-[`gs_eigenvalue`](@ref) and the equilibrium check are unaffected and correct.
+```julia
+RecombinedBSplineBasis(BSplineBasis(UniformMesh(ns, 0 .. 1), p), Free(), Dirichlet())
+```
+
+The pole end stays clamped, which is what the pole triangle needs; the two recombinations
+compose with nothing to reconcile. ``\Lambda`` is then a plain solve, because the whole space
+already satisfies the condition.
+
+`:free` keeps ``\hat{j}`` in the full polar space and imposes the condition on ``\psi`` alone,
+by dropping the last radial row from ``\Lambda`` — the same elimination the box's `:free` branch
+performs with a recombination matrix. It is kept as the **control**, not as an alternative.
+
+**The difference is the Casimirs, and it is the whole of C2's story.** The free space contains
+the constant *exactly*, by the partition of unity the pole triangle preserves, and ``r`` and
+``z`` to five and four digits. So the bracket's mass and momentum Casimirs survive and a
+relaxation converges to ``\delta S/\delta j = \lambda\psi + c\cdot x + \mu`` rather than to
+`eq:gs-ref`. A homogeneous-Dirichlet rim removes ``N_\theta`` functions and with them the
+constant, which is what forces ``\mu = 0`` and ``c = 0``.
+
+`scripts/run_c2.jl` measures both. **An eigenvalue check cannot see any of it** — the pencil
+``(\mathbb{M}\Lambda, \mathbb{W})`` carries no mass constraint, so its lowest eigenvector is the
+``\mu = 0``, ``c = 0`` member in *both* spaces — which is why [`gs_eigenvalue`](@ref) and the
+equilibrium check are unaffected and correct in either. The control has to be a relaxation, and
+the fast diagnostic is the mass: ``\int u \, d\mu`` is conserved to round-off in `:free` and
+must **drift** in `:dirichlet`.
 """
 struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT, PT}
     space::ST
@@ -69,10 +80,22 @@ struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT, PT}
     b::Vector{T}
     interior::Vector{Int}
     pb::PT
+    state::Symbol
 end
 
-function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3)
-    s = PolarSplineSpace(cells, degree)
+function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3;
+        state::Symbol = :dirichlet)
+    state in (:dirichlet, :free) || throw(ArgumentError(
+        "the state space is :dirichlet or :free, but got :$(state)"))
+
+    # The rim condition goes on the radial axis, where every boundary condition goes; the pole
+    # is not one and gets no argument. `Free()` at the pole end is what keeps the pole triangle
+    # buildable, and `PolarSplineBasis` rejects anything else there.
+    radial = BSplineBasis(UniformMesh(cells[1], 0 .. 1), degree)
+    angular = PeriodicBSplineBasis(UniformMesh(cells[2], 0 .. 2π), degree)
+    s = PolarSplineSpace(
+        state === :dirichlet ? RecombinedBSplineBasis(radial, Free(), Dirichlet()) : radial,
+        angular)
 
     F(x) = disk_map(x[1], x[2])
     DF(x) = disk_jacobian(x[1], x[2])
@@ -85,13 +108,19 @@ function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3)
     Kμ = sparse(tensor_weighted_matrix(s, metric(pbμ)))
     M = sparse(weighted_matrix(s, measure(pbx), (0, 0), (0, 0)))
 
-    keep = disk_interior(s)
-    E = sparse(1:length(keep), keep, ones(length(keep)), length(keep), nbasis(s))'
-
-    # Λ maps the current ĵ to the potential ψ̂, solving −Δ*ψ = j on the interior and extending
-    # by zero. The factorisation is of the interior block, which is where the Dirichlet
-    # condition lives; outside it Λ is zero, which is the condition itself.
-    Λ = E * (cholesky(Symmetric(Matrix(E' * Kμ * E))) \ Matrix(E' * M))
+    # Λ maps the current ĵ to the potential ψ̂, solving −Δ*ψ = j with ψ = 0 on the rim. In the
+    # `:dirichlet` space every basis function already vanishes there, so the solve is over the
+    # whole space and `keep` is every index — it stays in the struct because the diagnostics
+    # and `show` read it, and because it is what the two branches disagree about.
+    keep = state === :dirichlet ? collect(1:nbasis(s)) : disk_interior(s)
+    Λ = if state === :dirichlet
+        cholesky(Symmetric(Matrix(Kμ))) \ Matrix(M)
+    else
+        # The interior embedding, and the factorisation is of the interior block: that is where
+        # the condition lives, and outside it Λ is zero, which is the condition itself.
+        E = sparse(1:length(keep), keep, ones(length(keep)), length(keep), nbasis(s))'
+        E * (cholesky(Symmetric(Matrix(E' * Kμ * E))) \ Matrix(E' * M))
+    end
 
     A = M * Λ
 
@@ -107,10 +136,12 @@ function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3)
     # it to `CollisionBracket`, which reads the frame `J⁻ᵀ` and the volume element from it as
     # well. Rebuilding it there would be a second object that could disagree with this one.
     GradShafranovDisk(s, Matrix(Λ), M, Matrix((A .+ A') ./ 2), (W .+ W') ./ 2,
-        Vector{Float64}(M * ones(nbasis(s))), keep, pbμ)
+        Vector{Float64}(M * ones(nbasis(s))), keep, pbμ, state)
 end
 
-GradShafranovDisk(cells::Int, degree::Int = 3) = GradShafranovDisk((cells, cells), degree)
+function GradShafranovDisk(cells::Int, degree::Int = 3; kwargs...)
+    GradShafranovDisk((cells, cells), degree; kwargs...)
+end
 
 space(disk::GradShafranovDisk) = disk.space
 nbasis(disk::GradShafranovDisk) = nbasis(disk.space)
@@ -118,26 +149,36 @@ nbasis(disk::GradShafranovDisk) = nbasis(disk.space)
 function Base.show(io::IO, disk::GradShafranovDisk)
     print(
         io, "GradShafranovDisk(cells=", ncells(disk.space), ", p=", degree(disk.space)[1],
-        ", N=", nbasis(disk), ", interior=", length(disk.interior), ")")
+        ", N=", nbasis(disk), ", state=:", disk.state, ")")
 end
 
 @doc raw"""
     disk_interior(space::PolarSplineSpace)
 
-The indices of the basis functions that vanish on the rim ``s = 1``, i.e. everything but the
-last radial row.
+The indices of the basis functions that vanish on the rim ``s = 1``.
 
-A clamped radial basis has exactly one function that is nonzero at its right endpoint, so the
-functions to drop are ``\Psi_K`` with ``K = 3 + (N_s-2) + (j-1)(N_s-2)``, one per angular
-index. The three pole functions are never among them: they are supported on the first two
-radial cells, which do not touch the rim.
+On a **clamped** radial axis that is everything but the last radial row: exactly one radial
+function is nonzero at the right endpoint, so the functions to drop are ``\Psi_K`` with
+``K = 3 + (N_s-2) + (j-1)(N_s-2)``, one per angular index. The three pole functions are never
+among them — they are supported on the first two radial cells, which do not touch the rim.
+
+On a radial axis **already recombined** at the rim there is nothing to drop, and this returns
+every index. The distinction is not cosmetic: the index formula reads ``N_s`` off the basis, so
+on a rim-recombined axis it names the *new* last row, which is an interior one. Applying it
+there removes a further ``N_\theta`` functions from a space that already satisfies the
+condition, and the symptom is quiet — ``\lambda_h`` came out at ``0.0027057`` against the
+correct ``0.0025970``, a 4 % error that looks like a discretisation difference.
 """
 function disk_interior(s::PolarSplineSpace)
     radial, angular = bases(basis(s))
+    _rim_is_constrained(radial) && return collect(1:nbasis(s))
     Ns, Nθ = nbasis(radial), nbasis(angular)
     rim = Set(3 + (Ns - 2) + (j - 1) * (Ns - 2) for j in 1:Nθ)
     return [k for k in 1:nbasis(s) if !(k in rim)]
 end
+
+_rim_is_constrained(radial) = false
+_rim_is_constrained(radial::RecombinedBSplineBasis) = !(boundary(radial)[2] isa Free)
 
 @doc raw"""
     gs_stiffness(space::PolarSplineSpace)

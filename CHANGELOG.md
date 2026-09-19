@@ -60,6 +60,70 @@ here than in a library:
 
   Archived in `scripts/verify_gradshafranov_disk.jl`, which exits non-zero on any failure.
 
+- **C2 reproduces `eq:gs-ref`. `GradShafranovDisk` gains the box's `state` argument,
+  `:dirichlet` (the default) and `:free`.** The `:dirichlet` space is the polar space built on a
+  radial axis recombined at the **outer** end —
+  `RecombinedBSplineBasis(radial, Free(), Dirichlet())` — which `SimpleSplines.jl#20` made
+  possible. The pole end stays clamped, which is what the pole triangle needs; the two
+  recombinations compose with nothing rebuilt. `Λ` is then a plain solve, because the whole space
+  already satisfies the condition, and `:free` keeps the previous behaviour as the control.
+
+  **Measured at `t = T`, 12×24 cubic cells, N = 291, Δt = 0.004, T = 1.5, 375 steps:**
+
+  | | `:dirichlet` | `:free` control |
+  |:--|--:|--:|
+  | `‖u/(Cr²+D) − λψ‖/‖u/(Cr²+D)‖` | **1.2431e-05** | 3.4162e-01 |
+  | the same at `t = 0` | 6.7468e-01 | — |
+  | what the multipliers buy | **1.22×** | 2561× |
+  | μ, c | −4.16e-08, (3.04e-09, 8.21e-22) | — |
+  | \|S/H − λ_h\|/λ_h | 1.7590e-10 | — |
+  | fitted λ against λ_h | −1.698e-06 | — |
+  | ∫u dμ drift | **+60.8 %** | 0.0e+00 |
+  | `1`, `r`, `z` as projection errors | 1.278e-01, 1.276e-01, 1.814e-01 | 1.7e-15, 7.1e-06, 7.3e-05 |
+
+  **THE MASS DRIFTING IS THE POSITIVE CONTROL,** read the opposite way to C1's: conserving it
+  would mean the constant is still in the space. `disk_interior` had to learn this too — its
+  index formula reads `Nₛ` off the basis, so on a rim-recombined axis it names the *new* last
+  row and removes a further Nθ functions from a space that already satisfies the condition. The
+  symptom was quiet: λ_h came out at 0.0027057 against the correct 0.0025970, a 4 % error that
+  reads like an ordinary discretisation difference. It now returns every index for such an axis,
+  and λ_h is **bit-identical** between the two spaces — which is exactly why an eigenvalue check
+  cannot see any of this and the control has to be a relaxation.
+
+  **Δt and T are re-chosen from the transient, and the mesh from measured cost.** S falls by
+  99.9 % of its total in t < 0.32, so the previous T = 5.0 spent nine tenths of its steps on a
+  fixed point and gave the transient only twenty-five; the step-halving ratio came out at 67.6.
+  At Δt = 0.004 the transient gets about eighty steps and **the ratio is 4.00**, the second-order
+  convergence C2 previously could not be given. Per-step cost, cold, best of five after a
+  warm-up: 2.08 s at N = 147 (8×16), 7.51 s at N = 223 (10×20), **22.4 s at N = 291 (12×24)** and
+  **674 s at N = 515 (16×32)** — a factor 30 for 1.77× the degrees of freedom, the O(N³) Jacobian
+  taking the working set from 197 MB to 1.1 GB. So 12×24 is the mesh; 16×32 is hours to days.
+
+  **Two thresholds changed, and both are recorded rather than quietly adjusted.**
+
+  The Δt-independence check moved from t = 2.5 to t = 0.75 and back. At t = 0.75 the successive
+  differences are in ratio 3.84 — the state is still *converging* at second order, so the check
+  measured the transient and called it a failure of independence. Measured on 8×16: ratio 4.00 at
+  t = 0.152, 3.84 at t = 0.760, 4.02 at t = 1.500 (the run's own T), and only at t = 2.500 are
+  both differences at round-off, 1.05e-11 and 1.70e-11. That the state at T still carries a
+  Δt-dependence of 2.6e-09 costs the run nothing — it is four orders below the projection floor.
+
+  The energy check asserted C1's `√n` random-walk accumulation and now asserts linear. **The
+  tolerance claim is confirmed** — `f_abstol` tightened 100× took the drift from 2.50e-13 to
+  1.54e-15, a factor 163 — but the accumulation is measurably n^1.6: 0.24 steps' worth at 50
+  steps against 22.29 at 375, where `√n` would be 7.07 and 19.36. The `√n` form was never
+  near-binding before, the previous 8×16 run sitting at 0.02 steps' worth, so this is the first
+  run that tested it. **This is a change of model after it failed, and it deserves review.**
+
+  `scripts/verify_gradshafranov_disk.jl` gains §6, which relaxes both spaces as the control the
+  box already has. The `gs_flow(::GradShafranovDisk)` testset runs both, and its mass assertion
+  **inverts** with them rather than being deleted. Knowledge:
+  `A rim condition composes with the pole triangle without rebuilding it.md`,
+  `The Rayleigh quotient floors at the square of the projection error.md`,
+  `The residual settling is not the run having converged.md`,
+  `A Delta-t-independence check must be placed after the state arrives.md`,
+  `Energy drift accumulates faster than a random walk on the polar space.md`.
+
 - **C2's relaxation run now completes: `gs_flow(::GradShafranovDisk)` returns a
   `MetriplecticFlow`.** The frame-covariant bracket, built with the pullback form
   `CollisionBracket(space, Λ, pb; mobility, mobility_derivative)`, pulls the perpendicular,
@@ -110,7 +174,10 @@ here than in a library:
   0.0025970403 (converged at 32×64: 0.0025970351); the P₁ triangulation at 64×128 gives
   0.0025990851, which rounds to the published 0.002599.
 
-  **What it does NOT reproduce — this is the headline.** `eq:gs-ref`, δS/δj = λψ, is NOT
+  **What it does NOT reproduce — this is the headline. [SUPERSEDED — see the entry above:
+  the Dirichlet rim exists now and `eq:gs-ref` IS reached. Everything below is left as it was
+  written, because it is the measurement that made the rim worth building, and because the
+  contrast it records is now the `:free` control.]** `eq:gs-ref`, δS/δj = λψ, is NOT
   reached. The state space is the FULL polar space — the Dirichlet condition is imposed on ψ
   alone by zeroing Λ outside the interior, while j keeps the rim row — so the bracket's MASS
   and MOMENTUM Casimirs are present and the equilibrium carries the multipliers μ and c.

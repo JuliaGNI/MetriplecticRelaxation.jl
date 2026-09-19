@@ -28,8 +28,9 @@ using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
 # SimpleSplines' assembly interface but neither of these: `TensorSplineSpace(n, p, bc)`
 # dispatches on the condition type, and `recombination_matrix` is what expresses a
 # homogeneous-Dirichlet basis function in the clamped one — see `EulerSquare`.
-using SimpleSplines: Dirichlet, Free, BSplineBasis, UniformMesh, recombination_matrix,
-                     bases
+using SimpleSplines: Dirichlet, Free, BSplineBasis, PeriodicBSplineBasis,
+                     RecombinedBSplineBasis, UniformMesh, recombination_matrix, bases,
+                     boundary
 
 # Extended, not shadowed. The spectral grid and the spline space are two more discretisations
 # of the objects these generic functions already name, so they get methods rather than

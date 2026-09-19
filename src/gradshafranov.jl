@@ -174,37 +174,41 @@ answer and not a defect.
 
 # C2's own choices, and they are not C1's
 
-``\Delta t`` and ``T`` are fixed by matching C1's own ratios to the initial entropy-production
-time ``\tau = (S_0 - \lambda_h H_0)/(S,S)_0``, which is ``3.79 \times 10^{-2}`` for C1 and
-``7.65 \times 10^{-3}`` for C2 — a factor five. C1 runs ``\Delta t/\tau = 1.65`` and
-``T/\tau = 660``, so C2 gets ``\Delta t = 0.0125`` and ``T = 5``, again 400 steps.
+``\Delta t`` and ``T`` are chosen **from the transient**, which is what a relaxation run's
+duration is about. ``S`` falls by 99.9 % of its total reduction in ``t < 0.32`` and is
+stationary well before ``t = 0.75``, so ``T = 1.5`` is some five times the transient and the
+rest of the run is the fixed point. ``\Delta t = 0.004`` puts about eighty steps through that
+transient, which is what a step-halving order test needs.
 
-**The mesh is set by cost, and the cost rises faster here than the degree-of-freedom count.**
-Measured in a cold process at ``\Delta t = 0.0125``: **2.08 s** per step at ``N = 147``
-(``8 \times 16`` cubic) and **7.51 s** at ``N = 223`` (``10 \times 20``) — ``3.6\times`` for
-``1.5\times`` the degrees of freedom, because the ``O(N^3)`` Jacobian is ``N`` dense
-``N \times N`` assemblies and the pole rows break `KroneckerMass` besides. ``12 \times 24`` and
-``16 \times 32`` were started and not measured. So ``8 \times 16`` is the mesh. Both figures are
-the *transient's* step cost, where Newton works hardest: the recorded run's own 400 steps take
-**306 s**, because the state is at its fixed point for most of them.
+The earlier pair, ``\Delta t = 0.0125`` and ``T = 5.0``, was fixed instead by matching C1's
+ratios to the initial entropy-production time ``\tau = (S_0 - \lambda_h H_0)/(S,S)_0``
+(``3.79 \times 10^{-2}`` for C1, ``7.65 \times 10^{-3}`` for C2). That over-estimates the
+duration, because the decay is not a single exponential: ``T = 5`` spent nine tenths of its
+steps on a fixed point and the transient got only twenty-five, so the order test came out at
+67.6 rather than 4. At the present pair it is **4.00**.
 
-**C2 gets a different step-size measurement from C1's, and the trajectory is why.** ``S`` falls
-by 99.8 % of its total reduction in ``t < 0.25`` and is stationary by ``t \approx 0.75``, some
-sixty steps, so there is no window for C1's order test at this ``\Delta t``: a step-halving
-comparison inside the transient reports the stiff-mode error dying off, and one after it
-compares three copies of the same fixed point, which implicit midpoint reproduces exactly at any
-step. `run_c2.jl` therefore asserts the statement its numbers rest on — **the equilibrium is
-``\Delta t``-independent** — and reports the transient's under-resolution beside it rather than
-asserting an order it does not have.
+**The mesh is set by cost, and the cost rises far faster here than the degree-of-freedom
+count.** Measured in cold processes, best of five after a warm-up, at ``\Delta t = 0.0125``:
+**2.08 s** per step at ``N = 147`` (``8 \times 16`` cubic), **7.51 s** at ``N = 223``
+(``10 \times 20``), **22.4 s** at ``N = 291`` (``12 \times 24``) and **674 s** at ``N = 515``
+(``16 \times 32``). The last is a factor 30 for ``1.77\times`` the degrees of freedom, because
+the ``O(N^3)`` Jacobian is ``N`` dense ``N \times N`` assemblies — a 1.1 GB working set against
+197 MB — and the pole rows break `KroneckerMass` besides. So ``12 \times 24`` is the mesh:
+``16 \times 32`` would be hours to days for one run. These are *transient* step costs, where
+Newton works hardest; a whole run averages well below them, the same ``12 \times 24`` mesh
+coming out at 7.7 s per step over 120 steps.
 
-**C2 does not reach `eq:gs-ref`, and that is a property of the state space rather than of any
-of these choices.** See [`GradShafranovDisk`](@ref) and `scripts/run_c2.jl`'s header.
+**C2 reaches `eq:gs-ref` in the `:dirichlet` state space and does not in the `:free` one, and
+that is a property of the space rather than of any of these choices.** See
+[`GradShafranovDisk`](@ref) and `scripts/run_c2.jl`'s header. The fast diagnostic is the mass,
+read the opposite way to intuition: it must **drift**, because conserving it means the constant
+is still in the space.
 """
 const SECTION55_RUNS = Dict(
     "c1" => GSSpec("c1", "5.5", gaussian_w2((4.0, 0.0), (0.5, 3.2), 1.0),
         (18, 21), 2, 0.0625, 25.0),
     "c2" => GSSpec("c2", "5.5", gaussian_w2((12.0, 0.0), (0.6, 6.0), 1.0),
-        (8, 16), 3, 0.0125, 5.0))
+        (12, 24), 3, 0.004, 1.5))
 
 "The Section 5.5 runs, in the order the manuscript presents them."
 const SECTION55_ORDER = ("c1", "c2")

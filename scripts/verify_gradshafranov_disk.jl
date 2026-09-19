@@ -23,6 +23,12 @@ using MetriplecticRelaxation
 using PoissonBrackets
 using SimpleSplines: UniformMesh, Dirichlet, (..)
 
+# Named rather than brought in by a bare `using`: `field`, `integrate` and the integrator are
+# what §6's relaxation control needs, and this repository's convention is an explicit list.
+using PoissonBrackets: field, Integrator, ImplicitMidpoint, integrate_step!
+using MetriplecticRelaxation: SECTION55_RUNS, gs_state, gs_flow, gs_fit, gs_ordinate,
+                              integrate
+
 Random.seed!(20260918)
 
 pass = Bool[]
@@ -240,6 +246,72 @@ say("")
 
 say("""  That degeneracy is energy conservation. `run_c2.jl` is the relaxation run itself; this
   script establishes the operators it is built from.""")
+say("")
+
+## ---------------------------------------------------------------------------------------
+say("6. the two state spaces, and why only a relaxation separates them")
+say("")
+
+# `verify_gradshafranov.jl` runs this control on the box. It has to be run on the disk too,
+# rather than inherited: the disk's `:dirichlet` space is reached by recombining the radial
+# axis of a POLAR basis, which is a different construction from the box's tensor-product
+# recombination, and the pole triangle sits inside it.
+#
+# THE EIGENVALUE CANNOT SEE THIS. The pencil (K^μ, B) carries no mass constraint, so its lowest
+# eigenvector is the μ = 0, c = 0 member in both spaces and the two eigenvalues agree to round-
+# off — measured below. What separates them is that the FLOW in the free space conserves the
+# mass and the momenta, and therefore cannot reach that member from an initial state whose mass
+# is nonzero. A short relaxation in each space is the only control that works.
+
+function multiplier_fit_disk(disk, ĵ)
+    wμ = quadrature_weights(disk.space) .* measure(disk.pb)
+    y = gs_ordinate(disk, ĵ)
+    ψ = field(disk.space, disk.Λ * ĵ, (0, 0))
+    x = nodes(disk.pb)                       # the PHYSICAL points, not the parameter ones
+    # The four members of the family: ψ, and the derivatives 1, r, z of the mass and momentum
+    # Casimirs. `extra` is the largest multiplier eq:gs-ref sets to zero, relative to the
+    # ordinate's own size.
+    B = [ψ ones(length(ψ)) [p[1] for p in x] [p[2] for p in x]]
+    θ = (B' * (wμ .* B)) \ (B' * (wμ .* y))
+    scale = sqrt(max(dot(wμ, y .^ 2) / sum(wμ), 0.0))
+    return (λfit = θ[1], extra = maximum(abs, θ[2:4]) / scale)
+end
+
+let rows = NamedTuple[], steps = 120, cells = (6, 12)
+    spec = SECTION55_RUNS["c2"]
+    for st in (:dirichlet, :free)
+        disk = GradShafranovDisk(cells, 3; state = st)
+        f = gs_flow(disk)
+        ĵ = gs_state(disk, spec)
+        m₀ = integrate(disk, ĵ)
+        integ = Integrator(f, ImplicitMidpoint(), spec.Δt; û₀ = copy(ĵ))
+        for _ in 1:steps
+            integrate_step!(ĵ, integ)
+        end
+        push!(rows,
+            (; state = st, N = nbasis(disk), λ = gs_eigenvalue(disk.space),
+                rel = gs_fit(disk, ĵ)[3], multiplier_fit_disk(disk, ĵ)...,
+                mass = (integrate(disk, ĵ) - m₀) / m₀))
+    end
+    @printf("  %d steps at Δt = %.4g, i.e. to t = %.4g, on %d × %d cells\n",
+        steps, spec.Δt, steps * spec.Δt, cells...)
+    for r in rows
+        @printf("  %-11s N = %4d   ‖σj − λψ‖/‖σj‖ = %.4e   |extra|/‖σj‖ = %.4e   Δmass %+.3e\n",
+            ":" * String(r.state), r.N, r.rel, r.extra, r.mass)
+    end
+    say("")
+    d, f = rows[1], rows[2]
+    record("the mass drifts in the Dirichlet space and is conserved in the free one",
+        abs(f.mass) < 1e-10 && abs(d.mass) > 0.1)
+    record("CONTROL the free space's relaxed state misses eq:gs-ref by orders more",
+        f.rel / d.rel > 50)
+    record("and it carries the extra multipliers the Dirichlet space cannot",
+        f.extra > 50 * d.extra)
+    record("both spaces have the SAME λ_h, so that is not what separates them",
+        abs(f.λ - d.λ) / d.λ < 1e-8)
+    @printf("    λ_h: :free %.12f   :dirichlet %.12f   relative %+.3e\n",
+        f.λ, d.λ, (f.λ - d.λ) / d.λ)
+end
 say("")
 
 ## ---------------------------------------------------------------------------------------
