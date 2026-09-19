@@ -19,6 +19,56 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the SimpleSolvers compat bound
+
+**`[compat] SimpleSolvers` goes from `"0.13"` to `"0.13, 0.14"`.** `PoissonBrackets` `main`
+already allows both, so nothing upstream blocked the bump.
+
+**The bound arrives on an ordinary topic branch, because a CompatHelper pull request cannot go
+green here, and this will not change.** `julia-runtest` leaves `force_latest_compatible_version`
+at `auto`, which becomes `true` on a CompatHelper pull request. `Pkg` then calls `maximum` over
+the registered versions of every direct dependency carrying a `[compat]` entry. `PoissonBrackets`
+and `SimpleSplines` are unregistered git sources, so that set is empty and `Pkg` throws
+`ArgumentError: reducing over an empty collection` before a single test runs — every row of the
+matrix, in under four minutes. The trigger is the pull request author, not the diff, so no edit
+to such a branch fixes it. **Every future CompatHelper pull request here will fail the same
+way**, and the bump it proposes has to be reapplied by hand, as this one was. PR #5 is what this
+entry replaces; PR #6 was closed as redundant, `main` having carried `SimpleSplines = "0.1, 0.2"`
+since 6268037.
+
+**The full suite passes under `--check-bounds=yes --depwarn=yes` on Julia 1.13.0 against
+SimpleSolvers 0.14.0**, with no failures and no deprecation warnings. It ran in the **root**
+environment, against these trees, which are current `main` for both git sources and are **not**
+the trees the `### Changed — the pinned dependency trees` entry below records:
+
+| package | tree | version |
+|:--|:--|:--|
+| `PoissonBrackets` | `75e4a5e6365f8a0efaa62e05f1462bcb32a9f640` | `0.1.0` |
+| `SimpleSplines` | `bdc133729f04e179d4ccf36cc7336051dd6596e9` | `0.2.0` |
+
+**No quoted number anywhere in this file was re-measured against SimpleSolvers 0.14.** That the
+suite passes is the whole of the evidence.
+
+**`scripts/Manifest.toml` is untouched, and no figure or number is therefore at risk.** The
+results environment is a second hand-seeded, gitignored manifest, and nothing in this change
+moves it. It pins `SimpleSolvers 0.13.3`, `PoissonBrackets 493052ea4b8e` and
+`SimpleSplines fa85fb1c1711`. That `PoissonBrackets` tree is **not** the one the entry below
+records as pinned by both manifests; the two environments have drifted apart, and this is the
+first entry to say so.
+
+**The bound widened here constrains nothing in this package.** No `.jl` file under `src/` or
+`test/` loads `SimpleSolvers`; the sole textual occurrence is a docstring in `scripts/runner.jl`
+naming `SimpleSolvers.NewtonSolver`, which 0.14.0 still exports. It reaches the numbers only
+through `PoissonBrackets`. The declared dependency is therefore stale, and removing it is a
+separate change, not made here.
+
+**`Pkg.update("SimpleSolvers")` does not refresh another package's `rev = "main"` pin**, and it
+cost a full test run to find out. `PoissonBrackets` stayed on `493052ea4b8e`, older than either
+tree recorded here, where `CollisionBracket` has no method taking a `PulledBack` — that form
+arrived with PoissonBrackets.jl#14 — and the C2 disk testset died with a `MethodError` at
+`src/gradshafranovdisk.jl:244`. That reads as a compat regression and is not one.
+`Pkg.update("PoissonBrackets")` is what moves it.
+
 ### Added
 
 - **`src/gradshafranovdisk.jl` — C2, the mapped disk, discretised.** §5.5's second geometry is
