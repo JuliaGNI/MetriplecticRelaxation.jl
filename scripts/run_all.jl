@@ -57,11 +57,12 @@ const SCRIPTS = String[
     #       280-step study of the step size itself -- some twenty minutes in all. Δt is small
     #       because it is set by ACCURACY here, unlike §5.4's, where it was set by cost.
     #
-    #       C2, the mapped disk, is cheaper: 400 steps at Δt = 0.0125 on 8×16 cubic cells run in
-    #       306 s -- ~2.1 s per step in the transient and well under one at the fixed point --
-    #       plus a 1400-step study of the step size, some half an hour in all. It does NOT
-    #       reproduce `eq:gs-ref`, and its own header says why; the number it is asserted
-    #       against is the equilibrium its state space has.
+    #       C2, the mapped disk, is the expensive one: 375 steps at Δt = 0.004 on 12×24 cubic
+    #       cells, ~22 s per step in the transient and far less at the fixed point, plus a
+    #       4375-step study of the step size on a coarser mesh at ~1.3 s per step. Well over an
+    #       hour in all, and the mesh is set by that cost -- 16×32 measures 674 s per step.
+    #       It reproduces `eq:gs-ref`; the state space is what decides that, and its own header
+    #       says why.
     "run_c1.jl",
     "run_c2.jl",
     # The figures, last, because they read what the runs wrote.

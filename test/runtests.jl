@@ -967,14 +967,26 @@ end
         @test GS_LAMBDA_DISK > GS_LAMBDA_DISK_CONTINUUM
     end
 
-    @testset "$(rpad("C2's flow runs on the map: H, S and the MASS Casimir", 76))" begin
-        # The mesh is coarse on purpose — the run itself is 8×16, and what is under test here is
+    @testset "$(rpad("C2's flow runs on the map: H, S and the MASS Casimir", 76))" for state in (:dirichlet,
+        :free)
+        # The mesh is coarse on purpose — the run itself is 12×24, and what is under test here is
         # the mapped-domain path rather than the run's numbers.
+        #
+        # Both state spaces are run, because the mass Casimir is the one thing they disagree
+        # about and a test of one of them says nothing about the other. Everything else — the
+        # degeneracy, symmetry, semidefiniteness, energy, entropy, the Poincaré floor — must
+        # hold in both, and does.
         spec = SECTION55_RUNS["c2"]
-        disk = GradShafranovDisk((6, 12), 3)
+        disk = GradShafranovDisk((6, 12), 3; state = state)
         f = gs_flow(disk)
         ĵ = gs_state(disk, spec)
         λh = gs_eigenvalue(disk.space)
+
+        # λ_h does not depend on the state space: the pencil (K^μ, B) carries no mass
+        # constraint, so both spaces give the same lowest eigenvalue. That is exactly why an
+        # eigenvalue check cannot see the difference this testset is about.
+        @test λh ≈ gs_eigenvalue(GradShafranovDisk((6, 12), 3;
+            state = state === :dirichlet ? :free : :dirichlet).space)
         # The degeneracy is asked against the flow's own ∂H/∂ĵ = 𝕄Λĵ, which carries the PHYSICAL
         # mass. A bracket built on the parameter frame misses this by twelve orders of magnitude;
         # `verify_gradshafranov_disk.jl` §4 measures both controls.
@@ -994,10 +1006,20 @@ end
             @test Snew > λh * H₀                 # the Poincaré floor
             S = Snew
             @test abs(hamiltonian(f, ĵ) - H₀) / abs(H₀) < 1e-12
-            # The state space is the FULL polar space, so the bracket keeps its mass Casimir and
-            # ∫j dx is conserved. This is the diagnostic that separates the two spaces: it drifts
-            # in C1's Dirichlet space, and it is why the disk relaxes to the free equilibrium.
-            @test abs(integrate(disk, ĵ) - m₀) / abs(m₀) < 1e-12
+        end
+
+        # The mass is the diagnostic that separates the two spaces, and the assertion inverts
+        # with them. `:free` keeps the whole polar space, which contains the constant exactly by
+        # the partition of unity the pole triangle preserves, so the bracket's mass Casimir
+        # survives and ∫j dx is conserved. `:dirichlet` removes the constant with the rim row,
+        # so it must **drift** — and that drift is the positive control that the constant has
+        # actually left the space, without which "the run reaches eq:gs-ref" would be consistent
+        # with the rim condition having done nothing.
+        drift = abs(integrate(disk, ĵ) - m₀) / abs(m₀)
+        if state === :free
+            @test drift < 1e-12
+        else
+            @test drift > 1e-3
         end
     end
 end
