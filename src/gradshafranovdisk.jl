@@ -78,7 +78,6 @@ struct GradShafranovDisk{T, ST <: PolarSplineSpace{T}, MT, PT}
     MΛ::Matrix{T}
     W::Matrix{T}
     b::Vector{T}
-    interior::Vector{Int}
     pb::PT
     state::Symbol
 end
@@ -110,14 +109,13 @@ function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3;
 
     # Λ maps the current ĵ to the potential ψ̂, solving −Δ*ψ = j with ψ = 0 on the rim. In the
     # `:dirichlet` space every basis function already vanishes there, so the solve is over the
-    # whole space and `keep` is every index — it stays in the struct because the diagnostics
-    # and `show` read it, and because it is what the two branches disagree about.
-    keep = state === :dirichlet ? collect(1:nbasis(s)) : disk_interior(s)
+    # whole space and there is nothing to drop. That is the one place the two branches disagree.
     Λ = if state === :dirichlet
         cholesky(Symmetric(Matrix(Kμ))) \ Matrix(M)
     else
         # The interior embedding, and the factorisation is of the interior block: that is where
         # the condition lives, and outside it Λ is zero, which is the condition itself.
+        keep = disk_interior(s)
         E = sparse(1:length(keep), keep, ones(length(keep)), length(keep), nbasis(s))'
         E * (cholesky(Symmetric(Matrix(E' * Kμ * E))) \ Matrix(E' * M))
     end
@@ -136,7 +134,7 @@ function GradShafranovDisk(cells::Tuple{Int, Int}, degree::Int = 3;
     # it to `CollisionBracket`, which reads the frame `J⁻ᵀ` and the volume element from it as
     # well. Rebuilding it there would be a second object that could disagree with this one.
     GradShafranovDisk(s, Matrix(Λ), M, Matrix((A .+ A') ./ 2), (W .+ W') ./ 2,
-        Vector{Float64}(M * ones(nbasis(s))), keep, pbμ, state)
+        Vector{Float64}(M * ones(nbasis(s))), pbμ, state)
 end
 
 function GradShafranovDisk(cells::Int, degree::Int = 3; kwargs...)

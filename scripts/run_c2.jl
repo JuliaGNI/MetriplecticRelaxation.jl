@@ -317,13 +317,17 @@ let wμ = quadrature_weights(space(disk)) .* measure(disk.pb), x = nodes(disk.pb
         function rel(cols)
             A = reduce(hcat, cols)
             c = (W * A) \ (W * y)
-            (sqrt(dot(wμ, (y .- A * c) .^ 2)) / nrm, c)
+            # Third return: the part of the fit the MULTIPLIERS carry, in the same weighted norm
+            # and against the same `nrm` as the residual, so the two are directly comparable.
+            # The one-parameter fit has no such columns and this is zero there.
+            (sqrt(dot(wμ, (y .- A * c) .^ 2)) / nrm, c,
+                sqrt(dot(wμ, (A[:, 2:end] * c[2:end]) .^ 2)) / nrm)
         end
         (rel([ψ]), rel([ψ, one_]), rel([ψ, one_, [q[1] for q in x], [q[2] for q in x]]))
     end
 
-    ((r1₀, _), _, (r4₀, _)) = fits(tr.initial)
-    ((r1, c1), (r2, _), (r4, c4)) = fits(tr.final)
+    ((r1₀, _, _), _, (r4₀, _, _)) = fits(tr.initial)
+    ((r1, c1, _), (r2, _, _), (r4, c4, m4)) = fits(tr.final)
 
     # THE CLAIM. `eq:gs-ref` itself, on one parameter. `r1` IS the L² projection error of the
     # continuum equilibrium onto this space, so there is no tighter bound to assert it against:
@@ -350,10 +354,19 @@ let wμ = quadrature_weights(space(disk)) .* measure(disk.pb), x = nodes(disk.pb
         @sprintf("λψ only %.4e   λψ+μ %.4e   λψ+μ+c·x %.4e   ratio %.2f×   (free space: 2561×)",
             r1, r2, r4, r1 / r4))
 
+    # `m4` is the multiplier part of the four-parameter fit as a fraction of the ordinate, which
+    # is what "at the floor" has to mean: it covers μ AND both components of c, and it is
+    # dimensionless in the same way `r1` is. THE BOUND IS ABSOLUTE AND NOT WRITTEN AGAINST `r1`,
+    # which is the one thing that looks natural here and is wrong. `m4` is set by the solver
+    # tolerance, not by the mesh, and does not refine away: measured on :dirichlet it is
+    # 7.75e-06 at 6×12 and 7.94e-06 at 8×16, a 2 % spread, while `r1` falls by 4.86 over the same
+    # refinement. So `m4/r1` GROWS — 0.026 to 0.129 between those meshes, and about 0.6 at this
+    # run's 12×24 — and a bound against `r1` would tighten itself towards failure every time the
+    # mesh improved. `1e-4` is 13× the measurement, and it is a statement about the solver.
     check("and the multipliers themselves are at the floor",
-        abs(c4[2]) / r1 < 1e3,
-        @sprintf("μ = %+.4e   c = (%+.3e, %+.3e)   against a residual of %.4e",
-            c4[2], c4[3], c4[4], r1))
+        m4 < 1e-4,
+        @sprintf("‖μ + c·x‖/‖σj‖ = %.4e   μ = %+.4e   c = (%+.3e, %+.3e)   residual %.4e",
+            m4, c4[2], c4[3], c4[4], r1))
 
     check("CONTROL at t = 0 the same extra parameters buy almost nothing either",
         r1₀ / r4₀ < 2.0,

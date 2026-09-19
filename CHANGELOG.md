@@ -155,7 +155,7 @@ arrived with PoissonBrackets.jl#14 — and the C2 disk testset died with a `Meth
   **674 s at N = 515 (16×32)** — a factor 30 for 1.77× the degrees of freedom, the O(N³) Jacobian
   taking the working set from 197 MB to 1.1 GB. So 12×24 is the mesh; 16×32 is hours to days.
 
-  **Two thresholds changed, and both are recorded rather than quietly adjusted.**
+  **Three thresholds changed, and all three are recorded rather than quietly adjusted.**
 
   The Δt-independence check moved from t = 2.5 to t = 0.75 and back. At t = 0.75 the successive
   differences are in ratio 3.84 — the state is still *converging* at second order, so the check
@@ -174,6 +174,18 @@ arrived with PoissonBrackets.jl#14 — and the C2 disk testset died with a `Meth
   The `√n` form was never near-binding before, the previous 8×16 run sitting at 0.02 steps'
   worth, so this is the first run that tested it. **This is a change of model after it failed,
   and it deserves review.**
+
+  The multiplier floor check in `run_c2.jl` §3 asserted `|μ|/r1 < 1e3`, which compared an
+  unnormalised fit coefficient against a relative residual — different units, so the bound had no
+  content, and it passed with about `3e5` of headroom while `c` was printed but never asserted at
+  all. It now asserts `‖μ + c·x‖/‖σj‖ < 1e-4`, the multiplier part of the four-parameter fit in
+  the same weighted norm as `r1`, which covers all three multipliers at once. **The bound is
+  deliberately absolute rather than written against `r1`.** Measured on the `:dirichlet` space,
+  that quantity is `7.75e-06` at 6×12 and `7.94e-06` at 8×16 — mesh-INDEPENDENT to 2 %, because
+  what sets it is the solver tolerance and not the discretisation — while `r1` falls by 4.86 over
+  the same refinement. So the ratio `‖μ + c·x‖/r1` *grows*, from `0.026` to `0.129` between those
+  two meshes and to roughly `0.6` at this run's 12×24, and a bound against `r1` would tighten
+  itself towards failure every time the mesh improved. `1e-4` is 13× the measurement.
 
   `scripts/verify_gradshafranov_disk.jl` gains §5, which relaxes both spaces as the control the
   box already has. Its step count follows the run's own `T` rather than being a number: at a
@@ -197,6 +209,11 @@ arrived with PoissonBrackets.jl#14 — and the C2 disk testset died with a `Meth
   `GradShafranovDisk` keeps the `PulledBack` object in field `pb` rather than unpacking it to
   `μ` and `x`, because the bracket needs the frame and volume element too. Three call sites
   now read `measure(disk.pb)` and `nodes(disk.pb)` instead of `disk.μ` and `disk.x`.
+
+  The struct also **loses its `interior` field**. `show` was its only reader, and `show` now
+  prints `state=` instead, which determines the interior indices completely. The indices are
+  still computed where they are used — inside the `:free` branch of the constructor, which is
+  the one place the two state spaces differ.
 
   **New `const GradShafranovSolver = Union{GradShafranovBox, GradShafranovDisk}`.** The four
   `Diagnostics` methods reading only `Λ`, `W`, `M`, `b` and the space were widened to it
