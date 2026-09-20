@@ -25,8 +25,8 @@
 
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION4_RUNS, euler_entropy_minimum, spline_grid,
-                              energy_error, entropy_monotone, best_fit_euler, fit_rate,
-                              l2norm, cone_residual, scatter_data
+                              energy_error, entropy_monotone, best_fit_euler,
+                              l2norm, scatter_data
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
