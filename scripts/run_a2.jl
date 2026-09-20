@@ -146,12 +146,28 @@ let ω̂g = spline_grid(ts, trt.final, opts.spectral)
     check("the two final states agree", e < 5e-4, @sprintf("max rel %.3e   (tol 5e-04)", e))
 end
 
+# `5e-6` is eight times the worst of the three rows below, which is `S(T)` at 6.21e-07;
+# `H₀` gives 5.31e-08 and `S(0)` 2.78e-08. These are scalar diagnostics of two discretisations
+# of the same problem at one resolution, so the difference is the coarser method's truncation
+# error and there is no law to set the constant against -- it is a multiple of what 64 cubic
+# cells against a 256² spectral grid actually delivers, and refining either space is what moves
+# it. The bound this replaces was `5e-3`, EIGHT THOUSAND times the measurement, which no
+# degradation a reviewer would care about could reach. Measured at 24 cells instead of 64, the
+# three rows move to 4.96e-05, 1.93e-04 and 4.08e-04 — every one of them PASSING the old `5e-3`
+# and FAILING this. So the old bound would have accepted a run at a third of the resolution
+# without comment.
+#
+# It is deliberately ten times looser than the `5e-7` A3 asserts on these same three quantities
+# (`projector_run.jl`'s `rtol`), for the reason the comment above gives: A2's double bracket
+# relaxes INCOMPLETELY, so the two discretisations are left disagreeing at their own truncation
+# error rather than at their agreement on `H₀`. The multiple is the same size as the ones that
+# block already uses -- 7.0x to 9.4x.
 for (name, a, b) in (("H₀", trt.H[1], trg.H[1]),
     ("S(0)", trt.S[1], trg.S[1]),
     ("S(T)", trt.S[end], trg.S[end]))
     rel = abs(a - b) / abs(b)
-    check(@sprintf("%-6s agrees", name), rel < 5e-3,
-        @sprintf("%.12e vs %.12e   rel %.2e", a, b, rel))
+    check(@sprintf("%-6s agrees", name), rel < 5e-6,
+        @sprintf("%.12e vs %.12e   rel %.2e   (tol 5e-06)", a, b, rel))
 end
 
 # =============================================================================================

@@ -304,11 +304,34 @@ function projector_checks(res, spec, opts; label = "")
 
     # -----------------------------------------------------------------------------------------
     header("$(tag)6. the relaxed state lies on 𝔠_η")
+    # `3e-4` is nine times the worst of the six rows this loop produces across A3 and A4, which
+    # is A3 at 3.33e-05 in both discretisations; A4 gives 1.82e-05 and its periodised reading
+    # 1.80e-05. The residual is how far the relaxed state sits from the family
+    # `eq:u-eta_Euler_periodic`, which at finite `T` is the truncation error of the space plus
+    # whatever relaxation has not finished. Neither has a law attached, so the constant is a
+    # multiple of what 64 cubic cells at this `T` actually deliver, and refining the space or
+    # running longer is what moves it.
+    #
+    # The bound this replaces was `5e-2`, FIFTEEN HUNDRED times the measurement -- and what it
+    # was wide enough to accept is the thing this row exists to reject.
+    #
+    # A MESH DEGRADATION DOES NOT TEST THIS ROW, which is worth knowing before anyone reaches for
+    # one. At 24 cells instead of 64 the residual is 3.33168e-05 against 3.33164e-05, identical
+    # to five digits: it is not set by the spatial resolution. It is set by how far the
+    # relaxation has got at `T`, so the degradation that tests it is a SHORTER RUN. Measured on
+    # A3's own space, stepping its own trajectory and fitting at each fraction of `T`:
+    #
+    #     t/T      0.02       0.05       0.10       0.25       0.50       1.00
+    #     rel      8.37e-01   6.55e-01   3.72e-01   6.45e-02   4.96e-03   3.33e-05
+    #
+    # At half its relaxation A3 sits at 4.96e-03 -- 149x the converged residual, PASSING the old
+    # `5e-2` and FAILING this. The old bound would have accepted a run stopped halfway and called
+    # it a member of the family.
     for (nm, r) in both
         (_, resid, _) = best_fit_euler(r.diag, r.trace.final, r.trace.H[1])
         rel = resid / l2norm(r.solver, r.trace.final)
         check(@sprintf("%s%-8s ω(T) is a member of eq:u-eta_Euler_periodic", tag, nm),
-            rel < 5e-2, @sprintf("‖ω(T) - fit‖/‖ω(T)‖ = %.5e", rel))
+            rel < 3e-4, @sprintf("‖ω(T) - fit‖/‖ω(T)‖ = %.5e   (tol 3e-04)", rel))
     end
 
     # -----------------------------------------------------------------------------------------
