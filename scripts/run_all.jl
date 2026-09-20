@@ -38,6 +38,9 @@ const SCRIPTS = String[
     # it is minutes rather than seconds.
     "verify_takeda.jl",
     "verify_gradshafranov.jl",
+    # And the resampling §5.5's field maps are drawn on, after the space it resamples from is
+    # settled and before `figures.jl` draws with it. Seconds, like its §5.4 counterpart.
+    "verify_gradshafranov_grid.jl",
     # The refinement study behind the deliberate deviation: the spline discretisation must converge
     # to the manuscript's spectral one, at the order the spline space has.
     "converge.jl",

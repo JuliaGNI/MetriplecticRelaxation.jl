@@ -90,6 +90,75 @@ than a judgement: `verify_spline.jl` parses no arguments at all — it has no `p
 knob to turn short of editing the script. It is also moot at a `1.17×` margin, where any
 degradation reddens the row.
 
+### Added — §5.5's field maps, and the resampling behind them
+
+**`results/c1_fields.png` now exists** — the `gsr_*` field maps, in the manuscript's own figure
+numbering for §5.5; this repository names its outputs after the run. `scripts/figures.jl` drew
+§5.5 as traces and scatter
+only; §5.4's maps have existed since the B runs. The new panels are the third figure the
+manuscript prints for this section and the visual form of its equilibrium claim.
+
+**The colour field is `u/(Cr²+D)` and not the state, because the manuscript says so** — *"Instead
+of plotting the state variable `u` directly, the color plot represents the field `u/(Cr²+D)`,
+which should be proportional to `ψ` if the system reaches a state consistent with"* `eq:gs-ref`.
+That is not a presentation choice. `σ(r) = r/(Cr²+D)` depends on `r` alone, so the contours of
+`u` are **not** the contours of `ψ` even at the exact equilibrium, and a map of `u` would not show
+the claim it exists to show. The overlay is `ψ = Λj`, `eq:gs-ref`'s right-hand side, which is
+§5.4's `sq.Λ * tr.final` in the other geometry.
+
+**`gs_axes`, `gs_grid` and `gs_ordinate_grid` in `src/gradshafranov.jl`, and `euler_grid` is NOT
+widened to cover this case.** `euler_grid` is typed on `EulerSquare`, takes one `N` for both axes
+and samples `[0,1]`. This domain is `[1,7]×[-9.5,9.5]` with a measure `dμ = dr dz/r`, so it gets
+its own axes and its own two sample counts. A resampler that silently accepted either geometry is
+how the `1/r` weight goes missing from one of the three places it has to appear.
+`SECTION55_SAMPLES = (61, 191)` makes the two spacings exactly equal — `6/60 = 19/190 = 0.1` —
+and both counts are odd, which puts a sample on C1's Gaussian centre `(4, 0)` rather than
+straddling it.
+
+**`scripts/verify_gradshafranov_grid.jl`, 20 checks, registered in `run_all.jl`.** It is
+`verify_euler_grid.jl`'s shape — exactness with a control that must fail, Dirichlet edges at zero
+with the `:free` space as the control that must fail, and a two-sided index check — with the
+measure carried through: the independent statement about the domain integrates the resampled
+field with the trapezoidal rule **in `dμ`** and matches the space's own quadrature to
+`8.379e-06`. `σ` gets a section of its own, because applying it to the wrong index is not a shape
+error: the ratio of the two grids is constant along `z` to `2.2e-16`, equals `σ(r_i)` to
+`1.1e-16`, and `σ` itself varies by a factor `5.286` over `[1,7]`, without which the first two
+rows would be vacuous.
+
+**The script was checked by breaking the resampler, not by reading it.** With `gs_grid` evaluating
+at `(z_j, r_i)` instead of `(r_i, z_j)`, it reports **9 failures across five of its six sections**
+and exits 1 — the `dμ` integral, both exactness rows, the Dirichlet edges, the index rows, both
+refinement rates, and both `σ` rows. A verification script that only fails in the section written
+for the defect is a script whose other sections are decoration.
+
+**Two findings the §5.4 script's rules did not survive being carried over.**
+
+- **The transposed-grid control has to be moved off C1's own centre.** C1's Gaussian sits at
+  `(4, 0)`, the midpoint of **both** intervals, so on equal node counts it lands on the same index
+  on both axes and a transposition leaves the peak exactly where it found it. Measured there, the
+  transposed error is `0.1541` against a peak of `1` — the discrepancy is pushed to the shoulders
+  — and the row asserting it is order one **failed**. At `(3, 2)` the two centres fall on
+  different indices, the transposition displaces the bump bodily, and the transposed error reaches
+  the peak exactly: `0.8249` against `0.8249`, and `965×` the direct error against `148×` before.
+  A looser bound would have hidden a control that had stopped controlling.
+- **The colour-map rule needs a tolerance here and needs none in §5.4.** §5.4 tests
+  `lo < 0 && hi > 0` exactly, and may, because its minimum is the Dirichlet edge and therefore
+  exactly `0.0`. C1's minimum is the undershoot of a projected Gaussian's tail: measured
+  `lo = -3.34e-08` against `hi = 1.05e-01`. Both halves of that test are **true**, so §5.4's rule
+  picks the diverging map and white lands at `0.053` where a reader takes it for zero — the exact
+  failure §5.4's own comment describes, arriving through round-off rather than through a
+  single-signed field. The rule is now the fraction of the range the weaker sign occupies, against
+  1 %. No margin is being chosen: C1 measures `3.2e-07`, five orders below, and §5.4's B2 — the one
+  run that genuinely straddles — measures `0.9986517`, two orders above. Nothing lies between, and
+  the two rules agree on all four runs as they stand today: B1 and B3 give `lo` exactly `0.0`.
+
+**`figure_fields` gains `xlabel` and `ylabel`, defaulting to §4's and §5.4's names.** §5.5 passes
+`r` and `z`. A panel over `[1,7]×[-9.5,9.5]` labelled `x₁` and `x₂` reads as a square domain drawn
+badly. No existing call changes.
+
+**C2's maps stay out of scope.** C2 relaxes on a `GradShafranovDisk` and not on a box, so the
+figure loop gates the panels on C1; `gsc_*` belongs with a C2 figure pass.
+
 ### Changed — the SimpleSolvers compat bound
 
 **`[compat] SimpleSolvers` goes from `"0.13"` to `"0.13, 0.14"`.** `PoissonBrackets` `main`
