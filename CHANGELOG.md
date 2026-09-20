@@ -72,9 +72,11 @@ suppresses **every** finding on that statement, not only the first line; and
 reports itself rather than rotting.
 
 **`run_all.jl`'s `exit(main(ARGS))` stays, suppressed with its reason.** The rule says to let
-the caller decide when the process ends. This file is only ever a process — the hooks and CI
-read its status, and `main` returns 1 when a driver failed — so returning that number instead
-would make a failed sweep exit 0. The finding had moved to `:112`, from the `:105` and `:101`
+the caller decide when the process ends. This file is only ever a process — `README.md` documents
+it as `julia --project=scripts scripts/run_all.jl`, and its exit status is the verdict on the
+sweep — so returning `main`'s 1 to an interactive caller instead would make a failed sweep exit 0.
+Neither the hooks nor CI invoke it: `.githooks/pre-push` runs the test suite, and `CI.yml` never
+names `scripts/`. The finding had moved to `:112`, from the `:105` and `:101`
 earlier records name; the two verification scripts added on 2026-09-20 are what moved it.
 
 ### Changed — two assertion thresholds, each set from a re-measurement

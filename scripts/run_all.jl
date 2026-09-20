@@ -110,7 +110,8 @@ function main(args)
 end
 
 # `exit` is what this file is for, so the rule does not apply. `run_all.jl` is only ever a
-# process: the pre-push hook and CI read its status, and `main` returns 1 when a driver failed.
-# Returning that number to an interactive caller instead would make a failed sweep exit 0.
+# process: it is run as `julia --project=scripts scripts/run_all.jl` and its exit status is the
+# verdict on the sweep. `main` returns 1 when a driver failed, and returning that number to an
+# interactive caller instead would make a failed sweep exit 0.
 # fatou-ignore discouraged-function
 exit(main(ARGS))

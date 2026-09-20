@@ -20,11 +20,11 @@ using SparseArrays
 # `fatou lint`'s `unused-import` rule reads one file at a time and does not follow `include`, so
 # in a Julia package it flags exactly the module file's load-bearing imports. The tool that does
 # answer the question is ExplicitImports.jl, which loads the module and analyses real bindings;
-# run through `Environment/Harness/githooks/explicit-imports.jl` it reports `ok stale explicit
-# imports` here, so not one of the 37 names is stale. The suppression is per statement rather
-# than a `fatou.toml` rule switch, because the rule is right about `scripts/` and turning it off
-# repository-wide would lose that. Fatou checks its own suppressions: `outdated-suppression`
-# fires as soon as one of these stops being needed, so it cannot rot unnoticed.
+# run over this package it reports no stale explicit import, so not one of the 37 names is
+# stale. The suppression is per statement rather than a `fatou.toml` rule switch, because the
+# rule is right about `scripts/` and turning it off repository-wide would lose that. Fatou
+# checks its own suppressions: `outdated-suppression` fires as soon as one of these stops being
+# needed, so it cannot rot unnoticed.
 using PoissonBrackets
 # fatou-ignore unused-import
 using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
