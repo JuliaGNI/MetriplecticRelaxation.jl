@@ -307,10 +307,10 @@ function projector_checks(res, spec, opts; label = "")
     # `3e-4` is nine times the worst of the six rows this loop produces across A3 and A4, which
     # is A3 at 3.33e-05 in both discretisations; A4 gives 1.82e-05 and its periodised reading
     # 1.80e-05. The residual is how far the relaxed state sits from the family
-    # `eq:u-eta_Euler_periodic`, which at finite `T` is the truncation error of the space plus
-    # whatever relaxation has not finished. Neither has a law attached, so the constant is a
-    # multiple of what 64 cubic cells at this `T` actually deliver, and refining the space or
-    # running longer is what moves it.
+    # `eq:u-eta_Euler_periodic`, which at finite `T` is whatever relaxation has not finished. No
+    # law attaches to that, so the constant is a multiple of what A3's own run at this `T`
+    # actually delivers, and what moves it is running longer -- NOT the mesh, which the next
+    # paragraph measures rather than assumes.
     #
     # A MESH DEGRADATION DOES NOT TEST THIS ROW, which is worth knowing before anyone reaches for
     # one. At 24 cells instead of 64 the residual is 3.33168e-05 against 3.33164e-05, identical
@@ -323,11 +323,15 @@ function projector_checks(res, spec, opts; label = "")
     #
     # At half its relaxation A3 sits at 4.96e-03, 149x the converged residual, which FAILS this
     # bound: a run stopped halfway is not accepted as a member of the family.
+    # One literal, interpolated into the detail, which is the form this file already uses at
+    # `etol` and `rtol` below: writing the tolerance twice per row lets the printed one drift
+    # away from the asserted one, and the printed one is what a reader believes.
+    mtol = 3e-4
     for (nm, r) in both
         (_, resid, _) = best_fit_euler(r.diag, r.trace.final, r.trace.H[1])
         rel = resid / l2norm(r.solver, r.trace.final)
         check(@sprintf("%s%-8s ω(T) is a member of eq:u-eta_Euler_periodic", tag, nm),
-            rel < 3e-4, @sprintf("‖ω(T) - fit‖/‖ω(T)‖ = %.5e   (tol 3e-04)", rel))
+            rel < mtol, @sprintf("‖ω(T) - fit‖/‖ω(T)‖ = %.5e   (tol %.0e)", rel, mtol))
     end
 
     # -----------------------------------------------------------------------------------------

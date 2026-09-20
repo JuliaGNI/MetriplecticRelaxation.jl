@@ -27,6 +27,10 @@ const SCRIPTS = String[
     "verify_projector_rates.jl",
     "verify_euler.jl",
     "verify_euler_grid.jl",
+    # The control behind §4.2's 𝔠_η membership bound: an under-relaxed state must be rejected by
+    # it. Minutes rather than seconds — it steps A3 to half its final time — and the only one
+    # here that is a statement about a TOLERANCE rather than about the mathematics.
+    "verify_projector_tolerance.jl",
     # §5.5's reference eigenvalue, before anything that compares a run against it: the whole
     # point of `takeda.jl` is that λ = 0.030302 comes from a computation the relaxation has no
     # part in, so its verification runs before the relaxation is built. `verify_gradshafranov.jl`

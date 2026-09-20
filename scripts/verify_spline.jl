@@ -196,7 +196,7 @@ let Ns = 64, tf = SplineTorus(64, 3), g = SpectralTorus(Ns)
         # 1.8, so the formula as printed is discontinuous on T² by 0.153, and the two methods
         # resolve that jump differently. See `Gaussian`.
         #
-        # `5e-3` for A1-A3 is eight times their worst, A1 at 6.44e-04; A2 and A3 both give
+        # `5e-3` for A1-A3 is 7.8 times their worst, A1 at 6.44e-04; A2 and A3 both give
         # 2.54e-04. A4's `1e-1` is NOT a multiple of anything: measured 6.93e-02, it is a 1.44x
         # margin, and that is the same fragility the vector-field row below carries at 1.17x --
         # not a loose bound but a tight one nobody has justified. The bound is kept by an explicit

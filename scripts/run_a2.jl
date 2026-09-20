@@ -160,12 +160,14 @@ end
 # relaxes INCOMPLETELY, so the two discretisations are left disagreeing at their own truncation
 # error rather than at their agreement on `H₀`. The multiple is the same size as the ones that
 # block already uses -- 7.0x to 9.4x.
-for (name, a, b) in (("H₀", trt.H[1], trg.H[1]),
-    ("S(0)", trt.S[1], trg.S[1]),
-    ("S(T)", trt.S[end], trg.S[end]))
-    rel = abs(a - b) / abs(b)
-    check(@sprintf("%-6s agrees", name), rel < 5e-6,
-        @sprintf("%.12e vs %.12e   rel %.2e   (tol 5e-06)", a, b, rel))
+let rtol = 5e-6
+    for (name, a, b) in (("H₀", trt.H[1], trg.H[1]),
+        ("S(0)", trt.S[1], trg.S[1]),
+        ("S(T)", trt.S[end], trg.S[end]))
+        rel = abs(a - b) / abs(b)
+        check(@sprintf("%-6s agrees", name), rel < rtol,
+            @sprintf("%.12e vs %.12e   rel %.2e   (tol %.0e)", a, b, rel, rtol))
+    end
 end
 
 # =============================================================================================

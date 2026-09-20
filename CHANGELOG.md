@@ -27,6 +27,12 @@ rows in `verify_spline.jl` are the defect of the *opposite* kind — too tight r
 — and are treated separately below; both were named at the time, one by the same sweep and one by
 the review of PR #4.
 
+**This does not close the class.** Three more rows assert a spline-against-spectral agreement with
+no comment and no recorded measurement beside them: `run_a1.jl:243` (`1e-3`) and `:245` (`5e-2`),
+and `verify_diagnostics.jl:204-206`, whose `5e-3`/`5e-2` switches on the run without saying why.
+None was measured here and none is touched. They are named so that the next pass has a list rather
+than a sweep.
+
 **`scripts/run_a2.jl`, the `H₀`/`S(0)`/`S(T)` agreement: `5e-3` → `5e-6`.** Re-measured, the three
 rows give `5.31e-08`, `2.78e-08` and `6.21e-07`, so the old bound sat **eight thousand times**
 above the worst of them. There is no law here — these are scalar diagnostics of two
@@ -40,7 +46,7 @@ the six rows this loop produces, the worst is A3 at `3.33e-05` in both discretis
 `1.82e-05` and its periodised reading `1.80e-05`. The old bound was **fifteen hundred times** the
 measurement. The new one is `9.0×`.
 
-**A mesh degradation does not test that second row, and finding that out is the useful part.** The
+**A mesh degradation does not test that second row.** The
 obvious control — re-run coarser and see whether the row notices — was run, and the residual did
 not move: `3.33168e-05` at 24 cells against `3.33164e-05` at 64, identical to five digits. It is
 not set by the spatial resolution. It is set by how far the relaxation has got at `T`, so the
@@ -52,7 +58,14 @@ space:
 | `‖ω(T) − fit‖/‖ω(T)‖` | 8.37e-01 | 6.55e-01 | 3.72e-01 | 6.45e-02 | 4.96e-03 | 3.33e-05 |
 
 At half its relaxation A3 sits at `4.96e-03`, which is 149 times the converged residual — **passing
-the old `5e-2` and failing the new `3e-4`**. The old bound would have accepted a run stopped
+the old `5e-2` and failing the new `3e-4`**.
+
+**That control is now a script rather than a scratch file.** `scripts/verify_projector_tolerance.jl`
+steps A3 to `T/2` on its own space, asserts the residual falls monotonically, asserts the
+under-relaxed state is rejected by the bound and by more than a factor of ten, and asserts the run
+is genuinely relaxing rather than stalled. It is registered in `run_all.jl`. A published number
+whose check lives in a scratch directory is an unverified number, and five of the six columns above
+had no other witness. The old bound would have accepted a run stopped
 halfway and called its state a member of the family. The general point is that a degraded run only
 tests a tolerance if the degradation moves the quantity the tolerance bounds, and which degradation
 does that is a question about the quantity rather than about the run.
@@ -75,7 +88,7 @@ established as correct. Nothing here establishes it.
 than a judgement: `verify_spline.jl` parses no arguments at all — it has no `parse_options` and no
 `opts` — and every space in it is a literal, section 6's being `SplineTorus(64, 3)`. So there is no
 knob to turn short of editing the script. It is also moot at a `1.17×` margin, where any
-degradation reddens the row. Reported rather than worked around.
+degradation reddens the row.
 
 ### Changed — the SimpleSolvers compat bound
 
