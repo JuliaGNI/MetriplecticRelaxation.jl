@@ -15,7 +15,18 @@ using SparseArrays
 # a rename upstream breaks this package silently. It is non-public in SimpleSplines too, so
 # there is nowhere public to take it from and the fix belongs upstream, not here — an `export`
 # or a `public` declaration on whichever of the two owns it.
+#
+# The three `# fatou-ignore unused-import` lines below suppress 37 findings, all false.
+# `fatou lint`'s `unused-import` rule reads one file at a time and does not follow `include`, so
+# in a Julia package it flags exactly the module file's load-bearing imports. The tool that does
+# answer the question is ExplicitImports.jl, which loads the module and analyses real bindings;
+# run through `Environment/Harness/githooks/explicit-imports.jl` it reports `ok stale explicit
+# imports` here, so not one of the 37 names is stale. The suppression is per statement rather
+# than a `fatou.toml` rule switch, because the rule is right about `scripts/` and turning it off
+# repository-wide would lose that. Fatou checks its own suppressions: `outdated-suppression`
+# fires as soon as one of these stops being needed, so it cannot rot unnoticed.
 using PoissonBrackets
+# fatou-ignore unused-import
 using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
                        DoubleBracket, ProjectorBracket, CollisionBracket, MetriplecticFlow,
                        QuadraticHamiltonian,
@@ -28,6 +39,7 @@ using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
 # SimpleSplines' assembly interface but neither of these: `TensorSplineSpace(n, p, bc)`
 # dispatches on the condition type, and `recombination_matrix` is what expresses a
 # homogeneous-Dirichlet basis function in the clamped one — see `EulerSquare`.
+# fatou-ignore unused-import
 using SimpleSplines: Dirichlet, Free, BSplineBasis, PeriodicBSplineBasis,
                      RecombinedBSplineBasis, UniformMesh, recombination_matrix, bases,
                      boundary
@@ -36,6 +48,7 @@ using SimpleSplines: Dirichlet, Free, BSplineBasis, PeriodicBSplineBasis,
 # of the objects these generic functions already name, so they get methods rather than
 # same-named functions of their own — otherwise `canonical_bracket` would mean one thing on a
 # `TorusGrid` and an unrelated thing on a `SpectralTorus`, with no dispatch between them.
+# fatou-ignore unused-import
 import PoissonBrackets: canonical_bracket, hamiltonian_field, integrate, space, nbasis,
                         hamiltonian, gradient, hessian, entropy
 

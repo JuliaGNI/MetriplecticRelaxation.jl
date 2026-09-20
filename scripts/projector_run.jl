@@ -29,7 +29,7 @@ using Printf
 # and what they need is re-exported below.
 include(joinpath(@__DIR__, "check.jl"))
 include(joinpath(@__DIR__, "runner.jl"))
-using .Checks: header, check, summary
+using .Checks: header, check
 using .Runner
 
 export projector_run, projector_checks, projector_payload, projector_report

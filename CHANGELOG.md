@@ -19,6 +19,64 @@ here than in a library:
 
 ## [Unreleased]
 
+### Fixed — the two method ambiguities on `PoissonMap`
+
+`Test.detect_ambiguities(MetriplecticRelaxation; recursive = false)` returned **2** and now
+returns **0**. Both sat on the same line, `src/spline.jl`'s `*(::PoissonMap, ::AbstractVector)`.
+`PoissonMap <: AbstractMatrix`, so that signature met `ArrayLayouts`'
+`*(::AbstractMatrix, ::LayoutVector)` and `FillArrays`'
+`*(::AbstractMatrix{T}, ::AbstractZeros{T,1})` with neither side more specific. Both are
+pre-existing and neither was reachable from this package's own code.
+
+**The argument is now `StridedVector`.** Both ambiguous vector types are non-strided, so
+narrowing empties the intersection. `StridedVector` rather than `Vector` because it is the
+widest set that settles them, and it keeps a view, a reshape and a reinterpret on the fast
+path.
+
+**What the package passes was measured, not assumed.** The method was instrumented to record
+`typeof(û)`, and the whole test suite plus `verify_spline.jl`, `verify_diagnostics.jl`,
+`verify_torus_geometry.jl` and `converge.jl` were run against it. **`Vector{Float64}` is the
+only type that reaches it.** That matters because a narrowed method does not error on an
+excluded type: it falls through to the generic `AbstractMatrix` method, which reads the
+operator through `getindex`, one full solve per entry. The comment beside the method says so,
+because at a Section 4 run's 4096 degrees of freedom that is ``N^2`` solves and the run does
+not return.
+
+No number in any results table moves. `PoissonMap` is constructed only inside `SplineTorus`,
+and every call site already passed a `Vector`.
+
+### Fixed — the `fatou lint` backlog, and a recorded decision for the rest
+
+`fatou lint src scripts test` reported **44 `unused-import` and 1 `discouraged-function`, exit
+1**. It now reports **clean, exit 0**. Measured on fatou **0.20.0**.
+
+**Seven imports were genuinely unused and are removed** — `summary` in `projector_run.jl`,
+`mean_value` in `run_a1.jl`, `fit_rate` and `cone_residual` in `run_a2.jl`, and `energy_error`,
+`l2norm` and `initial_condition` in `run_a4.jl`. Each was checked by grep first: the name
+occurred once in its file, on its own import line. `projector_run.jl` is the one to read twice
+— it still reaches `Checks.summary` at line 41, qualified, and the `include` above is what
+binds `Checks`, so dropping the name from the `using` changes nothing.
+
+**The 37 in `src/MetriplecticRelaxation.jl` are false, and that is now measured rather than
+asserted.** The rule reads one file at a time and does not follow `include`, so in a Julia
+package it flags exactly the module file's load-bearing imports. ExplicitImports.jl loads the
+module and analyses real bindings; run over this package it reports **`ok stale explicit
+imports`**, so not one of the 37 names is stale. It also reports the 39 implicit imports and
+the one non-public name, `field` — which is the known upstream defect and is unchanged here.
+
+**The decision is three `# fatou-ignore unused-import` lines, not a `fatou.toml`.** A
+repository-wide rule switch would have hidden the seven genuine findings above as well. Two
+things were measured on 0.20.0 to settle this: one such comment above a multi-line `using`
+suppresses **every** finding on that statement, not only the first line; and
+`outdated-suppression` is a rule in its own right, so a suppression that stops being needed
+reports itself rather than rotting.
+
+**`run_all.jl`'s `exit(main(ARGS))` stays, suppressed with its reason.** The rule says to let
+the caller decide when the process ends. This file is only ever a process — the hooks and CI
+read its status, and `main` returns 1 when a driver failed — so returning that number instead
+would make a failed sweep exit 0. The finding had moved to `:112`, from the `:105` and `:101`
+earlier records name; the two verification scripts added on 2026-09-20 are what moved it.
+
 ### Changed — two assertion thresholds, each set from a re-measurement
 
 Five thresholds of this class were tightened earlier, each against a re-measured worst case. **Two

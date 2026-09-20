@@ -25,8 +25,7 @@
 # being what is printed, and the periodised form alongside. See `Gaussian` and section 8 below.
 
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SECTION4_RUNS, periodise, euler_entropy_minimum, fit_rate,
-                              energy_error, l2norm, initial_condition
+using MetriplecticRelaxation: SECTION4_RUNS, periodise, euler_entropy_minimum, fit_rate
 using Printf
 
 # Only this include: `projector_run.jl` brings in `check.jl` and `runner.jl` itself and

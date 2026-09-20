@@ -109,4 +109,8 @@ function main(args)
     return 1
 end
 
+# `exit` is what this file is for, so the rule does not apply. `run_all.jl` is only ever a
+# process: the pre-push hook and CI read its status, and `main` returns 1 when a driver failed.
+# Returning that number to an interactive caller instead would make a failed sweep exit 0.
+# fatou-ignore discouraged-function
 exit(main(ARGS))

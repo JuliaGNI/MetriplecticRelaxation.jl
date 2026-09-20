@@ -36,7 +36,7 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION4_RUNS, islands_h, CENTRAL_ISLANDS, DOMAIN_LENGTH,
                               contour_average, contour_deviation, relaxation_time,
                               contour_length, spline_grid, energy_error,
-                              entropy_monotone, fit_rate, l2norm, l2inner, mean_value
+                              entropy_monotone, fit_rate, l2norm, l2inner
 using PoissonBrackets: evaluate
 using Printf
 

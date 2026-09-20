@@ -68,7 +68,21 @@ end
 Base.size(P::PoissonMap) = (P.N, P.N)
 Base.eltype(::PoissonMap{T}) where {T} = T
 
-function Base.:*(P::PoissonMap{T}, û::AbstractVector) where {T}
+# `StridedVector` and not `AbstractVector`. Against `AbstractVector` this method is ambiguous
+# with `ArrayLayouts`' `*(::AbstractMatrix, ::LayoutVector)` and `FillArrays`'
+# `*(::AbstractMatrix{T}, ::AbstractZeros{T,1})`, because `PoissonMap <: AbstractMatrix` and
+# neither signature is the more specific one. Both those vector types are non-strided, so
+# narrowing the argument empties the intersection and settles both.
+#
+# `StridedVector` rather than `Vector` because it is the widest set that does so: a view, a
+# reshape and a reinterpret stay on this path. Everything the package passes here is a
+# `Vector{Float64}` — measured, not assumed, by instrumenting this method and running the suite
+# and the verification scripts — so the choice is about what a later caller may hand it.
+#
+# A vector outside the set does not error. It falls through to the generic `AbstractMatrix`
+# method, which reads the operator through `getindex` below, one full solve per entry. That is
+# N² solves, so at a Section 4 run's 4096 degrees of freedom it does not return.
+function Base.:*(P::PoissonMap{T}, û::StridedVector) where {T}
     rhs = Vector{T}(undef, P.N + 1)
     @views mul!(rhs[1:(P.N)], P.M, û)
     rhs[P.N + 1] = zero(T)
