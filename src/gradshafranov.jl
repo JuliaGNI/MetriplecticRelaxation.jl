@@ -559,3 +559,77 @@ eigenvalue problem is about.
 function gs_eigenvalue(box::GradShafranovBox)
     inv(maximum(real, eigvals(Symmetric(box.MΛ), Symmetric(box.W))))
 end
+
+## The uniform sample grid the Section 5.5 field maps are drawn on
+
+@doc raw"""
+    gs_axes(Nr, Nz)
+
+The sample coordinates of [`gs_grid`](@ref): `Nr` nodes over [`GS_RADIAL`](@ref) and `Nz` over
+[`GS_AXIAL`](@ref), **both endpoints included** on each axis.
+
+Two counts and its own axes rather than [`euler_axis`](@ref)'s one. §5.4's square is
+``[0,1]^2``, where a single `N` describes both directions; this domain is
+``[1,7]\times[-9.5,9.5]``, an aspect ratio near 1:3, so one count would sample the short axis
+three times as finely as the long one. Widening `euler_axis` to take this geometry would also
+put a caller one argument away from resampling a §5.5 state over §5.4's interval, and the
+measure differs too — ``d\mu = r^{-1}dr\,dz`` here against ``dx`` there — so the two stay
+separate.
+
+Both endpoints are included for the reason `euler_axis` gives: every function in ``V_D``
+vanishes on ``\partial\Omega``, and a grid stopping short of the boundary would drop the one
+part of the map that is a statement about the space. An **odd** count on each axis puts a
+sample on the midpoint, which is C1's Gaussian centre ``(r_0, z_0) = (4, 0)`` exactly —
+otherwise the initial panel under-reports its own peak, and `figure_fields` shares its colour
+range between the two panels.
+"""
+function gs_axes(Nr::Int, Nz::Int)
+    (collect(range(GS_RADIAL...; length = Nr)), collect(range(GS_AXIAL...; length = Nz)))
+end
+
+@doc raw"""
+    gs_grid(box, ĉ, Nr, Nz)
+
+The field with coefficient vector `ĉ` resampled off the quadrature grid onto the uniform
+``N_r``-by-``N_z`` grid of [`gs_axes`](@ref), as a matrix with ``Z_{ij} = f(r_i, z_j)`` —
+**first index the radial coordinate**.
+
+The convention is `euler_grid`'s and load-bearing for the same reason: the flat coefficient
+index runs the first axis fastest and `basis_values` builds its tables as a `kron` in reverse
+axis order to match. Here it is cheaper to get wrong safely than in §5.4 — the §5.5 maps sample
+``61\times191``, so the two axes have different lengths and a transposed read is a dimension
+mismatch rather than a plausible picture. That is a property of the sample counts and not of the
+mesh, so `verify_gradshafranov_grid.jl` still measures the transposed comparison on equal node
+counts, because the convention and not the shape is what is being checked.
+
+`ĉ` is any coefficient vector in `box.space`: the state ``j``, or the flux function
+``\psi = \Lambda j`` for the contour overlay. [`gs_ordinate_grid`](@ref) is the weighted form
+the colour panels use.
+"""
+function gs_grid(box::GradShafranovBox, ĉ::AbstractVector, Nr::Int, Nz::Int)
+    (rs, zs) = gs_axes(Nr, Nz)
+    return [evaluate(box.space, ĉ, (rs[i], zs[j])) for i in 1:Nr, j in 1:Nz]
+end
+
+@doc raw"""
+    gs_ordinate_grid(box, ĵ, Nr, Nz)
+
+``u_h/(Cr^2+D) = \sigma(r)\,j_h`` on the grid of [`gs_axes`](@ref) — [`gs_ordinate`](@ref)'s
+field, resampled where [`gs_grid`](@ref) resamples.
+
+This and not the state is what the colour panels show, and the manuscript says so rather than
+this reproduction choosing it: *"Instead of plotting the state variable ``u`` directly, the
+color plot represents the field ``u/(Cr^2+D)``, which should be proportional to ``\psi`` if the
+system reaches a state consistent with"* `eq:gs-ref`. The figure is the visual form of that
+claim, and it only reads as one in this variable — ``\sigma`` depends on ``r`` alone, so the
+contours of ``u`` are **not** the contours of ``\psi`` even at the exact equilibrium.
+
+The weight is applied along the first index because that is the radial one. A transposed
+resampling would put ``\sigma(r)`` on the axial coordinate, which is why this is a function
+here rather than a broadcast in the figure script: `verify_gradshafranov_grid.jl` can then
+check it.
+"""
+function gs_ordinate_grid(box::GradShafranovBox, ĵ::AbstractVector, Nr::Int, Nz::Int)
+    (rs, _) = gs_axes(Nr, Nz)
+    return gs_entropy_weight.(rs) .* gs_grid(box, ĵ, Nr, Nz)
+end

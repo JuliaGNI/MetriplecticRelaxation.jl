@@ -29,7 +29,8 @@ using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flo
                               herrnegger_profile, GS_RADIAL, GS_AXIAL, HERRNEGGER_C,
                               HERRNEGGER_D, GS_LAMBDA_RECTANGLE, GS_LAMBDA_CONTINUUM,
                               disk_map, DiskTriangulation, disk_area, disk_eigenvalue,
-                              GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM
+                              GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM,
+                              gs_axes, gs_grid, gs_ordinate_grid, gs_entropy_weight
 using PoissonBrackets: nbasis, project, evaluate, spectral_grid, ∂x, ∂y, vectorfield,
                        gradient, entropy_gradient, issymmetric, ispositive_semidefinite,
                        degeneracy_residual, domainvolume, hamiltonian, hessian,
@@ -940,6 +941,41 @@ end
             S = Snew
             @test abs(hamiltonian(f, ĵ) - H₀) / abs(H₀) < 1e-12
         end
+    end
+
+    @testset "$(rpad("gs_grid SAMPLES r_i along the FIRST index, and sigma goes with it", 76))" begin
+        (rs, zs) = gs_axes(21, 31)
+        @test length(rs) == 21 && length(zs) == 31
+        @test (rs[1], rs[end]) == GS_RADIAL
+        @test (zs[1], zs[end]) == GS_AXIAL
+
+        # Every function in V_D vanishes on ∂Ω, for RANDOM degrees of freedom and not merely for
+        # the projection of something that vanished there already.
+        box = GradShafranovBox((8, 9), 2)
+        Z = gs_grid(box, randn(nbasis(box.space)), 21, 31)
+        @test maximum(abs, vcat(Z[1, :], Z[end, :], Z[:, 1], Z[:, end])) < 1e-13
+
+        # An asymmetric polynomial the degree-3 space contains exactly: reproduced to round-off,
+        # and wrong by order one read the other way round. Degree 3 rather than the run's own
+        # degree 2 because the boundary-vanishing bi-degree-(2,2) polynomials are a
+        # one-dimensional span per axis, which would pass a transposed implementation. Equal node
+        # counts, because at the 21x31 of the rows above a transposed read is a dimension
+        # mismatch instead.
+        f(r, z) = (r - 1) * (7 - r) * (z + 9.5)^2 * (9.5 - z)
+        box3 = GradShafranovBox((5, 7), 3)
+        W = gs_grid(box3, project(box3.space, x -> f(x[1], x[2])), 21, 21)
+        (qs, ws) = gs_axes(21, 21)
+        amp = maximum(abs(f(r, z)) for r in qs, z in ws)
+        @test maximum(abs(W[i, j] - f(qs[i], ws[j])) for i in 1:21, j in 1:21) / amp < 1e-13
+        @test maximum(abs(W[j, i] - f(qs[i], ws[j])) for i in 1:21, j in 1:21) / amp > 1e-3
+
+        # And sigma(r) rides the RADIAL index. Getting this wrong is not a shape error — both
+        # grids are 21x31 — so it needs its own assertion. Interior only: Z is zero on ∂Ω.
+        ĵ = randn(nbasis(box.space))
+        J = gs_grid(box, ĵ, 21, 31)
+        Y = gs_ordinate_grid(box, ĵ, 21, 31)
+        @test maximum(abs(Y[i, j] / J[i, j] - gs_entropy_weight(rs[i]))
+        for i in 2:20, j in 2:30) < 1e-12
     end
 
     @testset "$(rpad("C2's map is transcribed right, and DEGENERATES at s = 0", 76))" begin

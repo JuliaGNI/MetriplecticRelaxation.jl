@@ -21,14 +21,19 @@ contours of the generating field over them.
 "for clarity, in the color maps we display the solution ``u`` only where ``u \geq 10^{-4}``".
 Passing `nothing` disables it, which is what the reduced Euler figures want, their vorticity
 being signed.
+
+`xlabel` and `ylabel` default to §4's and §5.4's Cartesian names. §5.5 passes ``r`` and ``z``,
+because its axes are a major radius and a height and not two components of one coordinate — a
+panel over ``[1,7]\times[-9.5,9.5]`` labelled ``x_1`` and ``x_2`` reads as a square domain drawn
+badly.
 """
 function figure_fields(path, x₁, x₂, initial, final, contours;
         threshold = nothing, title_initial = "t = 0", title_final = "t = T",
-        colormap = :viridis, label = "u")
+        colormap = :viridis, label = "u", xlabel = "x₁", ylabel = "x₂")
     fig = Figure(size = (900, 400))
     lo, hi = extrema(vcat(vec(initial), vec(final)))
     for (k, (ttl, f)) in enumerate(((title_initial, initial), (title_final, final)))
-        ax = Axis(fig[1, k]; title = ttl, xlabel = "x₁", ylabel = k == 1 ? "x₂" : "",
+        ax = Axis(fig[1, k]; title = ttl, xlabel = xlabel, ylabel = k == 1 ? ylabel : "",
             aspect = DataAspect())
         z = threshold === nothing ? f : map(v -> v < threshold ? NaN : v, f)
         hm = heatmap!(ax, x₁, x₂, z; colormap = colormap, colorrange = (lo, hi))
