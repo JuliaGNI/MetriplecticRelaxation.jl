@@ -176,6 +176,19 @@ end
         @test norm(t.Λ * e .- e) / norm(e) < 1e-3
     end
 
+    # `*` takes a `StridedVector`, to keep the method unambiguous. Anything else reaches the
+    # operator through Base's generic `*`, which goes via `mul!` — and the `mul!` method in
+    # `spline.jl` is what makes that one solve instead of one solve per entry. Both halves are
+    # asserted: the value, and that the method reached is ours. Without the second, a regression
+    # is silent, because the `getindex` path returns the same numbers and only costs N² solves.
+    @testset "$(rpad("A NON-strided vector solves once, not once per entry", 76))" begin
+        r = range(0.25, 0.75; length = N)
+        @test !(typeof(r) <: StridedVector)
+        @test t.Λ * r ≈ t.Λ * collect(r)
+        @test which(mul!, (Vector{Float64}, typeof(t.Λ), typeof(r))).module ===
+              MetriplecticRelaxation
+    end
+
     @testset "$(rpad("M*Lambda IS symmetric, as EllipticEnergy assumes", 76))" begin
         MΛ = t.M * Matrix(t.Λ)
         @test norm(MΛ - MΛ') / norm(MΛ) < 1e-11

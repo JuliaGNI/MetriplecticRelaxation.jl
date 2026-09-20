@@ -90,6 +90,21 @@ function Base.:*(P::PoissonMap{T}, û::StridedVector) where {T}
     return sol[1:(P.N)]
 end
 
+# The same solve for a vector the method above does not take. Base's generic
+# `*(::AbstractMatrix, ::AbstractVector)` goes through `mul!`, so defining it here is what keeps
+# a **non-strided** argument — a range, a `Zeros`, an `ArrayLayouts` vector — off the `getindex`
+# path below. Without it each of those costs one full solve per entry: measured on a 64-degree
+# space, a range took 3465 times a `Vector`, and the ratio grows as ``N^2``.
+#
+# `PoissonMap{T} where {T <: AbstractFloat}` and not `PoissonMap`. Unconstrained, this signature
+# is ambiguous with IntervalArithmetic's `mul!` on `AbstractMatrix{<:RealOrComplexI}` — the
+# ambiguity the narrowing above exists to remove, reintroduced one line later. `PoissonMap` is
+# built by `lu` of a sparse float matrix, so the bound excludes nothing this package constructs.
+function LinearAlgebra.mul!(y::AbstractVector, P::PoissonMap{T},
+        û::AbstractVector) where {T <: AbstractFloat}
+    return copyto!(y, P * convert(Vector{T}, û))
+end
+
 """
     getindex(P::PoissonMap, i, j)
 

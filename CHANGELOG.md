@@ -19,6 +19,34 @@ here than in a library:
 
 ## [Unreleased]
 
+### Fixed — a non-strided vector no longer costs one solve per entry
+
+Narrowing `*` to `StridedVector` above left everything else on Base's generic
+`*(::AbstractMatrix, ::AbstractVector)`, which reads the operator through `getindex` — **one
+full solve per entry**. The value stayed right and only the cost moved, which is what made it
+worth finding: measured on a 64-degree space, a `range` took **3465 times** a `Vector`, and the
+ratio grows as ``N^2``. At a Section 4 run's 4096 degrees of freedom it does not return.
+
+**`mul!` is the fix, because Base's generic `*` goes through it.** One solve for any vector, so
+a range, a `Zeros` or an `ArrayLayouts` vector now costs what a `Vector` costs — measured at
+**0.96× and 1.02×** on 64 and 144 degrees of freedom, against 3465× before.
+
+**The signature is `PoissonMap{T} where {T <: AbstractFloat}`, and the bound is load-bearing.**
+Unconstrained, `mul!` is ambiguous with IntervalArithmetic's method on
+`AbstractMatrix{<:RealOrComplexI}` — it would reintroduce, one line later, exactly the kind of
+ambiguity the narrowing exists to remove. `PoissonMap` is built by `lu` of a sparse float
+matrix, so the bound excludes nothing this package constructs.
+
+**Nothing else moved.** A row vector, an adjoint, `Matrix(Λ)`, three- and five-argument `mul!`
+and a matrix-matrix product were all measured before and after and agree to the printed digit —
+this repository has been bitten before by a new method on `*` breaking an unrelated row-vector
+path, so that was checked rather than assumed.
+
+The guard is in the Spline Solver testset and asserts **two** things: the value, and that the
+`mul!` reached is this package's. The second is the one that matters. With `mul!` deleted the
+value assertion still passes — the `getindex` path returns the same numbers — so a value-only
+test would have watched this regress in silence.
+
 ### Added — the quality guards, and the first Aqua run on this repository
 
 Two results had just been settled by hand with nothing holding them there, so both could have
@@ -37,16 +65,29 @@ likely to regress without anything here changing, because a new ArrayLayouts or 
 release can reintroduce the ambiguity on its own.
 
 **Aqua and ExplicitImports are new test dependencies**, hand-edited into `[extras]`, `[targets]`
-and `[compat]`. `ExplicitImports` carries the tight bound `"1.15"`: `test_explicit_imports` does
-not exist below it, so a looser `"1"` resolves to an older version and the suite dies with an
-`UndefVarError`. Neither is in `Manifest.toml`, which stays hand-seeded and untouched — they are
+and `[compat]`. `ExplicitImports` carries the tight bound `"1.15"`, and not because of what the
+guard calls — `check_no_stale_explicit_imports` long predates it. It is pinned because the
+guard's verdict *is* that package's analysis, so a resolver free to swap the analysis engine can
+change the verdict with nothing here changing; 1.15 is the version it was verified against. The
+bound reaches `Pkg.test()`'s environment only, not the shared one, which ignores `[compat]` and
+supplies whatever is installed. Neither is in `Manifest.toml`, which stays hand-seeded — they are
 reached by `Pkg.test()`'s resolve on CI, and locally by the shared `@v#.#` environment on the
 default load path. If neither route supplies them the testset marks itself broken and warns.
 
 **All eight Aqua checks were measured green before being wired in** — ambiguities, unbound args,
 undefined exports, project extras, stale deps, deps compat, piracies and persistent tasks. This
 is the first Aqua run on this repository, so a failure from here is a regression and not a
-backlog. Only staleness is asserted from ExplicitImports: `field` is imported from
+backlog.
+
+**`persistent_tasks` is the one check turned off, and not because it failed.** Aqua 0.8.16 runs
+it by generating a temporary project and `Pkg.develop`-ing this package into it
+(`persistent_tasks.jl:93-95`), then precompiling in a subprocess. That project has no manifest,
+so the resolve must satisfy this package's two `rev = "main"` GitHub `[sources]` — every run of
+the suite would then need the network and track two moving branches, and a bad day upstream
+would redden the suite for a reason that has nothing to do with this package. It leaves this
+repository's own manifests alone, so the hard rule is not at stake; the fragility is. Against
+that cost it can find nothing here: there is no `__init__`, no `@async`, no `Threads.@spawn`
+and no `Timer` in `src/`, so there is no lingering task for it to catch. Only staleness is asserted from ExplicitImports: `field` is imported from
 PoissonBrackets, which neither exports nor declares it public, and asserting that would make the
 suite red for a defect no change here can fix.
 
@@ -107,8 +148,8 @@ the caller decide when the process ends. This file is only ever a process — `R
 it as `julia --project=scripts scripts/run_all.jl`, and its exit status is the verdict on the
 sweep — so returning `main`'s 1 to an interactive caller instead would make a failed sweep exit 0.
 Neither the hooks nor CI invoke it: `.githooks/pre-push` runs the test suite, and `CI.yml` never
-names `scripts/`. The finding had moved to `:112`, from the `:105` and `:101`
-earlier records name; the two verification scripts added on 2026-09-20 are what moved it.
+names `scripts/`. The finding sits at `:112`, where earlier records name `:105` and `:101`; the
+two verification scripts added on 2026-09-20 are what moved it.
 
 ### Changed — two assertion thresholds, each set from a re-measurement
 

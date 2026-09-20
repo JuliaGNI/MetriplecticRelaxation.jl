@@ -56,9 +56,15 @@ SparseArrays = "1"
 Test = "1"
 julia = "1.11"
 
-# The two quality guards of `test/runquality.jl`. `ExplicitImports` needs a tight bound:
-# `test_explicit_imports` does not exist before 1.15, so a looser `"1"` resolves to an older
-# version and the suite dies with an `UndefVarError`.
+# The two quality guards of `test/runquality.jl`. `ExplicitImports` carries a tight bound, and
+# not because of what the guard calls: `check_no_stale_explicit_imports` long predates 1.15. It
+# is pinned because the guard's verdict IS that package's analysis, so a resolver free to swap
+# the analysis engine can change the verdict without anything here changing. A test-only
+# dependency costs nothing to pin, and 1.15 is the version the guard was verified against.
+#
+# The bound reaches one of the two routes below, not both. `[compat]` governs the environment
+# `Pkg.test()` resolves; the shared environment ignores it and supplies whatever is installed
+# there.
 #
 # Neither is in `Manifest.toml`, which is hand-seeded and gitignored and which no `Pkg` call may
 # touch. They are reached twice over instead: `Pkg.test()` resolves them from these tables on

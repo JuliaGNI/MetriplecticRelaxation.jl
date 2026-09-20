@@ -37,7 +37,9 @@ export header, check
 export Options, parse_options, run_spectral, run_spline, save_run, section, report
 
 # `summary` is NOT exported: `Base.summary` exists, and exporting a second one leaves every
-# unqualified use ambiguous. The drivers reach it as `ProjectorRun.Checks.summary`.
+# unqualified use ambiguous. The drivers take the alias below instead, as
+# `using .ProjectorRun: check_summary`. It is not imported unqualified above either, for the same
+# reason — `Checks.summary` here is the qualified path, and the `include` is what binds `Checks`.
 const check_summary = Checks.summary
 
 # `‖ω(t) − ω(T)‖` needs the whole trajectory and ω(T) is not known until the end, so states are
