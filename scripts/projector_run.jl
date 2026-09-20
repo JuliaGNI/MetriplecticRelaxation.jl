@@ -312,9 +312,6 @@ function projector_checks(res, spec, opts; label = "")
     # multiple of what 64 cubic cells at this `T` actually deliver, and refining the space or
     # running longer is what moves it.
     #
-    # The bound this replaces was `5e-2`, FIFTEEN HUNDRED times the measurement -- and what it
-    # was wide enough to accept is the thing this row exists to reject.
-    #
     # A MESH DEGRADATION DOES NOT TEST THIS ROW, which is worth knowing before anyone reaches for
     # one. At 24 cells instead of 64 the residual is 3.33168e-05 against 3.33164e-05, identical
     # to five digits: it is not set by the spatial resolution. It is set by how far the
@@ -324,9 +321,8 @@ function projector_checks(res, spec, opts; label = "")
     #     t/T      0.02       0.05       0.10       0.25       0.50       1.00
     #     rel      8.37e-01   6.55e-01   3.72e-01   6.45e-02   4.96e-03   3.33e-05
     #
-    # At half its relaxation A3 sits at 4.96e-03 -- 149x the converged residual, PASSING the old
-    # `5e-2` and FAILING this. The old bound would have accepted a run stopped halfway and called
-    # it a member of the family.
+    # At half its relaxation A3 sits at 4.96e-03, 149x the converged residual, which FAILS this
+    # bound: a run stopped halfway is not accepted as a member of the family.
     for (nm, r) in both
         (_, resid, _) = best_fit_euler(r.diag, r.trace.final, r.trace.H[1])
         rel = resid / l2norm(r.solver, r.trace.final)

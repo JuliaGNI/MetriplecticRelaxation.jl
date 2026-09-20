@@ -151,11 +151,9 @@ end
 # of the same problem at one resolution, so the difference is the coarser method's truncation
 # error and there is no law to set the constant against -- it is a multiple of what 64 cubic
 # cells against a 256² spectral grid actually delivers, and refining either space is what moves
-# it. The bound this replaces was `5e-3`, EIGHT THOUSAND times the measurement, which no
-# degradation a reviewer would care about could reach. Measured at 24 cells instead of 64, the
-# three rows move to 4.96e-05, 1.93e-04 and 4.08e-04 — every one of them PASSING the old `5e-3`
-# and FAILING this. So the old bound would have accepted a run at a third of the resolution
-# without comment.
+# it. The degradation that tests the row is a coarser spline space: at 24 cells instead of 64
+# the three rows move to 4.96e-05, 1.93e-04 and 4.08e-04 — every one of them FAILING this, so a
+# run at a third of the resolution does not pass here.
 #
 # It is deliberately ten times looser than the `5e-7` A3 asserts on these same three quantities
 # (`projector_run.jl`'s `rtol`), for the reason the comment above gives: A2's double bracket
