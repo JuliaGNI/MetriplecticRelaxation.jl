@@ -1,11 +1,11 @@
 #!/usr/bin/env julia
 #
-# The Fourier spectral layer, checked against PoissonBrackets' own independent implementation
+# The Fourier spectral layer, checked against GeometricBrackets' own independent implementation
 # of the same operators.
 #
 #     julia --project=scripts scripts/verify_spectral.jl
 #
-# The point of section 1 is that this file's FFT-based derivatives and PoissonBrackets'
+# The point of section 1 is that this file's FFT-based derivatives and GeometricBrackets'
 # `spectral_grid`, which assembles a dense differentiation MATRIX D = Re(V diag(ik) W), are two
 # genuinely different computations of the same operator. Agreement to round-off is what lets
 # the rest of the reproduction treat this layer as the reference it claims to be, rather than
@@ -22,7 +22,7 @@ using MetriplecticRelaxation: SpectralTorus, torus_field, ∂₁, ∂₂, laplac
                               projector_bracket_field,
                               integrate, l2inner, l2norm, mean_value,
                               SECTION4_RUNS, spectral_state
-using PoissonBrackets: spectral_grid, ∂x, ∂y
+using GeometricBrackets: spectral_grid, ∂x, ∂y
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
@@ -43,7 +43,7 @@ const V = torus_field(g, v)
 const H = torus_field(g, hf)
 
 # =============================================================================================
-header("1. the FFT operators agree with PoissonBrackets' differentiation matrix")
+header("1. the FFT operators agree with GeometricBrackets' differentiation matrix")
 
 # `spectral_grid` samples with the same [i,j] -> (nodes[i], nodes[j]) convention, so the two
 # grids hold the same numbers and the fields can be compared elementwise.

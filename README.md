@@ -1,7 +1,7 @@
 # MetriplecticRelaxation
 
 Reproduction of the **two-dimensional** numerical examples of *Metriplectic relaxation to
-equilibria* (CNSNS 110076), built on [PoissonBrackets.jl](https://github.com/JuliaGNI/PoissonBrackets.jl)
+equilibria* (CNSNS 110076), built on [GeometricBrackets.jl](https://github.com/JuliaGNI/GeometricBrackets.jl)
 and [SimpleSplines.jl](https://github.com/JuliaDEC/SimpleSplines.jl).
 
 | case | § | what it shows |
@@ -103,7 +103,7 @@ against a closed form rather than against another numerical procedure.
 collision-like div–grad bracket. One file rather than §4's problem-plus-two-solvers: this bracket
 has no spectral counterpart in this tree, so the cross-discretisation control §4 has is simply not
 available. `ImplicitMidpoint` **is** Crank–Nicolson for this field, so each step is a Newton solve
-through PoissonBrackets' existing `NewtonSolver`; no solver code is written here.
+through GeometricBrackets' existing `NewtonSolver`; no solver code is written here.
 
 `scripts/verify_euler.jl` settles the problem, the space, the bracket and both references in
 **101 checks** before any run is believed — including that §5 states `w²` and not `w`, with the
@@ -278,7 +278,7 @@ above when the numbers or the wall-clock matter.
 
 ## Dependencies
 
-`PoissonBrackets` and `SimpleSplines` are unregistered, so `Project.toml` carries a `[sources]`
+`GeometricBrackets` and `SimpleSplines` are unregistered, so `Project.toml` carries a `[sources]`
 table for both — a Julia 1.11 feature, which is why the `julia` floor here is 1.11 rather than the
 1.10 used elsewhere in this tree.
 

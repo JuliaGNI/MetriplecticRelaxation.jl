@@ -2,7 +2,7 @@
 # The B-spline Galerkin solver: the deliberate deviation from the manuscript.
 #
 # The manuscript uses a Fourier spectral method for Section 4 (`spectral.jl`). This half solves
-# the same equations in a periodic tensor-product B-spline space, through PoissonBrackets'
+# the same equations in a periodic tensor-product B-spline space, through GeometricBrackets'
 # `TensorSplineSpace`, `DoubleBracket`, `ProjectorBracket` and `MetriplecticFlow`.
 #
 # THE NUMBERS WILL NOT MATCH BIT FOR BIT, and no write-up should suggest otherwise. What is
@@ -129,7 +129,7 @@ The linear functional ``H(\hat{u}) = g \cdot \hat{u}``, with constant gradient `
 vanishing Hessian.
 
 This is `eq:analytical_H`, ``H(u) = (h - h_\Omega, u)_{L^2}``, with
-``g = \mathbb{M}(\hat{h} - h_\Omega e)``. PoissonBrackets has no linear
+``g = \mathbb{M}(\hat{h} - h_\Omega e)``. GeometricBrackets has no linear
 `DiscreteHamiltonian`: `MassCasimir` has exactly this structure, but its own docstring defines
 it as the total mass ``\int_\Omega u \, dx``, so using it for a different linear functional
 would put a false statement in the code. A candidate for the package, once a second caller

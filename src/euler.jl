@@ -277,7 +277,7 @@ The entropy ``S(\omega) = \int_\Omega \omega \log \omega \, dx`` of B3, `eq:entr
     \int_\Omega \frac{\Phi_I \Phi_J}{\omega_h} \, dx ,
 ```
 
-both by quadrature on the space's own grid, both analytic. PoissonBrackets has no nonlinear
+both by quadrature on the space's own grid, both analytic. GeometricBrackets has no nonlinear
 `DiscreteHamiltonian` — `QuadraticHamiltonian` and `MassCasimir` are the two it carries — and
 this one is specific to §5.4, so it lives here. A candidate for the package once a second
 caller turns up, as `LinearHamiltonian` and `EllipticEnergy` in `spline.jl` are.

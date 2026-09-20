@@ -38,7 +38,7 @@ using MetriplecticRelaxation: TensorSplineSpace, GS_RADIAL, GS_AXIAL,
                               takeda_order, takeda_extrapolate,
                               GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM, disk_map,
                               DiskTriangulation, disk_area, disk_eigenvalue
-using PoissonBrackets: quadrature_nodes, quadrature_weights, weighted_matrix, project
+using GeometricBrackets: quadrature_nodes, quadrature_weights, weighted_matrix, project
 using SimpleSplines: UniformMesh, Dirichlet
 using LinearAlgebra
 using SparseArrays

@@ -22,7 +22,7 @@ using MetriplecticRelaxation: SECTION4_RUNS, SECTION4_ORDER, islands_h, relaxati
                               euler_entropy_floor, SECTION55_ORDER,
                               EulerSquare, euler_axis, euler_grid,
                               GradShafranovBox, gs_axes, gs_grid, gs_ordinate_grid
-using PoissonBrackets: nbasis
+using GeometricBrackets: nbasis
 using Printf
 using Serialization
 

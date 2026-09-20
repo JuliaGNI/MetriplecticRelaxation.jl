@@ -26,7 +26,7 @@
 # constrain them -- but they print through `check`, so one line per claim still holds.
 #
 # The functions here know nothing about grids.  Which resolutions a refinement uses is the
-# calling manuscript's business, and lives in `torustools.jl` -- which is in the PoissonBrackets
+# calling manuscript's business, and lives in `torustools.jl` -- which is in the GeometricBrackets
 # copy of this harness, not here.  This repository's scripts set their own resolutions inline and
 # have no such file, so do not go looking for one.
 
@@ -36,7 +36,7 @@ using Printf
 
 # THE EXPORT LIST IS THE SHARED HARNESS'S API, NOT THIS REPOSITORY'S USAGE, and that is why
 # names with no local caller are still exported.  Three repositories carry a near-identical
-# copy of this file -- `PoissonBrackets/scripts/`, where the format was settled,
+# copy of this file -- `GeometricBrackets/scripts/`, where the format was settled,
 # `Papers/Metriplectic Relaxation to Equilibria/scripts/`, and here -- so that a converted
 # script can move between them unedited.  Call sites, counted as `name(` outside `check.jl`:
 #

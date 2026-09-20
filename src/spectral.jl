@@ -13,7 +13,7 @@
 # `canonical_bracket`, `hamiltonian_field` and the trapezoidal `integrate`. It could not be
 # depended on as a module: it lives in a manuscript repository with no package boundary and no
 # UUID, so `using` it here would mean either a hard-coded absolute path in committed code or a
-# copy of the file. What is done instead is to build the same operators on PoissonBrackets'
+# copy of the file. What is done instead is to build the same operators on GeometricBrackets'
 # `TorusGrid`, and to CHECK the two agree -- `verify_spectral.jl` compares every derivative
 # against `spectral_grid`'s differentiation matrix, which is the package's independent
 # implementation of the same operator.
@@ -26,7 +26,7 @@ An `N`-by-`N` Fourier collocation grid on ``\Omega = [0, 2\pi]^2``, with the wav
 FFT plans the spectral operators need.
 
 Fields are `N`-by-`N` matrices indexed `[i,j]` with `i` running over ``x_1``, matching
-PoissonBrackets' [`TorusGrid`](@ref) convention so that the two can be compared elementwise.
+GeometricBrackets' [`TorusGrid`](@ref) convention so that the two can be compared elementwise.
 
 # The Nyquist mode
 

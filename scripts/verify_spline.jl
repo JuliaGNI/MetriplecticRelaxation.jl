@@ -28,9 +28,9 @@ using MetriplecticRelaxation: SplineTorus, EllipticEnergy,
                               projector_bracket_field, SECTION4_RUNS,
                               integrate, mean_value,
                               initial_condition, periodise
-using PoissonBrackets: nbasis, project, evaluate, vectorfield, hamiltonian,
-                       gradient, entropy_gradient, issymmetric,
-                       ispositive_semidefinite, degeneracy_residual, domainvolume
+using GeometricBrackets: nbasis, project, evaluate, vectorfield, hamiltonian,
+                         gradient, entropy_gradient, issymmetric,
+                         ispositive_semidefinite, degeneracy_residual, domainvolume
 using LinearAlgebra
 using Printf
 using Random

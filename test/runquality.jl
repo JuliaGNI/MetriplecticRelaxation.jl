@@ -59,7 +59,7 @@ end
         # the module and analyses real bindings.
         #
         # Staleness only. The other checks it offers are not asserted here: `field` is imported
-        # from PoissonBrackets, which neither exports it nor declares it public, and that is a
+        # from GeometricBrackets, which neither exports it nor declares it public, and that is a
         # known upstream defect recorded at the top of `src/MetriplecticRelaxation.jl`. Asserting
         # it would make this file red for something no change here can fix.
         @testset "$(rpad("no stale explicit import", 76))" begin

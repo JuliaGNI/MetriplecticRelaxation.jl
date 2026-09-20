@@ -19,6 +19,30 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the bracket dependency is now GeometricBrackets
+
+`PoissonBrackets` was renamed to `GeometricBrackets`, and its repository to
+`JuliaGNI/GeometricBrackets.jl`. The UUID did not change, so this is a rename and not a
+different package: `[deps]`, `[sources]`, `[compat]` and every `using` line here follow it, and
+no line of code here changes.
+
+**The rename moves a manifest pin, and that is not free.** A pinned tree carries the old name
+in its own `Project.toml`, so it cannot be loaded under the new one. The root `Manifest.toml`
+therefore moves from the tree of `34749f2` (19 Sep, the commit before PR #16) to the tree of
+`b91f5b0`, and picks up PR #16 with it — the export list, the shared generics and the Aqua
+baseline. `Pkg.update("GeometricBrackets")` was scoped to that one package: the SimpleSplines
+pin is unchanged at `4a65139`, which is **not** that package's tip.
+
+**`scripts/Manifest.toml` is deliberately left behind.** Its pin is the tree of `fefc776`
+(18 Sep, PR #13), three commits back and on the far side of PR #14, the frame-aware
+`CollisionBracket`. Moving it would cross a change that can move a §5.5 number, so it is a job
+of its own with a re-run attached. **Until then that environment does not resolve**, and no
+`scripts/` run should be believed from it.
+
+No figure in this file has been re-measured against the new pin.
+
+The entries below this one were written under the old name and keep it.
+
 ### Fixed — a non-strided vector no longer costs one solve per entry
 
 Narrowing `*` to `StridedVector` above left everything else on Base's generic

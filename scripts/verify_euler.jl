@@ -36,16 +36,16 @@ using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSqu
                               perturbation_b2, Diagnostics, Trace, record!,
                               entropy_monotone, energy_error, l2inner, l2norm, integrate,
                               DIRICHLET_EIGENVALUE, SQUARE_LENGTH, B3_FLOOR
-using PoissonBrackets
-using PoissonBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
-                       Integrator, ImplicitMidpoint, integrate_step!,
-                       nbasis, project, evaluate, field,
-                       mass_matrix, stiffness_matrix, domainvolume,
-                       quadrature_weights,
-                       hamiltonian, gradient, hessian, vectorfield,
-                       entropy_gradient, entropy_production,
-                       issymmetric, ispositive_semidefinite, degeneracy_residual,
-                       metric_matrix, metric_apply
+using GeometricBrackets
+using GeometricBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
+                         Integrator, ImplicitMidpoint, integrate_step!,
+                         nbasis, project, evaluate, field,
+                         mass_matrix, stiffness_matrix, domainvolume,
+                         quadrature_weights,
+                         hamiltonian, gradient, hessian, vectorfield,
+                         entropy_gradient, entropy_production,
+                         issymmetric, ispositive_semidefinite, degeneracy_residual,
+                         metric_matrix, metric_apply
 using LinearAlgebra
 using Printf
 using Random

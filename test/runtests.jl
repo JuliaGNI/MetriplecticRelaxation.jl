@@ -31,14 +31,15 @@ using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flo
                               disk_map, DiskTriangulation, disk_area, disk_eigenvalue,
                               GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM,
                               gs_axes, gs_grid, gs_ordinate_grid, gs_entropy_weight
-using PoissonBrackets: nbasis, project, evaluate, spectral_grid, ∂x, ∂y, vectorfield,
-                       gradient, entropy_gradient, issymmetric, ispositive_semidefinite,
-                       degeneracy_residual, domainvolume, hamiltonian, hessian,
-                       CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
-                       Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
-                       metric_matrix, metric_apply, stiffness_matrix, field,
-                       quadrature_weights, quadrature_nodes, basis_values, weighted_matrix,
-                       mass_matrix
+using GeometricBrackets: nbasis, project, evaluate, spectral_grid, ∂x, ∂y, vectorfield,
+                         gradient, entropy_gradient, issymmetric, ispositive_semidefinite,
+                         degeneracy_residual, domainvolume, hamiltonian, hessian,
+                         CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
+                         Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
+                         metric_matrix, metric_apply, stiffness_matrix, field,
+                         quadrature_weights, quadrature_nodes, basis_values,
+                         weighted_matrix,
+                         mass_matrix
 using SimpleSplines: UniformMesh, Dirichlet
 using LinearAlgebra
 using Random
@@ -102,7 +103,7 @@ end
     U = torus_field(g, (a, b) -> 0.7cos(a) + 0.4sin(2b) + 0.3cos(a - b) + 1.1)
     H = torus_field(g, (a, b) -> cos(a) + 0.6sin(b) + 0.25cos(a + b))
 
-    @testset "$(rpad("The FFT derivatives ARE PoissonBrackets' matrix ones", 76))" begin
+    @testset "$(rpad("The FFT derivatives ARE GeometricBrackets' matrix ones", 76))" begin
         gp = spectral_grid(24)
         @test ∂₁(g, U)≈∂x(gp, U) atol=1e-12
         @test ∂₂(g, U)≈∂y(gp, U) atol=1e-12

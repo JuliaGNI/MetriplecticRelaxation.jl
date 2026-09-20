@@ -47,7 +47,7 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, GS_RADIAL, GS_AXIAL,
                               gs_axes, gs_grid, gs_ordinate_grid, gs_entropy_weight,
                               gs_density, gs_state, initial_condition
-using PoissonBrackets: nbasis, project, field, quadrature_nodes, quadrature_weights
+using GeometricBrackets: nbasis, project, field, quadrature_nodes, quadrature_weights
 using Printf
 using Random
 

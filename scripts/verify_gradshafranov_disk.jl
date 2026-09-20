@@ -22,12 +22,12 @@ using LinearAlgebra
 using Printf
 using Random
 using MetriplecticRelaxation
-using PoissonBrackets
+using GeometricBrackets
 using SimpleSplines: UniformMesh, Dirichlet, (..)
 
 # Named rather than brought in by a bare `using`: `field`, `integrate` and the integrator are
 # what §5's relaxation control needs, and this repository's convention is an explicit list.
-using PoissonBrackets: field, Integrator, ImplicitMidpoint, integrate_step!
+using GeometricBrackets: field, Integrator, ImplicitMidpoint, integrate_step!
 using MetriplecticRelaxation: SECTION55_RUNS, gs_state, gs_flow, gs_fit, gs_ordinate,
                               integrate
 
@@ -202,7 +202,7 @@ say("""  The fourth power is the signature: the bracket is quadratic in ∇φ an
   (det J⁻ᵀ)² times the parameter-frame one — because (Ba)·((Bc)⊥) = det(B)(a·c⊥) and one B
   serves every node. So the table above pins |det J| and the pairing and says NOTHING about
   the DIRECTION the frame points: a TRANSPOSED frame passes it exactly, measured 2.3e-16 in
-  `PoissonBrackets/scripts/verify_frame_covariance.jl`, which records it as a control that
+  `GeometricBrackets/scripts/verify_frame_covariance.jl`, which records it as a control that
   cannot fail. The check that does reach the direction is `metric_operator` against the O(Nq²)
   double sum with the physical gradient written out by hand; it lives in that script, on an
   annulus and on a `PolarSplineSpace` through the pole.

@@ -7,11 +7,11 @@ using Printf
 using SparseArrays
 
 # `mass_matrix`, `stiffness_matrix`, `evaluate`, `project` and friends are exported by both
-# PoissonBrackets and SimpleSplines, which leaves every one of them ambiguous under a bare
-# `using` of the two. PoissonBrackets is the entry point, and what is needed is named.
+# GeometricBrackets and SimpleSplines, which leaves every one of them ambiguous under a bare
+# `using` of the two. GeometricBrackets is the entry point, and what is needed is named.
 #
-# `field` is the one name here that PoissonBrackets neither exports nor declares public
-# (`Base.ispublic(PoissonBrackets, :field)` is `false`), so this reaches into its internals and
+# `field` is the one name here that GeometricBrackets neither exports nor declares public
+# (`Base.ispublic(GeometricBrackets, :field)` is `false`), so this reaches into its internals and
 # a rename upstream breaks this package silently. It is non-public in SimpleSplines too, so
 # there is nowhere public to take it from and the fix belongs upstream, not here — an `export`
 # or a `public` declaration on whichever of the two owns it.
@@ -25,17 +25,18 @@ using SparseArrays
 # rule is right about `scripts/` and turning it off repository-wide would lose that. Fatou
 # checks its own suppressions: `outdated-suppression` fires as soon as one of these stops being
 # needed, so it cannot rot unnoticed.
-using PoissonBrackets
+using GeometricBrackets
 # fatou-ignore unused-import
-using PoissonBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
-                       DoubleBracket, ProjectorBracket, CollisionBracket, MetriplecticFlow,
-                       QuadraticHamiltonian,
-                       mass_matrix, mass_factorization, stiffness_matrix,
-                       tensor_weighted_matrix, basis_integrals, ncells, degree,
-                       quadrature_nodes, quadrature_weights, basis_values, field,
-                       project, evaluate, vectorfield
+using GeometricBrackets: DiscreteSpace, DiscreteHamiltonian, TensorSplineSpace,
+                         DoubleBracket, ProjectorBracket, CollisionBracket,
+                         MetriplecticFlow,
+                         QuadraticHamiltonian,
+                         mass_matrix, mass_factorization, stiffness_matrix,
+                         tensor_weighted_matrix, basis_integrals, ncells, degree,
+                         quadrature_nodes, quadrature_weights, basis_values, field,
+                         project, evaluate, vectorfield
 
-# The boundary conditions and the V_D ⊂ V embedding Section 5 needs. PoissonBrackets re-exports
+# The boundary conditions and the V_D ⊂ V embedding Section 5 needs. GeometricBrackets re-exports
 # SimpleSplines' assembly interface but neither of these: `TensorSplineSpace(n, p, bc)`
 # dispatches on the condition type, and `recombination_matrix` is what expresses a
 # homogeneous-Dirichlet basis function in the clamped one — see `EulerSquare`.
@@ -49,8 +50,8 @@ using SimpleSplines: Dirichlet, Free, BSplineBasis, PeriodicBSplineBasis,
 # same-named functions of their own — otherwise `canonical_bracket` would mean one thing on a
 # `TorusGrid` and an unrelated thing on a `SpectralTorus`, with no dispatch between them.
 # fatou-ignore unused-import
-import PoissonBrackets: canonical_bracket, hamiltonian_field, integrate, space, nbasis,
-                        hamiltonian, gradient, hessian, entropy
+import GeometricBrackets: canonical_bracket, hamiltonian_field, integrate, space, nbasis,
+                          hamiltonian, gradient, hessian, entropy
 
 export DOMAIN_LENGTH, DOMAIN_AREA
 export Gaussian, islands_h, ISLAND_CENTRES, CENTRAL_ISLANDS

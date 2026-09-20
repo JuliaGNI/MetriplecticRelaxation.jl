@@ -37,7 +37,7 @@ using MetriplecticRelaxation: SECTION4_RUNS, islands_h, CENTRAL_ISLANDS, DOMAIN_
                               contour_average, contour_deviation, relaxation_time,
                               contour_length, spline_grid, energy_error,
                               entropy_monotone, fit_rate, l2norm, l2inner
-using PoissonBrackets: evaluate
+using GeometricBrackets: evaluate
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))

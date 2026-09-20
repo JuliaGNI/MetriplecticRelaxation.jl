@@ -80,10 +80,10 @@ using MetriplecticRelaxation: SECTION55_RUNS, gs_state, gs_flow, gs_fit, gs_ordi
                               GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM,
                               disk_eigenvalue, energy_error, entropy_monotone, l2norm,
                               scatter_data
-using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
-                       default_f_abstol, nbasis, field, project, quadrature_weights,
-                       measure,
-                       nodes
+using GeometricBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
+                         default_f_abstol, nbasis, field, project, quadrature_weights,
+                         measure,
+                         nodes
 using LinearAlgebra
 using Printf
 

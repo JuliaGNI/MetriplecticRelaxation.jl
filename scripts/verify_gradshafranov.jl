@@ -25,13 +25,14 @@ using MetriplecticRelaxation: GradShafranovBox, SECTION55_RUNS,
                               gs_flow, gs_fit, gs_rayleigh, gs_current, gs_ordinate,
                               initial_condition, integrate,
                               Diagnostics, scatter_data
-using PoissonBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian, Integrator,
-                       ImplicitMidpoint, integrate_step!, metric_operator, metric_matrix,
-                       metric_apply, degeneracy_residual, ispositive_semidefinite,
-                       issymmetric, entropy_production, entropy,
-                       hamiltonian, vectorfield, mass_matrix, weighted_matrix,
-                       quadrature_nodes, quadrature_weights, basis_values, field,
-                       nbasis, default_f_abstol
+using GeometricBrackets: CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
+                         Integrator,
+                         ImplicitMidpoint, integrate_step!, metric_operator, metric_matrix,
+                         metric_apply, degeneracy_residual, ispositive_semidefinite,
+                         issymmetric, entropy_production, entropy,
+                         hamiltonian, vectorfield, mass_matrix, weighted_matrix,
+                         quadrature_nodes, quadrature_weights, basis_values, field,
+                         nbasis, default_f_abstol
 using LinearAlgebra
 using Random
 using SparseArrays

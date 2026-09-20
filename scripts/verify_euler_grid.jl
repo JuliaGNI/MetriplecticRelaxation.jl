@@ -36,7 +36,7 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SECTION5_RUNS, EulerSquare, euler_axis, euler_grid,
                               euler_state, initial_condition, integrate, state_extrema,
                               SQUARE_LENGTH
-using PoissonBrackets: nbasis, project
+using GeometricBrackets: nbasis, project
 using Printf
 using Random
 

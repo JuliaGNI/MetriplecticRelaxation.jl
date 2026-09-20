@@ -46,8 +46,8 @@ using MetriplecticRelaxation: SECTION5_RUNS, EulerSpec, EulerSquare, euler_state
                               gibbs_lambda, gibbs_fit, gibbs_residual,
                               scatter_data, entropy, energy, vorticity_mass, Diagnostics,
                               B3_FLOOR
-using PoissonBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
-                       default_f_abstol, nbasis
+using GeometricBrackets: Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
+                         default_f_abstol, nbasis
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))
