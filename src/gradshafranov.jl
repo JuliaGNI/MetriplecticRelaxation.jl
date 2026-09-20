@@ -597,7 +597,7 @@ The field with coefficient vector `ĉ` resampled off the quadrature grid onto th
 The convention is `euler_grid`'s and load-bearing for the same reason: the flat coefficient
 index runs the first axis fastest and `basis_values` builds its tables as a `kron` in reverse
 axis order to match. Here it is cheaper to get wrong safely than in §5.4 — the §5.5 maps sample
-``65\times201``, so the two axes have different lengths and a transposed read is a dimension
+``61\times191``, so the two axes have different lengths and a transposed read is a dimension
 mismatch rather than a plausible picture. That is a property of the sample counts and not of the
 mesh, so `verify_gradshafranov_grid.jl` still measures the transposed comparison on equal node
 counts, because the convention and not the shape is what is being checked.

@@ -236,11 +236,13 @@ end
 
 # Samples per axis for the §5.5 field maps, radial then axial. Two counts and not one: this
 # domain is [1,7]×[-9.5,9.5] and a single count would sample the short axis three times as finely
-# as the long one. 65 and 201 put the two spacings within 1.4 % of each other — 6/64 = 0.0938
-# against 19/200 = 0.0950 — and both are odd, which puts a sample on C1's Gaussian centre (4,0)
-# rather than straddling it. `verify_gradshafranov_grid.jl` asserts the odd counts and the
-# centre; the matched spacing is a choice recorded here.
-const SECTION55_SAMPLES = (65, 201)
+# as the long one. 61 and 191 make the two spacings EXACTLY equal — 6/60 and 19/190 are both
+# 0.1 — and both are odd, which puts a sample on C1's Gaussian centre (4,0) rather than
+# straddling it. Exact equality needs Nr = 6k+1 and Nz = 19k+1, and an odd Nz needs k even, so
+# the pairs are (49, 153) at k = 8, (61, 191) at k = 10 and (73, 229) at k = 12.
+# `verify_gradshafranov_grid.jl` asserts the odd counts and the centre; the matched spacing is a
+# choice recorded here.
+const SECTION55_SAMPLES = (61, 191)
 
 # §5.5, the Grad-Shafranov runs. The same three panels as §5.4 and for the same reasons, with two
 # differences that are the manuscript's own: the entropy floor is `λ_h H₀` for the Grad-Shafranov
@@ -284,16 +286,16 @@ for name in filter(in(SECTION55_ORDER), requested)
         yT = gs_ordinate_grid(box, tr.final, SECTION55_SAMPLES...)
 
         # The same question §5.4's loop asks — is a diverging map honest here? — and it needs a
-        # TOLERANCE where §5.4 needs none. §5.4 can test `lo < 0` exactly because its minimum is
-        # the Dirichlet edge, which is exactly `0.0`. C1's is not: the interior minimum is the
-        # undershoot of a projected Gaussian's tail, measured `lo = -3.49e-08` against
-        # `hi = 1.05e-01`, so `lo < 0` is TRUE and §5.4's rule as written picks `:balance` and
-        # puts white at 0.053 — the very failure §5.4's own comment describes, arriving through
-        # round-off rather than through a single-signed field.
+        # TOLERANCE where §5.4 needs none. §5.4 can test `lo < 0 && hi > 0` exactly because its
+        # minimum is the Dirichlet edge, which is exactly `0.0`. C1's is not: the interior
+        # minimum is the undershoot of a projected Gaussian's tail, measured `lo = -3.34e-08`
+        # against `hi = 1.05e-01`, so that test is TRUE and §5.4's rule as written picks
+        # `:balance` and puts white at 0.053 — the very failure §5.4's own comment describes,
+        # arriving through round-off rather than through a single-signed field.
         #
         # So the rule is the fraction of the range the weaker sign occupies, against 1 %, which
         # is about what a colour map resolves. No margin is being chosen here: C1 measures
-        # `3.3e-07`, five orders below the threshold, and §5.4's B2 — the one run that genuinely
+        # `3.2e-07`, five orders below the threshold, and §5.4's B2 — the one run that genuinely
         # straddles — measures `0.999`, two orders above it. Nothing lies between.
         lo, hi = extrema(vcat(vec(y₀), vec(yT)))
         signed = min(-lo, hi) > 0.01 * max(-lo, hi)

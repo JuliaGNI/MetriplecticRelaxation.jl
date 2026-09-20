@@ -31,7 +31,7 @@
 #   3. the homogeneous-Dirichlet boundary: all four edges vanish to round-off, for RANDOM
 #      coefficients rather than for a projected function that happens to vanish there -- with the
 #      `:free` space as the control that MUST fail;
-#   4. the index convention, on equal node counts.  The figure samples 65x201, where a transposed
+#   4. the index convention, on equal node counts.  The figure samples 61x191, where a transposed
 #      read is a dimension mismatch rather than a plausible picture -- a property of the sample
 #      counts and not of the mesh; the convention and not the shape is what is under test, so the
 #      row is measured where the comparison can be formed at all.
@@ -59,10 +59,10 @@ Random.seed!(0x5f1a20c3)
 println("verify_gradshafranov_grid.jl  --  the uniform resampling behind the §5.5 field maps")
 
 # The sample counts the figure script uses. Odd on both axes, and chosen so the two spacings
-# match: 6/64 = 0.0938 against 19/200 = 0.0950. An even count on either axis would move the
+# match EXACTLY: 6/60 and 19/190 are both 0.1. An even count on either axis would move the
 # Gaussian's centre off the grid, which section 1 asserts.
-const NR = 65
-const NZ = 201
+const NR = 61
+const NZ = 191
 
 const RADIAL_LENGTH = GS_RADIAL[2] - GS_RADIAL[1]
 const AXIAL_LENGTH = GS_AXIAL[2] - GS_AXIAL[1]
@@ -212,7 +212,7 @@ end
 # =============================================================================================
 header("4. Z[i,j] is j(r_i, z_j) and not j(r_j, z_i)")
 
-# C1 is 18x21 cells and the figure samples 65x201, so a transposed `gs_grid` there returns a
+# C1 is 18x21 cells and the figure samples 61x191, so a transposed `gs_grid` there returns a
 # matrix of the wrong shape and dies on the next operation rather than drawing a wrong picture.
 # That is a happy accident of the geometry and not a check, so the convention is measured where
 # the transposed comparison can be formed at all: a SQUARE mesh and equal node counts. What is

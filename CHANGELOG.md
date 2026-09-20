@@ -40,16 +40,16 @@ widened to cover this case.** `euler_grid` is typed on `EulerSquare`, takes one 
 and samples `[0,1]`. This domain is `[1,7]×[-9.5,9.5]` with a measure `dμ = dr dz/r`, so it gets
 its own axes and its own two sample counts. A resampler that silently accepted either geometry is
 how the `1/r` weight goes missing from one of the three places it has to appear.
-`SECTION55_SAMPLES = (65, 201)` puts the two spacings within 1.4 % of each other — `6/64 = 0.0938`
-against `19/200 = 0.0950` — and both counts are odd, which puts a sample on C1's Gaussian centre
-`(4, 0)` rather than straddling it.
+`SECTION55_SAMPLES = (61, 191)` makes the two spacings exactly equal — `6/60 = 19/190 = 0.1` —
+and both counts are odd, which puts a sample on C1's Gaussian centre `(4, 0)` rather than
+straddling it.
 
 **`scripts/verify_gradshafranov_grid.jl`, 20 checks, registered in `run_all.jl`.** It is
 `verify_euler_grid.jl`'s shape — exactness with a control that must fail, Dirichlet edges at zero
 with the `:free` space as the control that must fail, and a two-sided index check — with the
 measure carried through: the independent statement about the domain integrates the resampled
 field with the trapezoidal rule **in `dμ`** and matches the space's own quadrature to
-`4.228e-06`. `σ` gets a section of its own, because applying it to the wrong index is not a shape
+`8.379e-06`. `σ` gets a section of its own, because applying it to the wrong index is not a shape
 error: the ratio of the two grids is constant along `z` to `2.2e-16`, equals `σ(r_i)` to
 `1.1e-16`, and `σ` itself varies by a factor `5.286` over `[1,7]`, without which the first two
 rows would be vacuous.
@@ -72,12 +72,12 @@ for the defect is a script whose other sections are decoration.
   A looser bound would have hidden a control that had stopped controlling.
 - **The colour-map rule needs a tolerance here and needs none in §5.4.** §5.4 tests `lo < 0`
   exactly, and may, because its minimum is the Dirichlet edge and therefore exactly `0.0`. C1's
-  minimum is the undershoot of a projected Gaussian's tail: measured `lo = -3.49e-08` against
+  minimum is the undershoot of a projected Gaussian's tail: measured `lo = -3.34e-08` against
   `hi = 1.05e-01`. So `lo < 0` is **true**, §5.4's rule picks the diverging map, and white lands
   at `0.053` where a reader takes it for zero — the exact failure §5.4's own comment describes,
   arriving through round-off rather than through a single-signed field. The rule is now the
   fraction of the range the weaker sign occupies, against 1 %. No margin is being chosen: C1
-  measures `3.3e-07`, five orders below, and §5.4's B2 — the one run that genuinely straddles —
+  measures `3.2e-07`, five orders below, and §5.4's B2 — the one run that genuinely straddles —
   measures `0.999`, two orders above. Nothing lies between.
 
 **`figure_fields` gains `xlabel` and `ylabel`, defaulting to §4's and §5.4's names.** §5.5 passes
