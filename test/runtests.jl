@@ -959,7 +959,8 @@ end
         # and wrong by order one read the other way round. Degree 3 rather than the run's own
         # degree 2 because the boundary-vanishing bi-degree-(2,2) polynomials are a
         # one-dimensional span per axis, which would pass a transposed implementation. Equal node
-        # counts, because at C1's own 18x21 a transposed read is a dimension mismatch instead.
+        # counts, because at the 21x31 of the rows above a transposed read is a dimension
+        # mismatch instead.
         f(r, z) = (r - 1) * (7 - r) * (z + 9.5)^2 * (9.5 - z)
         box3 = GradShafranovBox((5, 7), 3)
         W = gs_grid(box3, project(box3.space, x -> f(x[1], x[2])), 21, 21)

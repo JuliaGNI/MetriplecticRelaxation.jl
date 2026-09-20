@@ -236,9 +236,10 @@ end
 
 # Samples per axis for the §5.5 field maps, radial then axial. Two counts and not one: this
 # domain is [1,7]×[-9.5,9.5] and a single count would sample the short axis three times as finely
-# as the long one. 65 and 201 put the two spacings within 1 % of each other — 6/64 = 0.0938
+# as the long one. 65 and 201 put the two spacings within 1.4 % of each other — 6/64 = 0.0938
 # against 19/200 = 0.0950 — and both are odd, which puts a sample on C1's Gaussian centre (4,0)
-# rather than straddling it. `verify_gradshafranov_grid.jl` asserts both properties.
+# rather than straddling it. `verify_gradshafranov_grid.jl` asserts the odd counts and the
+# centre; the matched spacing is a choice recorded here.
 const SECTION55_SAMPLES = (65, 201)
 
 # §5.5, the Grad-Shafranov runs. The same three panels as §5.4 and for the same reasons, with two

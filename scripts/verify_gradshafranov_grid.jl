@@ -31,9 +31,10 @@
 #   3. the homogeneous-Dirichlet boundary: all four edges vanish to round-off, for RANDOM
 #      coefficients rather than for a projected function that happens to vanish there -- with the
 #      `:free` space as the control that MUST fail;
-#   4. the index convention, on a square mesh.  C1 runs 18x21 cells, where a transposed read is a
-#      dimension mismatch rather than a plausible picture; the convention and not the shape is
-#      what is under test, so the row is measured where the comparison can be formed at all.
+#   4. the index convention, on equal node counts.  The figure samples 65x201, where a transposed
+#      read is a dimension mismatch rather than a plausible picture -- a property of the sample
+#      counts and not of the mesh; the convention and not the shape is what is under test, so the
+#      row is measured where the comparison can be formed at all.
 #   5. sigma(r) is applied along the RADIAL index.  The ratio of the two grids must be constant
 #      along z, must equal sigma(r_i) along r, and must actually vary -- a weight that did not
 #      would make the section vacuous;
@@ -224,15 +225,15 @@ header("4. Z[i,j] is j(r_i, z_j) and not j(r_j, z_i)")
 # reports how much C1's printed Gaussian misses by, which is little, but "little" is not
 # "admissible".
 #
-# THE CENTRE IS MOVED OFF C1's, AND IT HAS TO BE. C1's Gaussian sits at (r₀, z₀) = (4, 0), which
-# is the midpoint of BOTH intervals, so on equal node counts it lands on the same index on both
-# axes — and a transposition leaves the peak exactly where it found it. Measured with C1's own
-# centre the transposed error is 0.1541 against a peak of 1, because the discrepancy is pushed
-# off-centre and only the shoulders disagree; the row below asserted 0.2 and failed. The fix is a
-# stronger control and not a looser bound: at (3, 2) the two centres fall on different indices,
+# THE CENTRE IS OFF C1's, AND IT HAS TO BE. C1's Gaussian sits at (r₀, z₀) = (4, 0), which is the
+# midpoint of BOTH intervals, so on equal node counts it lands on the same index on both axes —
+# and a transposition leaves the peak exactly where it found it. At C1's own centre the
+# transposed error is 0.1541 against a peak of 1, because the discrepancy is pushed off-centre
+# and only the shoulders disagree, and the row below does not hold at 0.2. What that asks for is
+# a stronger control and not a looser bound: at (3, 2) the two centres fall on different indices,
 # the transposition displaces the bump bodily, and the transposed error reaches the peak exactly
-# — 0.8249 against a peak of 0.8249, a ratio of 1.00, and 965x the direct error against 148x
-# before. The widths still differ, so the asymmetry the section needs is untouched.
+# — 0.8249 against a peak of 0.8249, a ratio of 1.00, and 965x the direct error against 148x at
+# C1's own centre. The widths still differ, so the asymmetry the section needs is untouched.
 const f_asym = (r, z) -> sin(π * (r - 1) / 6) * sin(π * (z + 9.5) / 19) *
                          exp(-(r - 3)^2 / 0.5 - (z - 2)^2 / 3.2)
 

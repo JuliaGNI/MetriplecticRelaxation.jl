@@ -596,10 +596,11 @@ The field with coefficient vector `ĉ` resampled off the quadrature grid onto th
 
 The convention is `euler_grid`'s and load-bearing for the same reason: the flat coefficient
 index runs the first axis fastest and `basis_values` builds its tables as a `kron` in reverse
-axis order to match. Here it is cheaper to get wrong safely than in §5.4 — C1 is ``18\times21``
-cells, so the two axes have different lengths and a transposed read is a dimension mismatch
-rather than a plausible picture. `verify_gradshafranov_grid.jl` still measures the transposed
-comparison on a square mesh, because the convention and not the shape is what is being checked.
+axis order to match. Here it is cheaper to get wrong safely than in §5.4 — the §5.5 maps sample
+``65\times201``, so the two axes have different lengths and a transposed read is a dimension
+mismatch rather than a plausible picture. That is a property of the sample counts and not of the
+mesh, so `verify_gradshafranov_grid.jl` still measures the transposed comparison on equal node
+counts, because the convention and not the shape is what is being checked.
 
 `ĉ` is any coefficient vector in `box.space`: the state ``j``, or the flux function
 ``\psi = \Lambda j`` for the contour overlay. [`gs_ordinate_grid`](@ref) is the weighted form
