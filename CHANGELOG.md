@@ -19,6 +19,37 @@ here than in a library:
 
 ## [Unreleased]
 
+### Added — the quality guards, and the first Aqua run on this repository
+
+Two results had just been settled by hand with nothing holding them there, so both could have
+come back unnoticed. `test/runquality.jl` is what stops that, included last by
+`test/runtests.jl` because Aqua's `persistent_tasks` check starts a process of its own. The
+suite goes from **464 to 477 tests**.
+
+**Each guard was checked against a broken tree, not only a clean one.** Restoring
+`û::AbstractVector` turns the ambiguity guard red and it names both ambiguities; adding an unused
+`Robin` import turns the import guard red and it names `Robin`. A guard that cannot fail proves
+nothing, and it also removes the reason to look.
+
+**The ambiguity guard carries no dependency.** `Test.detect_ambiguities` needs only `Test`, which
+was already there, so it runs under every invocation. That is deliberate: this is the result most
+likely to regress without anything here changing, because a new ArrayLayouts or FillArrays
+release can reintroduce the ambiguity on its own.
+
+**Aqua and ExplicitImports are new test dependencies**, hand-edited into `[extras]`, `[targets]`
+and `[compat]`. `ExplicitImports` carries the tight bound `"1.15"`: `test_explicit_imports` does
+not exist below it, so a looser `"1"` resolves to an older version and the suite dies with an
+`UndefVarError`. Neither is in `Manifest.toml`, which stays hand-seeded and untouched — they are
+reached by `Pkg.test()`'s resolve on CI, and locally by the shared `@v#.#` environment on the
+default load path. If neither route supplies them the testset marks itself broken and warns.
+
+**All eight Aqua checks were measured green before being wired in** — ambiguities, unbound args,
+undefined exports, project extras, stale deps, deps compat, piracies and persistent tasks. This
+is the first Aqua run on this repository, so a failure from here is a regression and not a
+backlog. Only staleness is asserted from ExplicitImports: `field` is imported from
+PoissonBrackets, which neither exports nor declares it public, and asserting that would make the
+suite red for a defect no change here can fix.
+
 ### Fixed — the two method ambiguities on `PoissonMap`
 
 `Test.detect_ambiguities(MetriplecticRelaxation; recursive = false)` returned **2** and now

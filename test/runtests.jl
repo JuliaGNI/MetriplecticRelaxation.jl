@@ -1059,3 +1059,6 @@ end
         end
     end
 end
+
+# Last, because Aqua's `persistent_tasks` check starts a process of its own.
+include(joinpath(@__DIR__, "runquality.jl"))

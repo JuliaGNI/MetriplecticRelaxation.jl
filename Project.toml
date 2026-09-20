@@ -42,7 +42,9 @@ PoissonBrackets = {rev = "main", url = "https://github.com/JuliaGNI/PoissonBrack
 SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
 
 [compat]
+Aqua = "0.8"
 CairoMakie = "0.15"
+ExplicitImports = "1.15"
 FFTW = "1"
 LinearAlgebra = "1"
 PoissonBrackets = "0.1"
@@ -54,8 +56,18 @@ SparseArrays = "1"
 Test = "1"
 julia = "1.11"
 
+# The two quality guards of `test/runquality.jl`. `ExplicitImports` needs a tight bound:
+# `test_explicit_imports` does not exist before 1.15, so a looser `"1"` resolves to an older
+# version and the suite dies with an `UndefVarError`.
+#
+# Neither is in `Manifest.toml`, which is hand-seeded and gitignored and which no `Pkg` call may
+# touch. They are reached twice over instead: `Pkg.test()` resolves them from these tables on
+# CI, and locally they come from the shared `@v#.#` environment on the default load path. When
+# neither route supplies them, `runquality.jl` marks itself broken rather than passing silently.
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Aqua", "ExplicitImports", "Test"]
