@@ -70,15 +70,16 @@ for the defect is a script whose other sections are decoration.
   different indices, the transposition displaces the bump bodily, and the transposed error reaches
   the peak exactly: `0.8249` against `0.8249`, and `965×` the direct error against `148×` before.
   A looser bound would have hidden a control that had stopped controlling.
-- **The colour-map rule needs a tolerance here and needs none in §5.4.** §5.4 tests `lo < 0`
-  exactly, and may, because its minimum is the Dirichlet edge and therefore exactly `0.0`. C1's
-  minimum is the undershoot of a projected Gaussian's tail: measured `lo = -3.34e-08` against
-  `hi = 1.05e-01`. So `lo < 0` is **true**, §5.4's rule picks the diverging map, and white lands
-  at `0.053` where a reader takes it for zero — the exact failure §5.4's own comment describes,
-  arriving through round-off rather than through a single-signed field. The rule is now the
-  fraction of the range the weaker sign occupies, against 1 %. No margin is being chosen: C1
-  measures `3.2e-07`, five orders below, and §5.4's B2 — the one run that genuinely straddles —
-  measures `0.999`, two orders above. Nothing lies between.
+- **The colour-map rule needs a tolerance here and needs none in §5.4.** §5.4 tests
+  `lo < 0 && hi > 0` exactly, and may, because its minimum is the Dirichlet edge and therefore
+  exactly `0.0`. C1's minimum is the undershoot of a projected Gaussian's tail: measured
+  `lo = -3.34e-08` against `hi = 1.05e-01`. Both halves of that test are **true**, so §5.4's rule
+  picks the diverging map and white lands at `0.053` where a reader takes it for zero — the exact
+  failure §5.4's own comment describes, arriving through round-off rather than through a
+  single-signed field. The rule is now the fraction of the range the weaker sign occupies, against
+  1 %. No margin is being chosen: C1 measures `3.2e-07`, five orders below, and §5.4's B2 — the one
+  run that genuinely straddles — measures `0.9986517`, two orders above. Nothing lies between, and
+  the two rules agree on all four runs as they stand today: B1 and B3 give `lo` exactly `0.0`.
 
 **`figure_fields` gains `xlabel` and `ylabel`, defaulting to §4's and §5.4's names.** §5.5 passes
 `r` and `z`. A panel over `[1,7]×[-9.5,9.5]` labelled `x₁` and `x₂` reads as a square domain drawn
