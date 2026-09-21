@@ -19,6 +19,22 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — SimpleSplines comes from the registry, at 0.3.0
+
+SimpleSplines 0.3.0 is registered in General, so its `[sources]` entry is gone and `[compat]`
+names the released version. `Project.toml` and `scripts/Project.toml` both drop it.
+`GeometricBrackets` keeps its entry: that package is not registered yet.
+
+**This is a breaking bump, 0.2.0 to 0.3.0, and the numbers have not been re-measured against
+it.** The suite passes — 0 failures, Quality Guards included — and that covers what the tests
+assert. It does not cover the §4 and §5 figures, which `scripts/` produces and no test reads.
+`scripts/Manifest.toml` is still on its own older pin, so those runs have not been made against
+0.3.0 at all. Re-running them, and checking each quoted figure, is a job of its own.
+
+The bound is `"0.3"` alone rather than a widened range. The polar path this repository
+exercises reaches `PolarSplineBasis` through `GeometricBrackets`, which is 0.3.0 API, so 0.1
+and 0.2 were never really satisfiable — the git pin was what hid it.
+
 ### Changed — the bracket dependency is now GeometricBrackets
 
 `PoissonBrackets` was renamed to `GeometricBrackets`, and its repository to

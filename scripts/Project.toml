@@ -19,4 +19,3 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 [sources]
 MetriplecticRelaxation = {path = ".."}
 GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}

@@ -18,19 +18,19 @@ SimpleSolvers = "36b790f5-6434-4fbe-b711-1f64a1e2f6a2"
 SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-# Neither GeometricBrackets nor SimpleSplines is registered, so both need an explicit source, and
-# both need it *here*: a `[sources]` table is honoured only for the active project, never
-# inherited from a dependency, so GeometricBrackets' own entry for SimpleSplines does not carry
-# over.
+# GeometricBrackets is not registered, so it needs an explicit source, and it needs it *here*: a
+# `[sources]` table is honoured only for the active project and is never inherited from a
+# dependency. SimpleSplines is registered and is resolved from General like any other dependency;
+# the bound below is what selects it.
 #
-# These are urls rather than the relative sibling paths they used to be, because a path escapes
-# the repository and therefore does not exist on a CI runner: every job failed in `buildpkg`
-# with "expected package ... to exist at path /home/runner/work/Packages/...", before a single
-# test ran. That is the whole matrix gated on a checkout layout only this machine has.
+# This is a url rather than the relative sibling path it used to be, because a path escapes the
+# repository and therefore does not exist on a CI runner: every job failed in `buildpkg` with
+# "expected package ... to exist at path /home/runner/work/Packages/...", before a single test
+# ran. That is the whole matrix gated on a checkout layout only this machine has.
 #
-# The cost is the one the path form was chosen to avoid: resolution now follows `main` on the
-# remote rather than the sibling working tree, so a local change to either package is invisible
-# here until it is pushed. Develop against a sibling with `Pkg.develop(path=...)` in a local
+# The cost is the one the path form was chosen to avoid: resolution follows `main` on the remote
+# rather than the sibling working tree, so a local change to GeometricBrackets is invisible here
+# until it is pushed. Develop against a sibling with `Pkg.develop(path=...)` in a local
 # environment; do not put the path back in this file.
 #
 # `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored and resolution fails outright with
@@ -38,7 +38,6 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 # 1.11 and not the tree's usual 1.10 — the `min` row of the CI matrix has to resolve.
 [sources]
 GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
 
 [compat]
 Aqua = "0.8"
@@ -50,7 +49,7 @@ LinearAlgebra = "1"
 Printf = "1"
 Random = "1"
 SimpleSolvers = "0.13, 0.14"
-SimpleSplines = "0.1, 0.2"
+SimpleSplines = "0.3"
 SparseArrays = "1"
 Test = "1"
 julia = "1.11"
