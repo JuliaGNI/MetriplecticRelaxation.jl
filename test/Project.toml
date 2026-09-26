@@ -1,0 +1,31 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
+GeometricBrackets = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MetriplecticRelaxation = "86325dbd-fdbc-4a64-9787-8114e6b727c0"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+# `ExplicitImports` carries a tight bound, and not because of what `quality/explicit_imports.jl`
+# calls: `check_no_stale_explicit_imports` long predates 1.15. It is pinned because the guard's
+# verdict IS that package's analysis, so a resolver free to swap the analysis engine can change
+# the verdict without anything here changing. 1.15 is the version the guard was verified against.
+[compat]
+Aqua = "0.8"
+ExplicitImports = "1.15"
+GeometricBrackets = "0.1"
+LinearAlgebra = "1"
+Random = "1"
+SimpleSplines = "0.3"
+SparseArrays = "1"
+Test = "1"
+
+# GeometricBrackets is not registered, and a `[sources]` table is honoured only for the active
+# project, so this environment needs its own entry, the same as the root `Project.toml`'s.
+[sources]
+GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
+MetriplecticRelaxation = {path = ".."}
