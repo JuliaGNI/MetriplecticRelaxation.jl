@@ -1,10 +1,9 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: l2inner, entropy
+using MetriplecticRelaxation: l2inner
 using MetriplecticRelaxation: EulerSquare, euler_entropy_floor, eigenmode_fit,
                               dirichlet_eigenvalue, gibbs_lambda, interior_weights,
                               DIRICHLET_EIGENVALUE
 using GeometricBrackets: nbasis, project, stiffness_matrix, field, quadrature_weights
-using SimpleSplines: Dirichlet
 using LinearAlgebra
 using Random
 using SparseArrays

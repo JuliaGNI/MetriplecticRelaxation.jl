@@ -1,8 +1,7 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, torus_field, poisson_periodic,
                               projector_bracket_field, l2inner, l2norm, euler_minimiser,
-                              euler_entropy_minimum, entropy
-using GeometricBrackets: project, field
+                              euler_entropy_minimum
 using LinearAlgebra
 using Random
 using SparseArrays

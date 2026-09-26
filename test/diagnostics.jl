@@ -1,9 +1,8 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, Diagnostics, Trace, torus_field,
                               spectral_state, l2inner, l2norm, SECTION4_RUNS,
-                              euler_minimiser, euler_entropy_minimum, energy, entropy,
+                              euler_minimiser, euler_entropy_minimum, energy,
                               best_fit_euler, fit_rate, record!, entropy_monotone
-using GeometricBrackets: field
 using LinearAlgebra
 using Random
 using SparseArrays

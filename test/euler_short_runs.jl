@@ -1,11 +1,10 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: SpectralTorus, Diagnostics, Trace, spectral_state, integrate,
+using MetriplecticRelaxation: SpectralTorus, Diagnostics, Trace, spectral_state,
                               SECTION4_RUNS, energy, entropy, record!
 using MetriplecticRelaxation: SECTION5_RUNS, EulerSquare, GibbsEntropy, euler_state,
                               euler_flow, euler_entropy_floor, dirichlet_eigenvalue,
                               state_extrema, entropy_plateau
-using GeometricBrackets: project, hamiltonian, Integrator, ImplicitMidpoint,
-                         integrate_step!, field
+using GeometricBrackets: project, hamiltonian, Integrator, ImplicitMidpoint, integrate_step!
 using LinearAlgebra
 using Random
 using SparseArrays

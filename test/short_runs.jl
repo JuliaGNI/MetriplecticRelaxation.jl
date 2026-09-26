@@ -4,7 +4,6 @@ using MetriplecticRelaxation: SpectralTorus, SplineTorus, Diagnostics, Trace,
                               spline_rhs, spline_step, integrate, SECTION4_RUNS,
                               SECTION4_ORDER, energy, entropy, potential_norm², record!,
                               cone_residual
-using GeometricBrackets: project, field
 using LinearAlgebra
 using Random
 using SparseArrays

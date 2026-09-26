@@ -1,10 +1,10 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: SplineTorus, spline_state, fixed_double_operator, spline_flow,
-                              integrate, mean_value, SECTION4_RUNS, SECTION4_ORDER, entropy,
+                              integrate, mean_value, SECTION4_RUNS, SECTION4_ORDER,
                               EllipticEnergy
 using GeometricBrackets: nbasis, project, evaluate, vectorfield, gradient, entropy_gradient,
                          issymmetric, ispositive_semidefinite, degeneracy_residual,
-                         domainvolume, hamiltonian, hessian, field
+                         domainvolume, hamiltonian, hessian
 using LinearAlgebra
 using Random
 using SparseArrays

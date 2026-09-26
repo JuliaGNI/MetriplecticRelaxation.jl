@@ -4,7 +4,6 @@ using MetriplecticRelaxation: EulerSquare, dirichlet_eigenvalue, DIRICHLET_EIGEN
                               euler_axis, euler_grid
 using GeometricBrackets: nbasis, project, evaluate, domainvolume, stiffness_matrix,
                          quadrature_weights
-using SimpleSplines: Dirichlet
 using LinearAlgebra
 using Random
 using SparseArrays

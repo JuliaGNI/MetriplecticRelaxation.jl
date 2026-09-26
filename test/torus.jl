@@ -2,7 +2,6 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: agm, contour_length, contour_length_quadrature,
                               contour_average, contour_deviation, relaxation_time,
                               islands_h, CENTRAL_ISLANDS, periodise, SECTION4_RUNS
-using GeometricBrackets: field
 using LinearAlgebra
 using Random
 using SparseArrays

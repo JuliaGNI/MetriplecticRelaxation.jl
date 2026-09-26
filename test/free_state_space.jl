@@ -1,7 +1,6 @@
 using MetriplecticRelaxation
 using MetriplecticRelaxation: EulerSquare, dirichlet_eigenvalue, DIRICHLET_EIGENVALUE
 using GeometricBrackets: project, evaluate
-using SimpleSplines: Dirichlet
 using LinearAlgebra
 using Random
 using SparseArrays

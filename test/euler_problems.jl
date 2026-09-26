@@ -1,10 +1,7 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: entropy
 using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSpec, EulerSquare,
                               B3_FLOOR, euler_state, state_extrema, gaussian_w2,
                               perturbation_b2, DIRICHLET_EIGENVALUE
-using GeometricBrackets: project
-using SimpleSplines: Dirichlet
 using LinearAlgebra
 using Random
 using SparseArrays

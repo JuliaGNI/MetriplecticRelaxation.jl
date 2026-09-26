@@ -1,5 +1,4 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: entropy
 using MetriplecticRelaxation: EulerSquare, GibbsEntropy, state_extrema
 using GeometricBrackets: project, gradient, hamiltonian, hessian, QuadraticHamiltonian,
                          field, quadrature_weights, basis_values

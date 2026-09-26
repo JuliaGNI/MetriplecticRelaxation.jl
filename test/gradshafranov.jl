@@ -1,5 +1,5 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: integrate, energy, entropy
+using MetriplecticRelaxation: integrate, entropy
 using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flow, gs_fit,
                               gs_rayleigh, gs_current, gs_density, gs_stiffness,
                               gs_eigenvalue, separable_eigenvalue, TakedaGrid,
@@ -9,11 +9,11 @@ using MetriplecticRelaxation: SECTION55_RUNS, GradShafranovBox, gs_state, gs_flo
                               disk_map, DiskTriangulation, disk_area, disk_eigenvalue,
                               GS_LAMBDA_DISK, GS_LAMBDA_DISK_CONTINUUM, gs_axes, gs_grid,
                               gs_ordinate_grid, gs_entropy_weight
-using GeometricBrackets: nbasis, project, ∂y, vectorfield, issymmetric,
-                         ispositive_semidefinite, degeneracy_residual, hamiltonian,
-                         CollisionBracket, MetriplecticFlow, QuadraticHamiltonian,
-                         Integrator, ImplicitMidpoint, integrate_step!, entropy_production,
-                         stiffness_matrix, field, quadrature_weights, quadrature_nodes,
+using GeometricBrackets: nbasis, project, vectorfield, issymmetric, ispositive_semidefinite,
+                         degeneracy_residual, hamiltonian, CollisionBracket,
+                         MetriplecticFlow, QuadraticHamiltonian, Integrator,
+                         ImplicitMidpoint, integrate_step!, entropy_production,
+                         stiffness_matrix, quadrature_weights, quadrature_nodes,
                          weighted_matrix, mass_matrix
 using SimpleSplines: UniformMesh, Dirichlet
 using LinearAlgebra

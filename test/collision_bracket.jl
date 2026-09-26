@@ -1,11 +1,10 @@
 using MetriplecticRelaxation
-using MetriplecticRelaxation: integrate, energy, entropy
 using MetriplecticRelaxation: SECTION5_RUNS, SECTION5_ORDER, EulerSquare, euler_flow,
                               state_extrema
 using GeometricBrackets: project, vectorfield, gradient, entropy_gradient, issymmetric,
                          ispositive_semidefinite, degeneracy_residual, CollisionBracket,
                          MetriplecticFlow, QuadraticHamiltonian, entropy_production,
-                         metric_matrix, metric_apply, field
+                         metric_matrix, metric_apply
 using LinearAlgebra
 using Random
 using SparseArrays

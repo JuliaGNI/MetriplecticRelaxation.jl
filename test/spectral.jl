@@ -2,8 +2,8 @@ using MetriplecticRelaxation
 using MetriplecticRelaxation: SpectralTorus, torus_field, ∂₁, ∂₂, laplacian,
                               poisson_periodic, canonical_bracket, hamiltonian_field,
                               double_bracket_field, parallel_diffusion,
-                              projector_bracket_field, l2inner, l2norm, mean_value, energy
-using GeometricBrackets: project, spectral_grid, ∂x, ∂y, hamiltonian, field
+                              projector_bracket_field, l2inner, l2norm, mean_value
+using GeometricBrackets: spectral_grid, ∂x, ∂y
 using LinearAlgebra
 using Random
 using SparseArrays
