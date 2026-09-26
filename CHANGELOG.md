@@ -37,7 +37,7 @@ mark themselves broken when those packages are missing: the test environment sup
 `julia --project=. test/runtests.jl` no longer runs the suite; `Pkg.test()` does.
 
 The suite still counts **479 tests**, file by file the same as before. Every file runs in the
-`core` group: the slowest after compilation, `gradshafranov.jl`, takes 6.6 s.
+`core` group: the slowest after compilation, `quality/aqua.jl`, takes 11 s to 14 s.
 
 ### Changed — SimpleSplines comes from the registry, at 0.3.0
 

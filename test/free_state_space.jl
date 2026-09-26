@@ -6,9 +6,6 @@ using Random
 using SparseArrays
 using Test
 
-# The runs here excite fields with random degrees of freedom, which is deliberate: a
-# conservation or degeneracy identity tested on a single smooth mode reports round-off and hides
-# a structural defect entirely. The seed is fixed so that a failure is reproducible.
 Random.seed!(0x5c1e9a3b)
 
 # Every resolution below is deliberately far coarser than a Section 4 run, and every final time

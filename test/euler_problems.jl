@@ -7,9 +7,6 @@ using Random
 using SparseArrays
 using Test
 
-# The runs here excite fields with random degrees of freedom, which is deliberate: a
-# conservation or degeneracy identity tested on a single smooth mode reports round-off and hides
-# a structural defect entirely. The seed is fixed so that a failure is reproducible.
 Random.seed!(0x5c1e9a3b)
 
 # Every resolution below is deliberately far coarser than a Section 4 run, and every final time
@@ -20,16 +17,18 @@ Random.seed!(0x5c1e9a3b)
 # =============================================================================================
 # Section 5.4: reduced Euler on [0,1]² with homogeneous Dirichlet conditions.
 #
-# The mesh here is 10 cells against the runs' 26, and every final time is a handful of steps.
-# What is asserted is again the STRUCTURE -- the transcription of the initial conditions, the
-# space, the bracket's three defining properties, the analytic entropy derivatives and the
-# algebra behind the two closed-form references -- all of which hold on any mesh.
+# This file, `euler_square.jl`, `free_state_space.jl`, `collision_bracket.jl`,
+# `gibbs_entropy.jl`, `euler_references.jl` and `euler_short_runs.jl` test it. Their meshes
+# are 5 to 12 cells against the runs' 26, and every final time is a handful of steps. What is
+# asserted is again the STRUCTURE -- the transcription of the initial conditions, the space,
+# the bracket's three defining properties, the analytic entropy derivatives and the algebra
+# behind the two closed-form references -- all of which hold on any mesh.
 #
 # One deliberate exception to "coarser is fine": B3's own initial state is NOT admissible on a
 # coarse mesh, because the L² projection of its narrow Gaussian undershoots below zero and
-# `y log y` is undefined there. So the Gibbs tests use an admissible state of their own, and the
-# threshold mesh itself is a scripts/ measurement rather than a test -- 26 cells is 10 s per
-# implicit step.
+# `y log y` is undefined there. So `gibbs_entropy.jl` uses an admissible state of its own, and
+# the threshold mesh itself is a scripts/ measurement rather than a test -- 26 cells is 10 s
+# per implicit step.
 
 @testset "$(rpad("Section 5 Problem Tests", 80))" begin
     @testset "$(rpad("Section 5 states w SQUARED, not w", 76))" begin
