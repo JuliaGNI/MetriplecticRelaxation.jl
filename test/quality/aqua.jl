@@ -1,7 +1,6 @@
 #
-# The package-quality guards. `detect_ambiguities` returned 2 and now returns 0, and nothing but
-# this file holds it there: a new dependency version can reintroduce an ambiguity without this
-# repository changing at all.
+# The package-quality guards. The module has no method ambiguities, and a new dependency version
+# can add one without any change in this repository.
 #
 using Aqua
 using MetriplecticRelaxation
@@ -22,8 +21,7 @@ using Test
             foreach(a -> println(stderr, "  ambiguous: ", a), ambiguities)
     end
 
-    # All eight checks were measured green before this was wired in, so a failure here is a
-    # regression and not a backlog.
+    # Every check that runs is green, so a failure here is a regression and not a backlog.
     #
     # `persistent_tasks = false`, and it is the one check deliberately off. Aqua 0.8.16 runs
     # it by generating a temporary project and `Pkg.develop`-ing this package into it

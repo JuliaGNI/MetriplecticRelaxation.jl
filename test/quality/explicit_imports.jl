@@ -1,6 +1,6 @@
 #
-# The module file's 37 `unused-import` findings from `fatou lint` were shown to be false rather
-# than acted on, and this file is what stops a real one from coming back silently.
+# `fatou lint`'s `unused-import` findings on the module file are false, because the rule does not
+# follow `include`. This file catches a real stale import.
 #
 using ExplicitImports
 using MetriplecticRelaxation
