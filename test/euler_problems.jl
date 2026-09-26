@@ -26,9 +26,9 @@ Random.seed!(0x5c1e9a3b)
 #
 # One deliberate exception to "coarser is fine": B3's own initial state is NOT admissible on a
 # coarse mesh, because the L² projection of its narrow Gaussian undershoots below zero and
-# `y log y` is undefined there. So `gibbs_entropy.jl` uses an admissible state of its own, and
-# the threshold mesh itself is a scripts/ measurement rather than a test -- 26 cells is 10 s
-# per implicit step.
+# `y log y` is undefined there. So the Gibbs tests in `gibbs_entropy.jl`, `euler_short_runs.jl`
+# and `collision_bracket.jl` use an admissible state of their own, and the threshold mesh
+# itself is a scripts/ measurement rather than a test -- 26 cells is 10 s per implicit step.
 
 @testset "$(rpad("Section 5 Problem Tests", 80))" begin
     @testset "$(rpad("Section 5 states w SQUARED, not w", 76))" begin
