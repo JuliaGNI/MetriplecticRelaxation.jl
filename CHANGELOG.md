@@ -19,6 +19,26 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the test suite follows the tree's test convention
+
+`test/runtests.jl` held every test inline. It now holds only `@safetestset` lines in one `core`
+group, and each of its 14 top-level testsets is a file of its own under `test/`, moved unchanged:
+`torus.jl`, `spectral.jl`, `spline.jl`, `diagnostics.jl`, `short_runs.jl`, `projector_rates.jl`,
+`euler_problems.jl`, `euler_square.jl`, `free_state_space.jl`, `collision_bracket.jl`,
+`gibbs_entropy.jl`, `euler_references.jl`, `euler_short_runs.jl` and `gradshafranov.jl`. Each file
+has its own imports and sets the suite's seed `0x5c1e9a3b` itself. `test/runquality.jl` is split
+into `test/quality/aqua.jl` (the ambiguity guard and Aqua) and `test/quality/explicit_imports.jl`.
+
+The test dependencies move from `[extras]` and `[targets]` into `test/Project.toml`, with their
+existing bounds (`Aqua = "0.8"`, `ExplicitImports = "1.15"`, `Test = "1"`) and a `[sources]`
+entry for the unregistered GeometricBrackets. SafeTestsets is a new test dependency. The quality
+files no longer look for Aqua and ExplicitImports in the shared `@v#.#` environment, and no longer
+mark themselves broken when those packages are missing: the test environment supplies them. So
+`julia --project=. test/runtests.jl` no longer runs the suite; `Pkg.test()` does.
+
+The suite still counts **479 tests**, file by file the same as before. Every file runs in the
+`core` group: the slowest after compilation, `quality/aqua.jl`, takes 11 s to 14 s.
+
 ### Changed — SimpleSplines comes from the registry, at 0.3.0
 
 SimpleSplines 0.3.0 is registered in General, so its `[sources]` entry is gone and `[compat]`
