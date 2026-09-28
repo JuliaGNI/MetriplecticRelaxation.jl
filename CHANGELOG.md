@@ -19,6 +19,14 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — `test/Project.toml` carries no bound for a shared dependency
+
+`test/Project.toml` loses its `[compat]` entries for `GeometricBrackets`, `LinearAlgebra`,
+`Random`, `SimpleSplines` and `SparseArrays`. Each is a dependency of the root `Project.toml`, and
+the tree's rule is that the root's bound governs a shared dependency: `test/` and `docs/` bound
+only what they add. The test-only entries (`Aqua`, `ExplicitImports`, `SafeTestsets`, `Test`)
+stay.
+
 ### Changed — the test suite follows the tree's test convention
 
 `test/runtests.jl` held every test inline. It now holds only `@safetestset` lines in one `core`
