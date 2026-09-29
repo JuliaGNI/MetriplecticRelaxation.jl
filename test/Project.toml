@@ -17,12 +17,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 Aqua = "0.8"
 ExplicitImports = "1.15"
-GeometricBrackets = "0.1"
-LinearAlgebra = "1"
-Random = "1"
 SafeTestsets = "0.1.0"
-SimpleSplines = "0.3"
-SparseArrays = "1"
 Test = "1"
 
 # GeometricBrackets is not registered, and a `[sources]` table is honoured only for the active
