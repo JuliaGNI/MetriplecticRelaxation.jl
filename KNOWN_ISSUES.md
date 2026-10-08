@@ -44,3 +44,32 @@ evidence.
   survive on `origin/main` too, because the test bodies are the same.
 - kind: missing test
 - found: 2026-09-27
+
+### K6 · Comments and docs say GeometricBrackets is not registered
+
+- location: `Project.toml:21`
+- evidence: `Project.toml:21`, `test/Project.toml:23`, `scripts/Project.toml:16`,
+  `README.md:281` and `CHANGELOG.md:63` (an `[Unreleased]` entry) say that GeometricBrackets
+  is unregistered; `README.md:281` and `scripts/Project.toml:16` say the same of SimpleSplines.
+  General holds GeometricBrackets 0.1.0 to 0.2.0, and SimpleSplines 0.1.0 to 0.3.2.
+- kind: docs
+- found: 2026-10-08
+
+### K7 · The `[sources]` entry of GeometricBrackets follows the remote `main`
+
+- location: `Project.toml:40`
+- evidence: `GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}`
+  at `Project.toml:40`, `test/Project.toml:26` and `scripts/Project.toml:21`. When that `main`
+  moves to a version outside the `"0.2.0"` bound, no environment of this repository resolves.
+  The move of `main` to 0.2.0 broke `origin/main` once, against the old `"0.1"` bound.
+- kind: defect
+- found: 2026-10-08
+
+### K8 · `Project.toml` and README call 1.10 the tree's usual Julia floor
+
+- location: `Project.toml:36`
+- evidence: `Project.toml:36-38` says the `julia` floor is "1.11 and not the tree's usual 1.10",
+  and `README.md:283` says the same. GeometricBase 0.15 requires Julia 1.11, so every package
+  that bounds `GeometricBase = "0.15"` has a Julia floor of 1.11 or higher.
+- kind: docs
+- found: 2026-10-08
