@@ -19,6 +19,15 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines
+
+The root `Project.toml` bounds `GeometricBrackets = "0.2.0"`, `SimpleSolvers = "0.14.1"` and
+`SimpleSplines = "0.3.1"`, because GeometricBase 0.15 declares its stubs public and requires
+Julia 1.11, and these are the first releases that take it. The old `GeometricBrackets = "0.1"`
+no longer resolved, because the `[sources]` entry follows `main`, which is 0.2.0. The suite passes
+on Julia 1.13.1 against GeometricBrackets 0.2.0, SimpleSolvers 0.14.1 and SimpleSplines 0.3.2. No
+quoted number in this file was re-measured against these versions.
+
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 
 `test/Project.toml` loses its `[compat]` entries for `GeometricBrackets`, `LinearAlgebra`,
