@@ -19,6 +19,11 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — coverage comes from the `Julia 1` job, and the cache is saved only on success
+
+CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test
+job saves the Julia cache only when it succeeds.
+
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 
 `test/Project.toml` loses its `[compat]` entries for `GeometricBrackets`, `LinearAlgebra`,
