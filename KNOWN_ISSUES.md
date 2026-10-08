@@ -81,8 +81,10 @@ evidence.
 - location: `Project.toml:44`
 - evidence: FFTW 1.0.x and 1.1.x depend on BinaryProvider, and every BinaryProvider version in
   General bounds `julia = ["0.7", "1.0-1.10"]`. On Julia 1.11.9, `resolve_versions!` with FFTW
-  at 1.0.0 gives "Unsatisfiable requirements detected for package BinaryProvider". The lowest
-  FFTW that resolves is 1.2.4. So the advisory CI `downgrade` job fails on FFTW before it
-  reaches any other floor.
+  at 1.0.0 gives "Unsatisfiable requirements detected for package BinaryProvider". FFTW 1.2.x
+  and 1.3.0 need AbstractFFTs 0.5, which the other bounds of `Project.toml` exclude, so the
+  lowest FFTW that resolves here is 1.3.1. With FFTW at 1.3.1, every other direct dependency
+  resolves at its floor. So the advisory CI `downgrade` job fails on FFTW before it reaches any
+  other floor.
 - kind: defect
 - found: 2026-10-08
