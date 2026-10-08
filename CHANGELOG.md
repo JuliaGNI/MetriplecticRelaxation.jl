@@ -69,9 +69,9 @@ assert. It does not cover the §4 and §5 figures, which `scripts/` produces and
 0.3.0 at all. Re-running them, and checking each quoted figure, is a job of its own.
 
 The bound names the 0.3 line alone rather than a widened range; the entry above raises it to
-`"0.3.1"`. The polar path this repository
-exercises reaches `PolarSplineBasis` through `GeometricBrackets`, which is 0.3.0 API, so 0.1
-and 0.2 were never really satisfiable — the git pin was what hid it.
+`"0.3.1"`. The polar path this repository exercises reaches `PolarSplineBasis` through
+`GeometricBrackets`, which is 0.3.0 API, so 0.1 and 0.2 were never really satisfiable — the git
+pin was what hid it.
 
 ### Changed — the bracket dependency is now GeometricBrackets
 

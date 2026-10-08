@@ -49,9 +49,11 @@ evidence.
 
 - location: `Project.toml:21`
 - evidence: `Project.toml:21`, `test/Project.toml:23`, `scripts/Project.toml:16`,
-  `README.md:281` and `CHANGELOG.md:63` (an `[Unreleased]` entry) say that GeometricBrackets
-  is unregistered; `README.md:281` and `scripts/Project.toml:16` say the same of SimpleSplines.
-  General holds GeometricBrackets 0.1.0 to 0.2.0, and SimpleSplines 0.1.0 to 0.3.2.
+  `README.md:281`, `CHANGELOG.md:51` and `CHANGELOG.md:63` (two `[Unreleased]` entries) say
+  that GeometricBrackets is unregistered; `README.md:281` and `scripts/Project.toml:16` say the
+  same of SimpleSplines, and `README.md:285` says that both resolve from their git remotes at
+  `rev = "main"`; SimpleSplines has no `[sources]` entry. General holds GeometricBrackets 0.1.0
+  to 0.2.0, and SimpleSplines 0.1.0 to 0.3.2.
 - kind: docs
 - found: 2026-10-08
 
@@ -61,7 +63,7 @@ evidence.
 - evidence: `GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}`
   at `Project.toml:40`, `test/Project.toml:26` and `scripts/Project.toml:21`. When that `main`
   moves to a version outside the `"0.2.0"` bound, no environment of this repository resolves.
-  The move of `main` to 0.2.0 broke `origin/main` once, against the old `"0.1"` bound.
+  `ced4e9e` does not resolve: its `"0.1"` bound excludes the 0.2.0 that `main` carries.
 - kind: defect
 - found: 2026-10-08
 
@@ -72,4 +74,15 @@ evidence.
   and `README.md:283` says the same. GeometricBase 0.15 requires Julia 1.11, so every package
   that bounds `GeometricBase = "0.15"` has a Julia floor of 1.11 or higher.
 - kind: docs
+- found: 2026-10-08
+
+### K9 · The floor `FFTW = "1"` cannot be installed on Julia 1.11
+
+- location: `Project.toml:44`
+- evidence: FFTW 1.0.x and 1.1.x depend on BinaryProvider, and every BinaryProvider version in
+  General bounds `julia = ["0.7", "1.0-1.10"]`. On Julia 1.11.9, `resolve_versions!` with FFTW
+  at 1.0.0 gives "Unsatisfiable requirements detected for package BinaryProvider". The lowest
+  FFTW that resolves is 1.2.4. So the advisory CI `downgrade` job fails on FFTW before it
+  reaches any other floor.
+- kind: defect
 - found: 2026-10-08
