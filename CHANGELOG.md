@@ -19,6 +19,11 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — coverage comes from the `Julia 1` job, and the cache is saved only on success
+
+CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test
+job saves the Julia cache only when it succeeds.
+
 ### Changed — the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines
 
 The root `Project.toml` bounds `GeometricBrackets = "0.2.0"`, `SimpleSolvers = "0.14.1"` and
