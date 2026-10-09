@@ -18,7 +18,7 @@ evidence.
 - location: `test/torus.jl`
 - evidence: All 14 files moved from `runtests.jl` keep `using LinearAlgebra`, `using Random`,
   `using SparseArrays`, `Random.seed!(0x5c1e9a3b)` and the five-line "Every resolution below …"
-  comment. Only `spline.jl`, `euler_square.jl`, `euler_references.jl`, `gibbs_entropy.jl` and
+  comment. Only `spline.jl`, `euler.jl`, `integration/euler_references.jl`, `integration/gibbs_entropy.jl` and
   `gradshafranov.jl` draw random numbers: `grep -c -E '\brandn?\(' test/*.jl` gives 0 for the
   other nine. Only `spline.jl` uses SparseArrays (`nnz`).
 - kind: dead code
@@ -26,9 +26,9 @@ evidence.
 
 ### K4 · Five test files of `src/euler.jl` have no `test/euler.jl`
 
-- location: `test/euler_problems.jl`
-- evidence: `euler_problems.jl`, `euler_square.jl`, `free_state_space.jl`, `gibbs_entropy.jl`
-  and `euler_references.jl` test mainly `src/euler.jl`. The D3 convention maps `src/<path>.jl`
+- location: `test/integration/euler_problems.jl`
+- evidence: `integration/euler_problems.jl`, `euler.jl`, `integration/free_state_space.jl`, `integration/gibbs_entropy.jl`
+  and `integration/euler_references.jl` test mainly `src/euler.jl`. The D3 convention maps `src/<path>.jl`
   to `test/<path>.jl`. `test-layout.jl --check` accepts the current layout, because `src/` is
   flat.
 - kind: defect
@@ -38,9 +38,9 @@ evidence.
 
 - location: `src/euler.jl:507`
 - evidence: `src/euler.jl:507`, `euler_flow`: `mobility = (x, u) -> u` changed to
-  `(x, u) -> -u` survives `test/collision_bracket.jl`. The sign cancels in the recentring.
+  `(x, u) -> -u` survives `test/integration/collision_bracket.jl`. The sign cancels in the recentring.
   `src/diagnostics.jl:241`, `entropy_plateau`: `: 0.0` changed to `: 1.0` survives
-  `test/euler_short_runs.jl`. No test asserts the `held` output of the `i == 1` branch. Both
+  `test/integration/euler_short_runs.jl`. No test asserts the `held` output of the `i == 1` branch. Both
   survive on `origin/main` too, because the test bodies are the same.
 - kind: missing test
 - found: 2026-09-27

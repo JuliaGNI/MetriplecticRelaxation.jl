@@ -19,6 +19,23 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the test files that mirror no source file leave the top level of `test/`
+
+The test convention keeps a test file at the top level of `test/` only where it mirrors
+`src/<name>.jl`. Nine files mirrored none, and each moves unchanged but for one file name in a
+comment of `euler_problems.jl`. `test/euler_square.jl` becomes `test/euler.jl`, because it tests `src/euler.jl` alone and is the
+one of six such files that can take that name. The other eight go to `test/integration/`, because
+`src/` is flat, so a test of several source files has no deeper common directory, and
+`test/euler.jl` is taken for the other five tests of `src/euler.jl` alone:
+`test/short_runs.jl` to `test/integration/short_runs.jl`, `test/projector_rates.jl` to
+`test/integration/projector_rates.jl`, `test/euler_problems.jl` to
+`test/integration/euler_problems.jl`, `test/free_state_space.jl` to
+`test/integration/free_state_space.jl`, `test/collision_bracket.jl` to
+`test/integration/collision_bracket.jl`, `test/gibbs_entropy.jl` to
+`test/integration/gibbs_entropy.jl`, `test/euler_references.jl` to
+`test/integration/euler_references.jl` and `test/euler_short_runs.jl` to
+`test/integration/euler_short_runs.jl`. `test/runtests.jl` keeps every label, group and order.
+
 ### Changed — coverage comes from the `Julia 1` job, and the cache is saved only on success
 
 CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test
