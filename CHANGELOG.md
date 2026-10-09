@@ -19,6 +19,15 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines
+
+The root `Project.toml` bounds `GeometricBrackets = "0.2.0"`, `SimpleSolvers = "0.14.1"` and
+`SimpleSplines = "0.3.1"`, because GeometricBase 0.15 declares its stubs public and requires
+Julia 1.11, and these are the first releases that take it. The old `GeometricBrackets = "0.1"`
+no longer resolved, because the `[sources]` entry follows `main`, which is 0.2.0. The suite passes
+on Julia 1.13.1 against GeometricBrackets 0.2.0, SimpleSolvers 0.14.1 and SimpleSplines 0.3.2. No
+quoted number in this file was re-measured against these versions.
+
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 
 `test/Project.toml` loses its `[compat]` entries for `GeometricBrackets`, `LinearAlgebra`,
@@ -59,9 +68,10 @@ assert. It does not cover the §4 and §5 figures, which `scripts/` produces and
 `scripts/Manifest.toml` is still on its own older pin, so those runs have not been made against
 0.3.0 at all. Re-running them, and checking each quoted figure, is a job of its own.
 
-The bound is `"0.3"` alone rather than a widened range. The polar path this repository
-exercises reaches `PolarSplineBasis` through `GeometricBrackets`, which is 0.3.0 API, so 0.1
-and 0.2 were never really satisfiable — the git pin was what hid it.
+The bound names the 0.3 line alone rather than a widened range; the entry above raises it to
+`"0.3.1"`. The polar path this repository exercises reaches `PolarSplineBasis` through
+`GeometricBrackets`, which is 0.3.0 API, so 0.1 and 0.2 were never really satisfiable — the git
+pin was what hid it.
 
 ### Changed — the bracket dependency is now GeometricBrackets
 
