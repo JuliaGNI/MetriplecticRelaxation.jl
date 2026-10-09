@@ -17,7 +17,7 @@ Random.seed!(0x5c1e9a3b)
 # =============================================================================================
 # Section 5.4: reduced Euler on [0,1]² with homogeneous Dirichlet conditions.
 #
-# This file, `euler_square.jl`, `free_state_space.jl`, `collision_bracket.jl`,
+# This file, `../euler.jl`, `free_state_space.jl`, `collision_bracket.jl`,
 # `gibbs_entropy.jl`, `euler_references.jl` and `euler_short_runs.jl` test it. Their meshes
 # are 5 to 12 cells against the runs' 26, and every final time is a handful of steps. What is
 # asserted is again the STRUCTURE -- the transcription of the initial conditions, the space,
