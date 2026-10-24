@@ -68,7 +68,7 @@ against these versions.
   excluded the 0.3.0 that `[sources]` resolves.** The `[sources]` entry follows `main`, which has
   carried 0.3.0 since its 2026-10-17 release; the old bound refused that release, and every
   environment here failed to resolve, on every Julia version, with `empty intersection between
-  GeometricBrackets@0.3.0 and project compatibility 0.2.0`. This predates the Julia 1.12 floor
+  GeometricBrackets@0.3.0 and project compatibility 0.2`. This predates the Julia 1.12 floor
   and does not follow from it. With the new bound the project resolves.
 
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
