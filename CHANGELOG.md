@@ -19,6 +19,19 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — Julia 1.12 is the floor
+
+- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A caller on Julia 1.11 can
+  no longer install this version. This repository records no reason beyond the raise itself. The
+  `Project.toml` comment and the README's Dependencies section gave the `[sources]` table as the
+  reason for the 1.11 floor and called 1.10 the tree's usual floor; both now say that `[sources]`
+  is a Julia 1.11 feature, ignored on 1.10, which the 1.12 floor is above. That closes K8, whose
+  problem was those two sentences; its evidence also carried that GeometricBase 0.15 requires
+  Julia 1.11, which the new floor already satisfies, so the entry retires in full. Nothing in the
+  code or the tests existed only for Julia 1.11, so nothing is deleted. K9 stays: BinaryProvider
+  bounds `julia = ["0.7", "1.0-1.10"]` in General, which excludes 1.12 as much as 1.11, so FFTW
+  1.0.x and 1.1.x still cannot be installed.
+
 ### Changed — the test files that mirror no source file leave the top level of `test/`
 
 The test convention keeps a test file at the top level of `test/` only where it mirrors
@@ -43,12 +56,20 @@ job saves the Julia cache only when it succeeds.
 
 ### Changed — the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines
 
-The root `Project.toml` bounds `GeometricBrackets = "0.2.0"`, `SimpleSolvers = "0.14.1"` and
-`SimpleSplines = "0.3.1"`, because GeometricBase 0.15 declares its stubs public and requires
-Julia 1.11, and these are the first releases that take it. The old `GeometricBrackets = "0.1"`
-no longer resolved, because the `[sources]` entry follows `main`, which is 0.2.0. The suite passes
-on Julia 1.13.1 against GeometricBrackets 0.2.0, SimpleSolvers 0.14.1 and SimpleSplines 0.3.2. No
-quoted number in this file was re-measured against these versions.
+The root `Project.toml` bounds `GeometricBrackets = "0.3.0"`, `SimpleSolvers = "0.14.1"` and
+`SimpleSplines = "0.3.1"`, the latter two because GeometricBase 0.15 declares its stubs public and
+requires Julia 1.11, and they are the first releases that take it. `GeometricBrackets` took that
+release at 0.2.0, and the older `"0.1"` bound no longer resolved once the `[sources]` entry, which
+follows `main`, had moved past it; the bullet below raises it once more. The suite passes on
+Julia 1.12.7 against GeometricBrackets 0.3.0. No quoted number in this file was re-measured
+against these versions.
+
+- **`[compat] GeometricBrackets` goes from `"0.2.0"` to `"0.3.0"`, because the old bound
+  excluded the 0.3.0 that `[sources]` resolves.** The `[sources]` entry follows `main`, which has
+  carried 0.3.0 since its 2026-10-17 release; the old bound refused that release, and every
+  environment here failed to resolve, on every Julia version, with `empty intersection between
+  GeometricBrackets@0.3.0 and project compatibility 0.2`. This predates the Julia 1.12 floor
+  and does not follow from it. With the new bound the project resolves.
 
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 
@@ -70,9 +91,9 @@ into `test/quality/aqua.jl` (the ambiguity guard and Aqua) and `test/quality/exp
 
 The test dependencies move from `[extras]` and `[targets]` into `test/Project.toml`, with their
 existing bounds (`Aqua = "0.8"`, `ExplicitImports = "1.15"`, `Test = "1"`) and a `[sources]`
-entry for the unregistered GeometricBrackets. SafeTestsets is a new test dependency. The quality
-files no longer look for Aqua and ExplicitImports in the shared `@v#.#` environment, and no longer
-mark themselves broken when those packages are missing: the test environment supplies them. So
+entry for `GeometricBrackets`. SafeTestsets is a new test dependency. The quality files no
+longer look for Aqua and ExplicitImports in the shared `@v#.#` environment, and no longer mark
+themselves broken when those packages are missing: the test environment supplies them. So
 `julia --project=. test/runtests.jl` no longer runs the suite; `Pkg.test()` does.
 
 The suite still counts **479 tests**, file by file the same as before. Every file runs in the
@@ -82,7 +103,7 @@ The suite still counts **479 tests**, file by file the same as before. Every fil
 
 SimpleSplines 0.3.0 is registered in General, so its `[sources]` entry is gone and `[compat]`
 names the released version. `Project.toml` and `scripts/Project.toml` both drop it.
-`GeometricBrackets` keeps its entry: that package is not registered yet.
+`GeometricBrackets` keeps its entry.
 
 **This is a breaking bump, 0.2.0 to 0.3.0, and the numbers have not been re-measured against
 it.** The suite passes — 0 failures, Quality Guards included — and that covers what the tests
@@ -947,10 +968,10 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   shared CI workflows and git hooks installed from `~/Research/Knowledge/AI/githooks/`. No physics,
   no brackets and no run drivers yet.
 
-  The `julia` floor is **1.11**, not the 1.10 used across the rest of the tree: `PoissonBrackets`
-  and `SimpleSplines` are both unregistered and are reached through a `[sources]` table, which
-  Julia 1.10 ignores rather than honours, so a 1.10 environment fails to resolve rather than
-  resolving to something older.
+  The `julia` floor was set to **1.11** here, not the 1.10 some packages in the tree still carry:
+  `PoissonBrackets` and `SimpleSplines` were both unregistered then and were reached through a
+  `[sources]` table, which Julia 1.10 ignores rather than honours, so a 1.10 environment fails to
+  resolve rather than resolving to something older. It is 1.12 in the entry above.
 
   Both sources are **paths to the local siblings**, not `{rev = "main", url = …}`. That follows
   the rule `PoissonBrackets/scripts/Project.toml` already states — the url form resolves against
@@ -1428,8 +1449,8 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
 
   That release is a version on `main`, **not** a registration: SimpleSplines is still absent
   from General, with no tags. So this changes nothing about why `[sources]` is needed here and
-  in `scripts/Project.toml`, nor about the `julia = "1.11"` floor those tables force — the
-  `Project.toml` comment explaining both remains correct as written.
+  in `scripts/Project.toml`, nor about the `julia` floor those tables required — the
+  `Project.toml` comment explaining both said so then, and the entry above restates it for 1.12.
 
   This also needed the same one-line bound in **PoissonBrackets**
   ([`JuliaGNI/PoissonBrackets.jl#7`](https://github.com/JuliaGNI/PoissonBrackets.jl/pull/7)).
