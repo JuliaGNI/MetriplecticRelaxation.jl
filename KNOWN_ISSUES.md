@@ -62,7 +62,8 @@ evidence.
 - location: `Project.toml:40`
 - evidence: `GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}`
   at `Project.toml:40`, `test/Project.toml:26` and `scripts/Project.toml:21`. When that `main`
-  moves to a version outside the `"0.2.0"` bound, no environment of this repository resolves.
+  moves to a version outside the `[compat]` bound of `GeometricBrackets`, no environment of this
+  repository resolves.
   `ced4e9e` does not resolve: its `"0.1"` bound excludes the 0.2.0 that `main` carries.
 - kind: defect
 - found: 2026-10-08
