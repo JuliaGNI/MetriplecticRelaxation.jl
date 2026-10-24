@@ -67,15 +67,6 @@ evidence.
 - kind: defect
 - found: 2026-10-08
 
-### K8 · `Project.toml` and README call 1.10 the tree's usual Julia floor
-
-- location: `Project.toml:36`
-- evidence: `Project.toml:36-38` says the `julia` floor is "1.11 and not the tree's usual 1.10",
-  and `README.md:283` says the same. GeometricBase 0.15 requires Julia 1.11, so every package
-  that bounds `GeometricBase = "0.15"` has a Julia floor of 1.11 or higher.
-- kind: docs
-- found: 2026-10-08
-
 ### K9 · The floor `FFTW = "1"` cannot be installed on Julia 1.11
 
 - location: `Project.toml:44`

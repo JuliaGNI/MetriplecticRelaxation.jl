@@ -279,8 +279,8 @@ above when the numbers or the wall-clock matter.
 ## Dependencies
 
 `GeometricBrackets` and `SimpleSplines` are unregistered, so `Project.toml` carries a `[sources]`
-table for both — a Julia 1.11 feature, which is why the `julia` floor here is 1.11 rather than the
-1.10 used elsewhere in this tree.
+table for both — a Julia 1.11 feature, ignored on 1.10, so the `julia` floor here, 1.12, is above
+the lowest Julia that honours it.
 
 Both are resolved from their **git remotes at `rev = "main"`**, not from the sibling checkouts in
 `../../Packages/`. A relative path escapes the repository and so does not exist on a CI runner:

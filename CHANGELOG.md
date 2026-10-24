@@ -19,6 +19,17 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — Julia 1.12 is the floor
+
+- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A caller on Julia 1.11 can
+  no longer install this version. This repository records no reason beyond the raise itself. The
+  `Project.toml` comment and the README's Dependencies section gave the `[sources]` table as the
+  reason for the 1.11 floor and called 1.10 the tree's usual floor; both now say that `[sources]`
+  is a Julia 1.11 feature, ignored on 1.10, which the 1.12 floor is above. That closes K8, whose
+  evidence was those two sentences. Nothing in the code or the tests existed only for Julia 1.11,
+  so nothing is deleted. K9 stays: BinaryProvider bounds `julia = ["0.7", "1.0-1.10"]` in General,
+  which excludes 1.12 as much as 1.11, so FFTW 1.0.x and 1.1.x still cannot be installed.
+
 ### Changed — the test files that mirror no source file leave the top level of `test/`
 
 The test convention keeps a test file at the top level of `test/` only where it mirrors
