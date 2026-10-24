@@ -26,9 +26,11 @@ here than in a library:
   `Project.toml` comment and the README's Dependencies section gave the `[sources]` table as the
   reason for the 1.11 floor and called 1.10 the tree's usual floor; both now say that `[sources]`
   is a Julia 1.11 feature, ignored on 1.10, which the 1.12 floor is above. That closes K8, whose
-  evidence was those two sentences. Nothing in the code or the tests existed only for Julia 1.11,
-  so nothing is deleted. K9 stays: BinaryProvider bounds `julia = ["0.7", "1.0-1.10"]` in General,
-  which excludes 1.12 as much as 1.11, so FFTW 1.0.x and 1.1.x still cannot be installed.
+  problem was those two sentences; its evidence also carried that GeometricBase 0.15 requires
+  Julia 1.11, which the new floor already satisfies, so the entry retires in full. Nothing in the
+  code or the tests existed only for Julia 1.11, so nothing is deleted. K9 stays: BinaryProvider
+  bounds `julia = ["0.7", "1.0-1.10"]` in General, which excludes 1.12 as much as 1.11, so FFTW
+  1.0.x and 1.1.x still cannot be installed.
 
 ### Changed — the test files that mirror no source file leave the top level of `test/`
 
@@ -60,6 +62,14 @@ Julia 1.11, and these are the first releases that take it. The old `GeometricBra
 no longer resolved, because the `[sources]` entry follows `main`, which is 0.2.0. The suite passes
 on Julia 1.13.1 against GeometricBrackets 0.2.0, SimpleSolvers 0.14.1 and SimpleSplines 0.3.2. No
 quoted number in this file was re-measured against these versions.
+
+- **`[compat] GeometricBrackets` goes from `"0.2.0"` to `"0.3.0"`, because the old bound
+  excluded the tree `[sources]` resolves.** The package is not in General, so `[sources]` follows
+  `main`, which has been 0.3.0 since its 2026-10-17 release; the old bound refused that release,
+  and every environment here failed to resolve, on every Julia version, with `empty intersection
+  between GeometricBrackets@0.3.0 and project compatibility 0.2.0`. This predates the Julia 1.12
+  floor and does not follow from it. With the new bound the project resolves and the full suite
+  passes on Julia 1.12.7.
 
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 

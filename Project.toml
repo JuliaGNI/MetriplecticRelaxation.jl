@@ -33,16 +33,16 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 # until it is pushed. Develop against a sibling with `Pkg.develop(path=...)` in a local
 # environment; do not put the path back in this file.
 #
-# `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored and resolution fails outright with
-# "expected package GeometricBrackets to be registered". The `julia` floor below, 1.12, is above
-# that lower bound, so every Julia this package installs on honours the table.
+# `[sources]` is a Julia 1.11 feature: on 1.10 it is ignored, and resolution fails there because
+# every GeometricBrackets release requires Julia 1.11 as well. The `julia` floor below, 1.12, is
+# above both lower bounds, so every Julia this package installs on honours the table.
 [sources]
 GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
 
 [compat]
 CairoMakie = "0.15"
 FFTW = "1"
-GeometricBrackets = "0.2.0"
+GeometricBrackets = "0.3.0"
 LinearAlgebra = "1"
 Printf = "1"
 Random = "1"
