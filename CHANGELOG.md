@@ -28,9 +28,31 @@ here than in a library:
   is a Julia 1.11 feature, ignored on 1.10, which the 1.12 floor is above. That closes K8, whose
   problem was those two sentences; its evidence also carried that GeometricBase 0.15 requires
   Julia 1.11, which the new floor already satisfies, so the entry retires in full. Nothing in the
-  code or the tests existed only for Julia 1.11, so nothing is deleted. K9 stays: BinaryProvider
-  bounds `julia = ["0.7", "1.0-1.10"]` in General, which excludes 1.12 as much as 1.11, so FFTW
-  1.0.x and 1.1.x still cannot be installed.
+  code or the tests existed only for Julia 1.11, so nothing is deleted. BinaryProvider bounds
+  `julia = ["0.7", "1.0-1.10"]` in General, which excludes 1.12 as much as 1.11, so FFTW 1.0.x
+  and 1.1.x still cannot be installed; the entry below raises the FFTW floor past them.
+
+### Changed — the lower bounds that the merged downgrade check reaches
+
+CI's Downgrade job resolves `Project.toml` and `test/Project.toml` together at their lower bounds
+on Julia 1.12 and runs the suite there. Three bounds rise so that this resolve succeeds and the
+suite passes at those versions.
+
+- **`[compat] FFTW` goes from `"1"` to `"1.3.1"`.** FFTW 1.3.1 is the lowest version that
+  resolves: 1.0.x and 1.1.x depend on BinaryProvider, which bounds `julia` to 1.10 and below, and
+  1.2.x and 1.3.0 need AbstractFFTs 0.5, which the other bounds exclude. SimpleSplines 0.3.5 also
+  requires FFTW 1.3.1 or later. This closes K9.
+- **`[compat] SimpleSplines` goes from `"0.3.1"` to `"0.3.5"`.** Up to 0.3.4, `CirculantMass`
+  calls `plan_rfft(c; flags = …)`, which is ambiguous between FFTW's method and FFTA's
+  `plan_rfft(::AbstractArray{<:Real}, ::RegionTypes)` whenever both are loaded. CairoMakie loads
+  FFTA through KernelDensity 0.6.11 and later, so at the old floor `test/spline.jl` stops with
+  `MethodError: kwcall(…, ::typeof(AbstractFFTs.plan_rfft), ::Vector{Float64}, ::UnitRange{Int64})
+  is ambiguous`. SimpleSplines 0.3.5 calls FFTW's method through `invoke`. The same call is
+  ambiguous with the newest FFTW (1.10.0) and FFTA 0.3.2, so this is not a floor-only failure.
+- **`[compat] Aqua` in `test/Project.toml` goes from `"0.8"` to `"0.8.14"`.** On Julia 1.12,
+  `Core.TypeName` has no field `mt`, and Aqua's piracy check up to 0.8.13 reads it, so the check
+  errors with `FieldError: type Core.TypeName has no field 'mt'`. Aqua 0.8.14 is the first release
+  that collects the methods through `Core.methodtable` on Julia 1.12.
 
 ### Changed — the test files that mirror no source file leave the top level of `test/`
 
