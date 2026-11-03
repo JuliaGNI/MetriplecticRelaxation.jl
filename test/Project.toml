@@ -15,7 +15,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 # verdict IS that package's analysis, so a resolver free to swap the analysis engine can change
 # the verdict without anything here changing. 1.15 is the version the guard was verified against.
 [compat]
-Aqua = "0.8"
+Aqua = "0.8.14"
 ExplicitImports = "1.15"
 SafeTestsets = "0.1.0"
 Test = "1"
