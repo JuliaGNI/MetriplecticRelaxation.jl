@@ -20,8 +20,5 @@ ExplicitImports = "1.15"
 SafeTestsets = "0.1.0"
 Test = "1"
 
-# GeometricBrackets is not registered, and a `[sources]` table is honoured only for the active
-# project, so this environment needs its own entry, the same as the root `Project.toml`'s.
 [sources]
-GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
 MetriplecticRelaxation = {path = ".."}

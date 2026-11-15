@@ -10,12 +10,7 @@ SimpleSolvers = "36b790f5-6434-4fbe-b711-1f64a1e2f6a2"
 SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-# Repeated from the root `Project.toml` rather than inherited: a `[sources]` table is honoured
-# only for the *active* project, so every nested environment needs its own copy.
-#
-# The two unregistered packages are urls for the reason the root file gives — a relative sibling
-# path does not exist on a CI runner. `MetriplecticRelaxation` stays a path because it is this
-# repository, so `..` is inside the checkout and resolves wherever the checkout is.
+# `MetriplecticRelaxation` is this repository, so `..` is inside the checkout and resolves
+# wherever the checkout is.
 [sources]
 MetriplecticRelaxation = {path = ".."}
-GeometricBrackets = {rev = "main", url = "https://github.com/JuliaGNI/GeometricBrackets.jl"}
