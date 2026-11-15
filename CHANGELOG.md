@@ -99,9 +99,10 @@ job saves the Julia cache only when it succeeds.
 
 ### Changed — the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines
 
-The root `Project.toml` bounds `GeometricBrackets = "0.3.0"`, `SimpleSolvers = "0.14.1"` and
+The root `Project.toml` bounded `GeometricBrackets = "0.3.0"`, `SimpleSolvers = "0.14.1"` and
 `SimpleSplines = "0.3.1"`, the latter two because GeometricBase 0.15 declares its stubs public and
-requires Julia 1.11, and they are the first releases that take it. `GeometricBrackets` took that
+requires Julia 1.11, and they are the first releases that take it; the entry "the lower bounds
+that the merged downgrade check reaches" raises `SimpleSplines` again. `GeometricBrackets` took that
 release at 0.2.0, and the older `"0.1"` bound no longer resolved once the `[sources]` entry, which
 followed `main`, had moved past it; the bullet below raises it once more, and the entry
 "GeometricBrackets comes from the registry, at 0.4" raises it to 0.4. The suite passed on
@@ -113,7 +114,7 @@ against these versions.
   carried 0.3.0 from its 2026-10-17 release; the old bound refused that release, and every
   environment here failed to resolve, on every Julia version, with `empty intersection between
   GeometricBrackets@0.3.0 and project compatibility 0.2`. This predates the Julia 1.12 floor
-  and does not follow from it. With the new bound the project resolves.
+  and does not follow from it. With the new bound the project resolved.
 
 ### Changed — `test/Project.toml` carries no bound for a shared dependency
 
@@ -216,8 +217,10 @@ test would have watched this regress in silence.
 ### Added — the quality guards, and the first Aqua run on this repository
 
 Two results had just been settled by hand with nothing holding them there, so both could have
-come back unnoticed. `test/runquality.jl` is what stops that, included last by
-`test/runtests.jl` because Aqua's `persistent_tasks` check starts a process of its own. The
+come back unnoticed. `test/runquality.jl` was what stopped that, included last by
+`test/runtests.jl` because Aqua's `persistent_tasks` check starts a process of its own; the entry
+"the test suite follows the tree's test convention" splits it into `test/quality/aqua.jl` and
+`test/quality/explicit_imports.jl`. The
 suite goes from **464 to 477 tests**.
 
 **Each guard was checked against a broken tree, not only a clean one.** Restoring
@@ -249,9 +252,10 @@ backlog.
 "GeometricBrackets comes from the registry, at 0.4" removed the last git source. Aqua 0.8.16 runs
 it by generating a temporary project and `Pkg.develop`-ing this package into it
 (`persistent_tasks.jl:93-95`), then precompiling in a subprocess. That project has no manifest,
-so the resolve must satisfy this package's two `rev = "main"` GitHub `[sources]` — every run of
-the suite would then need the network and track two moving branches, and a bad day upstream
-would redden the suite for a reason that has nothing to do with this package. It leaves this
+so the resolve had to satisfy this package's `rev = "main"` GitHub `[sources]`, two of them
+when the check was turned off — every run of the suite would then have needed the network and
+tracked moving branches, and a bad day upstream would have reddened the suite for a reason that
+has nothing to do with this package. It leaves this
 repository's own manifests alone, so the hard rule is not at stake; the fragility is. Against
 that cost it can find nothing here: there is no `__init__`, no `@async`, no `Threads.@spawn`
 and no `Timer` in `src/`, so there is no lingering task for it to catch. Only staleness is asserted from ExplicitImports: `field` is imported from
@@ -467,7 +471,7 @@ already allows both, so nothing upstream blocked the bump.
 green here while a direct dependency was an unregistered git source.** `julia-runtest` leaves `force_latest_compatible_version`
 at `auto`, which becomes `true` on a CompatHelper pull request. `Pkg` then calls `maximum` over
 the registered versions of every direct dependency carrying a `[compat]` entry. `PoissonBrackets`
-and `SimpleSplines` are unregistered git sources, so that set is empty and `Pkg` throws
+and `SimpleSplines` were unregistered git sources, so that set was empty and `Pkg` threw
 `ArgumentError: reducing over an empty collection` before a single test runs — every row of the
 matrix, in under four minutes. The trigger is the pull request author, not the diff, so no edit
 to such a branch fixes it. With every direct dependency registered, as the entry
@@ -1275,8 +1279,8 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   and in `scripts/`; `MetriplecticRelaxation = {path = ".."}` stays a path because it is inside
   the checkout.
 
-  **This trades away what the path form was for.** Resolution now follows `main` on the remote,
-  so a local edit to either sibling is invisible here until it is pushed. Develop against a
+  **This traded away what the path form was for.** Resolution then followed `main` on the remote,
+  so a local edit to either sibling was invisible here until it was pushed. Develop against a
   working tree with `Pkg.develop(path=…)` in a scratch environment rather than by restoring the
   path here.
 
@@ -1347,7 +1351,7 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
 
 - **The review follow-ups of #1 and #2 were re-measured against the same dependency trees the
   §4 and §5 results were, and nothing moved.** `Manifest.toml` is gitignored and `[sources]`
-  follows `main` on both remotes, so the resolved trees are recorded rather than committed;
+  followed `main` on both remotes, so the resolved trees are recorded rather than committed;
   verified from the manifest's own `git-tree-sha1` before any of the work below, in both the
   root and the `scripts` project:
 
@@ -1494,17 +1498,17 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   against. The dependency-state section further down still records the tree-SHA that was
   actually resolved for those runs, and is deliberately left as it was.
 
-  That release is a version on `main`, **not** a registration: SimpleSplines is still absent
-  from General, with no tags. So this changes nothing about why `[sources]` is needed here and
-  in `scripts/Project.toml`, nor about the `julia` floor those tables required — the
-  `Project.toml` comment explaining both said so then, and the entry above restates it for 1.12.
+  That release was a version on `main`, **not** a registration: SimpleSplines was still absent
+  from General then, with no tags. So this changed nothing about why `[sources]` was needed here
+  and in `scripts/Project.toml`, nor about the `julia` floor those tables required — the
+  `Project.toml` comment explaining both said so then.
 
   This also needed the same one-line bound in **PoissonBrackets**
   ([`JuliaGNI/PoissonBrackets.jl#7`](https://github.com/JuliaGNI/PoissonBrackets.jl/pull/7)).
   A dependency's `[compat]` takes part in resolution, and
-  PoissonBrackets is itself resolved here from `rev = "main"`, so its stale `"1"` kept
-  resolution unsatisfiable no matter what this file said. That is the standing cost of tracking
-  `main` on two unregistered remotes: an upstream release can turn this repository's CI red with
+  PoissonBrackets was itself resolved here from `rev = "main"`, so its stale `"1"` kept
+  resolution unsatisfiable no matter what this file said. That was the standing cost of tracking
+  `main` on two unregistered remotes: an upstream release could turn this repository's CI red with
   no change here at all, as it did in a pull request that does not touch `Project.toml`.
 
 - **Three numbers in the prose did not match what the code does, found in review of #2 and
@@ -2270,7 +2274,7 @@ error.
 
 ### Results — §5.4, the dependency state every number below was measured against
 
-`Manifest.toml` is gitignored and `[sources]` follows `main` on both remotes, so the resolved
+`Manifest.toml` is gitignored and `[sources]` followed `main` on both remotes, so the resolved
 tree is not committed and has to be recorded here instead. Every §5.4 number in the sections
 that follow was produced against
 
