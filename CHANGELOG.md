@@ -39,6 +39,10 @@ Aqua's `persistent_tasks` check runs again. It was off because its temporary pro
 resolve the `rev = "main"` source over the network; with no git source left, `test/quality/aqua.jl`
 calls `Aqua.test_all(MetriplecticRelaxation)` with every check on.
 
+`[compat] SimpleSplines` reads `"0.3.5, 0.4"`: a CompatHelper commit (`0ac7378`) widened it to
+admit SimpleSplines 0.4, which no entry here recorded. The suite passes against SimpleSplines
+0.4.0 and GeometricBrackets 0.4.0.
+
 ### Changed — Julia 1.12 is the floor
 
 - **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A caller on Julia 1.11 can
@@ -136,7 +140,8 @@ into `test/quality/aqua.jl` (the ambiguity guard and Aqua) and `test/quality/exp
 
 The test dependencies move from `[extras]` and `[targets]` into `test/Project.toml`, with their
 existing bounds (`Aqua = "0.8"`, `ExplicitImports = "1.15"`, `Test = "1"`) and a `[sources]`
-entry for `GeometricBrackets`. SafeTestsets is a new test dependency. The quality files no
+entry for `GeometricBrackets`, which the entry "GeometricBrackets comes from the registry, at 0.4"
+removes again. SafeTestsets is a new test dependency. The quality files no
 longer look for Aqua and ExplicitImports in the shared `@v#.#` environment, and no longer mark
 themselves broken when those packages are missing: the test environment supplies them. So
 `julia --project=. test/runtests.jl` no longer runs the suite; `Pkg.test()` does.
@@ -166,8 +171,9 @@ pin was what hid it.
 
 `PoissonBrackets` was renamed to `GeometricBrackets`, and its repository to
 `JuliaGNI/GeometricBrackets.jl`. The UUID did not change, so this is a rename and not a
-different package: `[deps]`, `[sources]`, `[compat]` and every `using` line here follow it, and
-no line of code here changes.
+different package: `[deps]`, `[sources]`, `[compat]` and every `using` line here followed it, and
+no line of code here changed. The entry "GeometricBrackets comes from the registry, at 0.4"
+removes the `[sources]` entry later.
 
 **The rename moves a manifest pin, and that is not free.** A pinned tree carries the old name
 in its own `Project.toml`, so it cannot be loaded under the new one. The root `Manifest.toml`
@@ -239,9 +245,11 @@ guard calls — `check_no_stale_explicit_imports` long predates it. It is pinned
 guard's verdict *is* that package's analysis, so a resolver free to swap the analysis engine can
 change the verdict with nothing here changing; 1.15 is the version it was verified against. The
 bound reaches `Pkg.test()`'s environment only, not the shared one, which ignores `[compat]` and
-supplies whatever is installed. Neither is in `Manifest.toml`, which stays hand-seeded — they are
+supplies whatever is installed. Neither is in `Manifest.toml`, which stays hand-seeded — they were
 reached by `Pkg.test()`'s resolve on CI, and locally by the shared `@v#.#` environment on the
-default load path. If neither route supplies them the testset marks itself broken and warns.
+default load path. If neither route supplied them the testset marked itself broken and warned,
+until the entry "the test suite follows the tree's test convention" moved them into
+`test/Project.toml`.
 
 **All eight Aqua checks were measured green before being wired in** — ambiguities, unbound args,
 undefined exports, project extras, stale deps, deps compat, piracies and persistent tasks. This
@@ -482,7 +490,7 @@ since 6268037.
 
 **The full suite passes under `--check-bounds=yes --depwarn=yes` on Julia 1.13.0 against
 SimpleSolvers 0.14.0**, with no failures and no deprecation warnings. It ran in the **root**
-environment, against these trees, which are current `main` for both git sources and are **not**
+environment, against these trees, which were current `main` for both git sources then and are **not**
 the trees the `### Changed — the pinned dependency trees` entry below records:
 
 | package | tree | version |
@@ -1024,10 +1032,10 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   `[sources]` table, which Julia 1.10 ignores rather than honours, so a 1.10 environment fails to
   resolve rather than resolving to something older. It is 1.12 in the entry above.
 
-  Both sources are **paths to the local siblings**, not `{rev = "main", url = …}`. That follows
-  the rule `PoissonBrackets/scripts/Project.toml` already states — the url form resolves against
-  a cached clone and pins the environment to whatever was last fetched — and it is also the only
-  form that resolves here at all: Julia 1.13.0-rc3's `Pkg` segfaults (signal 11) in
+  Both sources were **paths to the local siblings** then, not `{rev = "main", url = …}`. That
+  followed the rule `PoissonBrackets/scripts/Project.toml` stated then — the url form resolves
+  against a cached clone and pins the environment to whatever was last fetched — and it was also
+  the only form that resolved here at all: Julia 1.13.0-rc3's `Pkg` segfaulted (signal 11) in
   `Updating git-repo` for a git-url source, offline as well as online and with the cached clone
   already at the current commit.
 
@@ -1269,13 +1277,15 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
     **0.502** at `t = 9`; the same run measures **0.548** and **0.507**. The bias, not mode
     contamination, is what dominates a late vorticity fit.
 
-- **`[sources]` names the GitHub remotes instead of relative sibling paths.** `PoissonBrackets`
+- **`[sources]` named the GitHub remotes instead of relative sibling paths**, until the entries
+  "SimpleSplines comes from the registry, at 0.3.0" and "GeometricBrackets comes from the
+  registry, at 0.4" removed both. `PoissonBrackets`
   and `SimpleSplines` were `{path = "../../Packages/…"}`, which points outside the checkout and
   therefore does not exist on a runner: every CI job failed in `julia-actions/julia-buildpkg`
   with "expected package PoissonBrackets [2a9ffa85] to exist at path
   `/home/runner/work/Packages/PoissonBrackets`" before a single test ran. The whole matrix was
   gated on a directory layout only the author's machine has, and had been since the repository
-  was created — `main` failed identically. Both are now `{rev = "main", url = …}`, in the root
+  was created — `main` failed identically. Both became `{rev = "main", url = …}`, in the root
   and in `scripts/`; `MetriplecticRelaxation = {path = ".."}` stays a path because it is inside
   the checkout.
 
@@ -1483,7 +1493,7 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
 - **The `SimpleSplines` compat bound follows its 0.1.0 release. Compat only — no code changed
   and no number below moves.** SimpleSplines' `main` carried `version = "1.0.0-DEV"`, which the
   bound `"1"` satisfied; on 2026-09-07 it released `0.1.0`, a *downgrade* in numbering rather
-  than the `1.0.0` the bound anticipated. Because `[sources]` resolves it from `rev = "main"`,
+  than the `1.0.0` the bound anticipated. Because `[sources]` resolved it from `rev = "main"`,
   the release propagated on the next resolve and every Julia job in #2's CI matrix then died in
   `buildpkg`, before a single test ran, with
 
@@ -1491,9 +1501,9 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   ERROR: LoadError: empty intersection between SimpleSplines@0.1.0 and project compatibility 1
   ```
 
-  The bound is now `"0.1"`. **None of the recorded results is affected**, and that is measured
+  The bound became `"0.1"`. **None of the recorded results is affected**, and that is measured
   rather than assumed: SimpleSplines' release commit `c8b6432` touches only its `Project.toml`
-  version string and its own changelog, so the *source* tree that resolves now is identical to
+  version string and its own changelog, so the *source* tree that resolved then was identical to
   `d77a472` — and therefore to what every number in the *Results* sections below was produced
   against. The dependency-state section further down still records the tree-SHA that was
   actually resolved for those runs, and is deliberately left as it was.
@@ -1559,8 +1569,8 @@ the move: `rev = "main"` fetches whatever `main` is, and a stale bound then repo
   asserted on the line above, so no coverage was lost and the suite count is unchanged.
 
 - **`README.md`'s dependency section contradicted `Project.toml`.** It said `PoissonBrackets` "is
-  resolved from the local sibling checkout at `../../Packages/PoissonBrackets`"; both sources have
-  been git urls at `rev = "main"` since `066e6cc`, because a relative path escapes the repository
+  resolved from the local sibling checkout at `../../Packages/PoissonBrackets`"; both sources were
+  git urls at `rev = "main"` from `066e6cc` on, because a relative path escapes the repository
   and fails in `buildpkg` on every CI runner. Pre-existing, but `README.md` is edited here.
 
 - **A rate fit could measure its own resolution floor.** `S − S_η` does not decay forever at a
