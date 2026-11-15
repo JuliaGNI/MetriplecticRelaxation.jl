@@ -278,14 +278,8 @@ above when the numbers or the wall-clock matter.
 
 ## Dependencies
 
-`GeometricBrackets` and `SimpleSplines` are unregistered, so `Project.toml` carries a `[sources]`
-table for both — a Julia 1.11 feature, ignored on 1.10, so the `julia` floor here, 1.12, is above
-the lowest Julia that honours it.
-
-Both are resolved from their **git remotes at `rev = "main"`**, not from the sibling checkouts in
-`../../Packages/`. A relative path escapes the repository and so does not exist on a CI runner:
-with the path form every job failed in `buildpkg` before a single test ran. The cost is that
-resolution follows `main` on the remote, so a local change to either package is invisible here
-until it is pushed — develop against a sibling with `Pkg.develop(path=...)` in a *local*
-environment, and do not put the path back into `Project.toml`. Its comments say the same thing
-at length, and they are load-bearing: `Pkg.instantiate` and `Pkg.develop` both strip them.
+Every dependency, `GeometricBrackets` and `SimpleSplines` included, is a registered release from
+General, selected by the `[compat]` bounds of `Project.toml`. To run against a local change to one
+of them, develop the sibling checkout with `Pkg.develop(path=...)` in a *local* environment, and
+do not put a path into `Project.toml`: a relative path escapes the repository and does not exist on
+a CI runner.

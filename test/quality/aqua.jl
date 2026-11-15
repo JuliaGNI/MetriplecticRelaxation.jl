@@ -21,16 +21,8 @@ using Test
             foreach(a -> println(stderr, "  ambiguous: ", a), ambiguities)
     end
 
-    # Every check that runs is green, so a failure here is a regression and not a backlog.
-    #
-    # `persistent_tasks = false`, and it is the one check deliberately off. Aqua 0.8.16 runs
-    # it by generating a temporary project and `Pkg.develop`-ing this package into it
-    # (`persistent_tasks.jl:93-95`), then precompiling in a subprocess (`:114`). That
-    # project has no manifest, so the resolve has to satisfy this package's `rev = "main"`
-    # GitHub `[sources]` — which makes every run of the suite need the network and track a
-    # moving branch. Against that it can find nothing here: this package has no `__init__`, no
-    # `@async`, no `Threads.@spawn` and no `Timer`, so there is no task for it to catch.
+    # Every check is green, so a failure here is a regression and not a backlog.
     @testset "$(rpad("Aqua", 76))" begin
-        Aqua.test_all(MetriplecticRelaxation; persistent_tasks = false)
+        Aqua.test_all(MetriplecticRelaxation)
     end
 end

@@ -19,6 +19,25 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — GeometricBrackets comes from the registry, at 0.4
+
+GeometricBrackets 0.4.0 is registered in General, so its `[sources]` entry, which followed `main`
+on the remote, is gone from `Project.toml`, `test/Project.toml` and `scripts/Project.toml`, and
+`[compat] GeometricBrackets` goes from `"0.3.0"` to `"0.4"`. Every dependency now resolves from
+General, as the entry "the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines"
+below did for SimpleSplines. This closes K6 (comments and docs that called GeometricBrackets
+unregistered) and K7 (the `[sources]` entry that followed `main`).
+
+The resolved code does not change: the source of GeometricBrackets 0.4.0 (`src/`, `ext/`,
+`Project.toml`) is that of `main`, which the `[sources]` entry resolved before; the one commit on
+`main` after the tag changes the git hooks and the CI workflow. The one breaking change of 0.4.0,
+the concretely typed `names` field of `Trajectory`, does not reach this repository, which names
+`Trajectory` nowhere. No quoted number is re-measured.
+
+Aqua's `persistent_tasks` check runs again. It was off because its temporary project had to
+resolve the `rev = "main"` source over the network; with no git source left, `test/quality/aqua.jl`
+calls `Aqua.test_all(MetriplecticRelaxation)` with every check on.
+
 ### Changed — Julia 1.12 is the floor
 
 - **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A caller on Julia 1.11 can
