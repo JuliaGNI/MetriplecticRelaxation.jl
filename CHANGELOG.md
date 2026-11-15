@@ -24,13 +24,14 @@ here than in a library:
 GeometricBrackets 0.4.0 is registered in General, so its `[sources]` entry, which followed `main`
 on the remote, is gone from `Project.toml`, `test/Project.toml` and `scripts/Project.toml`, and
 `[compat] GeometricBrackets` goes from `"0.3.0"` to `"0.4"`. Every dependency now resolves from
-General, as the entry "the compat bounds of GeometricBrackets, SimpleSolvers and SimpleSplines"
-below did for SimpleSplines. This closes K6 (comments and docs that called GeometricBrackets
-unregistered) and K7 (the `[sources]` entry that followed `main`).
+General, as the entry "SimpleSplines comes from the registry, at 0.3.0" below did for
+SimpleSplines. This closes K6 (comments and docs that called GeometricBrackets unregistered) and
+K7 (the `[sources]` entry that followed `main`). It also makes the project resolve again: `main` of
+GeometricBrackets carries 0.4.0, which the `"0.3.0"` bound refused.
 
 The resolved code does not change: the source of GeometricBrackets 0.4.0 (`src/`, `ext/`,
-`Project.toml`) is that of `main`, which the `[sources]` entry resolved before; the one commit on
-`main` after the tag changes the git hooks and the CI workflow. The one breaking change of 0.4.0,
+`Project.toml`) is that of `main`, which the `[sources]` entry resolved before; no commit on `main`
+after the tag changes `src/`, `ext/` or `Project.toml`. The one breaking change of 0.4.0,
 the concretely typed `names` field of `Trajectory`, does not reach this repository, which names
 `Trajectory` nowhere. No quoted number is re-measured.
 
@@ -43,8 +44,9 @@ calls `Aqua.test_all(MetriplecticRelaxation)` with every check on.
 - **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A caller on Julia 1.11 can
   no longer install this version. This repository records no reason beyond the raise itself. The
   `Project.toml` comment and the README's Dependencies section gave the `[sources]` table as the
-  reason for the 1.11 floor and called 1.10 the tree's usual floor; both now say that `[sources]`
-  is a Julia 1.11 feature, ignored on 1.10, which the 1.12 floor is above. That closes K8, whose
+  reason for the 1.11 floor and called 1.10 the tree's usual floor. Neither text gives a reason
+  for the floor any more; the entry "GeometricBrackets comes from the registry, at 0.4" removes
+  the `[sources]` table and both passages about it. That closes K8, whose
   problem was those two sentences; its evidence also carried that GeometricBase 0.15 requires
   Julia 1.11, which the new floor already satisfies, so the entry retires in full. Nothing in the
   code or the tests existed only for Julia 1.11, so nothing is deleted. BinaryProvider bounds
@@ -101,13 +103,14 @@ The root `Project.toml` bounds `GeometricBrackets = "0.3.0"`, `SimpleSolvers = "
 `SimpleSplines = "0.3.1"`, the latter two because GeometricBase 0.15 declares its stubs public and
 requires Julia 1.11, and they are the first releases that take it. `GeometricBrackets` took that
 release at 0.2.0, and the older `"0.1"` bound no longer resolved once the `[sources]` entry, which
-follows `main`, had moved past it; the bullet below raises it once more. The suite passes on
+followed `main`, had moved past it; the bullet below raises it once more, and the entry
+"GeometricBrackets comes from the registry, at 0.4" raises it to 0.4. The suite passed on
 Julia 1.12.7 against GeometricBrackets 0.3.0. No quoted number in this file was re-measured
 against these versions.
 
 - **`[compat] GeometricBrackets` goes from `"0.2.0"` to `"0.3.0"`, because the old bound
-  excluded the 0.3.0 that `[sources]` resolves.** The `[sources]` entry follows `main`, which has
-  carried 0.3.0 since its 2026-10-17 release; the old bound refused that release, and every
+  excluded the 0.3.0 that `[sources]` resolved.** The `[sources]` entry followed `main`, which
+  carried 0.3.0 from its 2026-10-17 release; the old bound refused that release, and every
   environment here failed to resolve, on every Julia version, with `empty intersection between
   GeometricBrackets@0.3.0 and project compatibility 0.2`. This predates the Julia 1.12 floor
   and does not follow from it. With the new bound the project resolves.
@@ -144,7 +147,8 @@ The suite still counts **479 tests**, file by file the same as before. Every fil
 
 SimpleSplines 0.3.0 is registered in General, so its `[sources]` entry is gone and `[compat]`
 names the released version. `Project.toml` and `scripts/Project.toml` both drop it.
-`GeometricBrackets` keeps its entry.
+`GeometricBrackets` kept its entry until the entry "GeometricBrackets comes from the registry, at
+0.4" removed it.
 
 **This is a breaking bump, 0.2.0 to 0.3.0, and the numbers have not been re-measured against
 it.** The suite passes — 0 failures, Quality Guards included — and that covers what the tests
@@ -241,7 +245,8 @@ undefined exports, project extras, stale deps, deps compat, piracies and persist
 is the first Aqua run on this repository, so a failure from here is a regression and not a
 backlog.
 
-**`persistent_tasks` is the one check turned off, and not because it failed.** Aqua 0.8.16 runs
+**`persistent_tasks` was the one check turned off, and not because it failed**, until the entry
+"GeometricBrackets comes from the registry, at 0.4" removed the last git source. Aqua 0.8.16 runs
 it by generating a temporary project and `Pkg.develop`-ing this package into it
 (`persistent_tasks.jl:93-95`), then precompiling in a subprocess. That project has no manifest,
 so the resolve must satisfy this package's two `rev = "main"` GitHub `[sources]` — every run of
@@ -458,15 +463,16 @@ figure loop gates the panels on C1; `gsc_*` belongs with a C2 figure pass.
 **`[compat] SimpleSolvers` goes from `"0.13"` to `"0.13, 0.14"`.** `PoissonBrackets` `main`
 already allows both, so nothing upstream blocked the bump.
 
-**The bound arrives on an ordinary topic branch, because a CompatHelper pull request cannot go
-green here, and this will not change.** `julia-runtest` leaves `force_latest_compatible_version`
+**The bound arrives on an ordinary topic branch, because a CompatHelper pull request could not go
+green here while a direct dependency was an unregistered git source.** `julia-runtest` leaves `force_latest_compatible_version`
 at `auto`, which becomes `true` on a CompatHelper pull request. `Pkg` then calls `maximum` over
 the registered versions of every direct dependency carrying a `[compat]` entry. `PoissonBrackets`
 and `SimpleSplines` are unregistered git sources, so that set is empty and `Pkg` throws
 `ArgumentError: reducing over an empty collection` before a single test runs — every row of the
 matrix, in under four minutes. The trigger is the pull request author, not the diff, so no edit
-to such a branch fixes it. **Every future CompatHelper pull request here will fail the same
-way**, and the bump it proposes has to be reapplied by hand, as this one was. PR #5 is what this
+to such a branch fixes it. With every direct dependency registered, as the entry
+"GeometricBrackets comes from the registry, at 0.4" leaves it, the set is no longer empty: the
+suite passes with `force_latest_compatible_version = true`. PR #5 is what this
 entry replaces; PR #6 was closed as redundant, `main` having carried `SimpleSplines = "0.1, 0.2"`
 since 6268037.
 
@@ -819,7 +825,7 @@ PR #14, the frame-covariant bracket. `SimpleSplines` did not move. Moved with
 because `Pkg` eats its comments.
 
 **A fresh `Pkg.update("PoissonBrackets")` no longer reproduces that tree, and this is expected.**
-`[sources]` carries `rev = "main"`, and `main` has moved past `52ce4d7` to `a123830` (tree
+`[sources]` carried `rev = "main"`, and `main` had moved past `52ce4d7` to `a123830` (tree
 `75e4a5e6365f8a0efaa62e05f1462bcb32a9f640`). The difference is `docs/Project.toml` and
 `scripts/Project.toml` only — no library source — so the numbers above stand against either tree.
 The tree in the table is the one they were measured against, and it stays as it is for that reason.
