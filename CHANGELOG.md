@@ -39,7 +39,7 @@ Aqua's `persistent_tasks` check runs again. It was off because its temporary pro
 resolve the `rev = "main"` source over the network; with no git source left, `test/quality/aqua.jl`
 calls `Aqua.test_all(MetriplecticRelaxation)` with every check on.
 
-`[compat] SimpleSplines` reads `"0.3.5, 0.4"`: a CompatHelper commit (`0ac7378`) widened it to
+`[compat] SimpleSplines` reads `"0.3.5, 0.4"`: a Dependabot commit (`0ac7378`) widened it to
 admit SimpleSplines 0.4, which no entry here recorded. The suite passes against SimpleSplines
 0.4.0 and GeometricBrackets 0.4.0.
 
