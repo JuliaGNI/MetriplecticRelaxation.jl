@@ -19,6 +19,24 @@ here than in a library:
 
 ## [Unreleased]
 
+### Changed — the SimpleSplines bound admits 0.5
+
+**A compat-only change: `[compat] SimpleSplines` goes from `"0.3.5, 0.4"` to
+`"0.3.5, 0.4, 0.5"`, and no API of this package changes.** SimpleSplines 0.5.0 removes and renames
+nothing. A mesh constructor now throws `ArgumentError` for a domain whose length overflows, or for
+breakpoints that are not finite and strictly increasing, which 0.4 built silently. It also fixes
+the derivatives of a periodic basis at the seam for `ForwardDiff.Dual` and the double count just
+below the right end in periodic `evaluate`. Every mesh here is built on a finite, increasing
+domain — `[0, 2π]`, `[0, 1]`, `[1, 7]` and `[-9.5, 9.5]` in `src/`, and `[1, 2]` and
+`[0, 1/scale]` in `scripts/verify_gradshafranov_disk.jl` — in `Float64`, no code here
+differentiates a periodic basis with ForwardDiff, and every periodic sample grid stops short of the
+right end, so no test asserted the old behaviour. SimpleSplines 0.5 resolves together with
+GeometricBrackets 0.4.1, the first release whose bound admits it; the existing
+`GeometricBrackets = "0.4"` bound already takes 0.4.1, so it does not change. The suite passes,
+480 tests, on Julia 1.13.4 against SimpleSplines 0.5.0 and GeometricBrackets 0.4.1, and the
+`scripts/` environment resolves and loads against the same two versions. No quoted number is
+re-measured.
+
 ### Changed — GeometricBrackets comes from the registry, at 0.4
 
 GeometricBrackets 0.4.0 is registered in General, so its `[sources]` entry, which followed `main`
@@ -40,8 +58,9 @@ resolve the `rev = "main"` source over the network; with no git source left, `te
 calls `Aqua.test_all(MetriplecticRelaxation)` with every check on.
 
 `[compat] SimpleSplines` reads `"0.3.5, 0.4"`: a Dependabot commit (`0ac7378`) widened it to
-admit SimpleSplines 0.4, which no entry here recorded. The suite passes against SimpleSplines
-0.4.0 and GeometricBrackets 0.4.0.
+admit SimpleSplines 0.4, which no entry here recorded; the entry "the SimpleSplines bound admits
+0.5" widens it to `"0.3.5, 0.4, 0.5"`. The suite passes against SimpleSplines 0.4.0 and
+GeometricBrackets 0.4.0.
 
 ### Changed — Julia 1.12 is the floor
 
